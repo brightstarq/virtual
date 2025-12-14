@@ -2,48 +2,49 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Modern Art Gallery: Virtual Art Exhibition</title>
-    <meta name="description" content="Immerse yourself in a 3D modern art gallery. Upload artwork, capture webpages, and share interactive virtual exhibitions with Virtual Gallery.">
-    <meta name="keywords" content="3D modern art gallery, virtual art exhibition, interactive art gallery, online modern art, virtual art platform, 3D art showcase">
+    <title>3D Futuristic Art Gallery: Virtual Exhibition</title>
+    <meta name="description" content="Immerse yourself in a futuristic 3D art gallery. Upload artwork, capture webpages, and share interactive virtual exhibitions.">
+    <meta name="keywords" content="3D futuristic art gallery, virtual art exhibition, interactive art gallery, online modern art, virtual art platform, 3D art showcase">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://www.virtualgallery.com/modern">
+    <link rel="canonical" href="https://www.virtualgallery.com/futuristic">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f0f1a">
     <!-- Open Graph Tags -->
-    <meta property="og:title" content="3D Modern Art Gallery: Virtual Art Exhibition">
-    <meta property="og:description" content="Explore a 3D modern art gallery with interactive navigation. Upload, capture, and share your art in a virtual space.">
-    <meta property="og:image" content="https://www.virtualgallery.com/images/modern-art-gallery.png">
-    <meta property="og:url" content="https://www.virtualgallery.com/modern">
+    <meta property="og:title" content="3D Futuristic Art Gallery: Virtual Exhibition">
+    <meta property="og:description" content="Explore a futuristic 3D art gallery with interactive navigation. Upload, capture, and share your art in a virtual space.">
+    <meta property="og:image" content="https://www.virtualgallery.com/images/futuristic-art-gallery.png">
+    <meta property="og:url" content="https://www.virtualgallery.com/futuristic">
     <meta property="og:type" content="website">
     <!-- Twitter Card Tags -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="3D Modern Art Gallery: Virtual Art Exhibition">
-    <meta name="twitter:description" content="Create and share interactive 3D modern art exhibitions with Virtual Gallery's online platform.">
-    <meta name="twitter:image" content="https://www.virtualgallery.com/images/modern-art-gallery.png">
+    <meta name="twitter:title" content="3D Futuristic Art Gallery: Virtual Exhibition">
+    <meta name="twitter:description" content="Create and share interactive 3D futuristic art exhibitions with Virtual Gallery's online platform.">
+    <meta name="twitter:image" content="https://www.virtualgallery.com/images/futuristic-art-gallery.png">
     <!-- Favicon -->
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <!-- Styles and Scripts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="/virtual.css">
     <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js",
-                "PointerLockControls": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/controls/PointerLockControls.js",
-                "OrbitControls": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/controls/OrbitControls.js",
-                "GLTFLoader": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/loaders/GLTFLoader.js"
-            }
-        }
-    </script>
+   {
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "PointerLockControls": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/controls/PointerLockControls.js",
+        "OrbitControls": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/controls/OrbitControls.js"
+    }
+}
+</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
-
     <!-- Schema Markup -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "WebApplication",
-        "name": "3D Modern Art Gallery",
-        "url": "https://www.virtualgallery.com/modern",
-        "description": "An interactive 3D virtual gallery for modern art. Upload images, capture webpages, navigate in 3D, and share exhibitions.",
+        "name": "3D Futuristic Art Gallery",
+        "url": "https://www.virtualgallery.com/futuristic",
+        "description": "An interactive 3D virtual gallery for futuristic art. Upload images, capture webpages, navigate in 3D, and share exhibitions.",
         "applicationCategory": "Entertainment",
         "operatingSystem": "Web",
         "creator": {
@@ -60,41 +61,218 @@
     }
     </script>
     <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body { 
+            margin: 0; 
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        canvas {
+            touch-action: none;
+            -webkit-touch-callout: none;
+        }
+        
         #metadataModal, #shareModal {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
+            background: rgba(0, 0, 0, 0.95);
+            padding: clamp(15px, 4vw, 30px);
             border-radius: 10px;
             z-index: 1000;
             display: none;
             color: white;
-            max-height: 80vh;
+            max-height: 85vh;
+            max-width: 90vw;
+            width: clamp(300px, 90vw, 500px);
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
+        
+        #metadataModal h3, #shareModal h3 {
+            font-size: clamp(16px, 4vw, 20px);
+            margin-bottom: 15px;
+        }
+        
         #metadataModal input, #shareModal input {
             display: block;
             margin: 10px 0;
             width: 100%;
-            padding: 5px;
+            padding: clamp(8px, 2vw, 12px);
+            font-size: clamp(14px, 3.5vw, 16px);
+            border: 1px solid #00d4ff;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
         }
+        
         #metadataModal button, #shareModal button {
             margin: 10px 5px 0 0;
-            padding: 5px 10px;
+            padding: clamp(8px, 2vw, 12px) clamp(15px, 3vw, 20px);
             background: #1e90ff;
             border: none;
             color: white;
             border-radius: 5px;
             cursor: pointer;
+            font-size: clamp(13px, 3vw, 15px);
+            min-height: 44px;
+            min-width: 80px;
         }
+        
         #metadataModal button.cancel, #shareModal button:nth-child(3) {
             background: #ff4444;
         }
+        
+        #imageSliderContainer {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: clamp(10px, 3vw, 20px);
+            z-index: 1000;
+            border-radius: 10px;
+            max-width: 95vw;
+            max-height: 90vh;
+        }
+        
+        #sliderImage {
+            max-width: 90vw;
+            max-height: 65vh;
+            object-fit: contain;
+            border-radius: 5px;
+        }
+        
+        .slider-controls {
+            text-align: center;
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .slider-controls button {
+            min-width: 44px;
+            min-height: 44px;
+            padding: 10px 15px;
+            font-size: clamp(14px, 3.5vw, 16px);
+        }
+        
+        .slider-controls span {
+            font-size: clamp(14px, 3.5vw, 16px);
+            color: white;
+            padding: 0 10px;
+        }
+        
+        .glow-btn {
+            background: #1e90ff;
+            border: none;
+            color: white;
+            padding: clamp(8px, 2vw, 10px) clamp(12px, 3vw, 16px);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: clamp(12px, 3vw, 14px);
+            min-height: 44px;
+            touch-action: manipulation;
+        }
+        
+        .control-panel {
+            background: rgba(0, 0, 0, 0.8);
+            padding: clamp(8px, 2vw, 15px);
+            border-radius: 5px;
+        }
+        
+        .hidden { display: none !important; }
+        
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        #tutorialOverlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: clamp(15px, 4vw, 25px);
+            border-radius: 10px;
+            z-index: 1001;
+            text-align: center;
+            max-width: 90vw;
+            font-size: clamp(14px, 3.5vw, 16px);
+            line-height: 1.6;
+        }
+        
+        #tutorialOverlay strong {
+            color: #1e90ff;
+        }
+        
+        .image-preview {
+            max-width: clamp(60px, 15vw, 100px);
+            max-height: clamp(60px, 15vw, 100px);
+            margin: 5px;
+            object-fit: cover;
+            border-radius: 5px;
+            border: 2px solid #00d4ff;
+        }
+        
+        /* Mobile-specific improvements */
+        @media (max-width: 768px) {
+            #metadataModal, #shareModal {
+                padding: 20px 15px;
+                max-width: 95vw;
+            }
+            
+            .slider-controls {
+                gap: 8px;
+            }
+            
+            #sliderImage {
+                max-height: 55vh;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #metadataModal input, #shareModal input {
+                padding: 12px;
+                font-size: 16px; /* Prevent iOS zoom */
+            }
+            
+            .slider-controls button {
+                min-width: 50px;
+                padding: 12px;
+            }
+            
+            #tutorialOverlay {
+                padding: 20px 15px;
+                max-width: 95vw;
+            }
+        }
+        
+        /* Prevent text selection on touch devices */
+        @media (hover: none) and (pointer: coarse) {
+            * {
+                -webkit-user-select: none;
+                user-select: none;
+            }
+            
+            input, textarea {
+                -webkit-user-select: text;
+                user-select: text;
+            }
         }
     </style>
 </head>
@@ -102,7 +280,7 @@
     <div id="ui-overlay">
         <button id="toggleControlsBtn" class="glow-btn toggle-controls-btn">Hide</button>
         <div class="control-panel top-panel">
-            <h1 class="title">3D Virtual Art Gallery</h1>
+            <h1 class="title">3D Modern Art Gallery</h1>
             <div class="button-group">
                 <div class="action-group">
                     <button id="downloadBtn" class="glow-btn">Download</button>
@@ -113,7 +291,7 @@
                     <span id="recordStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
                 </div>
                 <div class="action-group">
-                    <button id="autoRotateBtn" class="glow-btn">Auto Rotate</button>
+                    <button id="autoRotateBtn" class="glow-btn">Rotate</button>
                 </div>
                 <div class="action-group">
                     <button id="animateObjectsBtn" class="glow-btn">Animate</button>
@@ -123,14 +301,22 @@
                     <span id="shareStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
                 </div>
                 <div class="action-group">
-                    <a href="/"><button class="glow-btn">Home</button></a> <!-- Changed to absolute path -->
+                    <a href="/"><button class="glow-btn">Home</button></a>
                 </div>
             </div>
         </div>
         <div class="control-panel sidebar left-sidebar">
+            
             <form id="uploadForm" class="form-group">
                 <h3>Upload Images</h3>
-                <input type="file" id="images" multiple accept="image/*">
+            <input 
+    type="file" 
+    id="images" 
+    name="images" 
+    multiple 
+    accept="image/*,.ppt,.pptx,.odp,.pdf,video/mp4,video/webm,video/quicktime"
+    required
+>
                 <div id="previewContainer" class="preview-container"></div>
                 <div class="action-group">
                     <span id="uploadStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
@@ -177,8 +363,7 @@
         <button id="submitMetadata">Submit</button>
         <button id="cancelMetadata" class="cancel">Cancel</button>
     </div>
-    <div id="shareModal"></div> <!-- Added here -->
-    
-    <script type="module" src="/modern1_Secured.js"></script> <!-- Changed to absolute path -->
+    <div id="shareModal"></div>
+    <script type="module" src="/modern16.js"></script>
 </body>
 </html>

@@ -9,6 +9,11 @@ import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
 import shortid from 'shortid';
 
+import { exec } from 'child_process';
+import util from 'util';
+
+const execPromise = util.promisify(exec);
+
 puppeteer.use(StealthPlugin());
 
 class ScreenshotServer {
@@ -105,10 +110,107 @@ class ScreenshotServer {
         this.app.use('/screenshots', express.static(this.outputDir));
     }
 
+    
     configureMulter() {
-        return multer({ storage: multer.memoryStorage() });
-    }
+    return multer({ 
+        storage: multer.memoryStorage(),
+        limits: { fileSize: 100 * 1024 * 1024 } // 100MB for videos
+    });
+}
 
+async convertPptToImages(filePath, sessionDir) {
+    const tempPdfDir = path.join(this.outputDir, 'temp_' + Date.now());
+    await fs.ensureDir(tempPdfDir);
+
+    try {
+        // Windows LibreOffice path
+        const libreOfficePath = '"C:\\Program Files\\LibreOffice\\program\\soffice.exe"';
+        
+        // Convert PPT to PDF
+        const convertCmd = `${libreOfficePath} --headless --convert-to pdf --outdir "${tempPdfDir}" "${filePath}"`;
+        console.log('🔧 Converting PPT to PDF...');
+        await execPromise(convertCmd);
+
+        // Find the generated PDF
+        const files = await fs.readdir(tempPdfDir);
+        const pdfFile = files.find(f => f.endsWith('.pdf'));
+        if (!pdfFile) throw new Error('PDF conversion failed - no PDF found');
+
+        const pdfPath = path.join(tempPdfDir, pdfFile);
+        console.log('✅ PDF created:', pdfFile);
+        
+        // Now install pdf-poppler to convert PDF to images
+        console.log('📄 Converting PDF to images...');
+        const { convert } = await import('pdf-poppler');
+        
+        await convert(pdfPath, {
+            format: 'png',
+            out_dir: sessionDir,
+            out_prefix: 'slide',
+            page: null // Convert all pages
+        });
+
+        // Cleanup temp directory
+        await fs.remove(tempPdfDir);
+        console.log('🧹 Cleaned up temp files');
+
+        // Get all generated slide images
+        const slideFiles = await fs.readdir(sessionDir);
+        const slides = slideFiles.filter(f => f.startsWith('slide') && f.endsWith('.png'));
+        
+        console.log(`✅ Generated ${slides.length} slide images`);
+        return slides;
+        
+    } catch (error) {
+        console.error('❌ PPT conversion error:', error);
+        await fs.remove(tempPdfDir).catch(() => {});
+        throw error;
+    }
+}
+async convertPdfToImages(pdfPath, sessionDir) {
+    try {
+        console.log('📄 Converting PDF to images...');
+        const { convert } = await import('pdf-poppler');
+        
+        await convert(pdfPath, {
+            format: 'png',
+            out_dir: sessionDir,
+            out_prefix: 'page',
+            page: null // Convert all pages
+        });
+
+        // Get and rename files
+        const pageFiles = await fs.readdir(sessionDir);
+        const pages = pageFiles.filter(f => f.startsWith('page') && f.endsWith('.png'));
+        
+        console.log('📋 Found page files:', pages);
+        
+        // Ensure consistent naming
+        const renamedPages = [];
+        for (let i = 0; i < pages.length; i++) {
+            const oldName = pages[i];
+            const newName = `page-${i + 1}.png`;
+            
+            if (oldName !== newName) {
+                await fs.rename(
+                    path.join(sessionDir, oldName),
+                    path.join(sessionDir, newName)
+                );
+                renamedPages.push(newName);
+                console.log(`📝 Renamed: ${oldName} → ${newName}`);
+            } else {
+                renamedPages.push(oldName);
+            }
+        }
+        
+        console.log(`✅ Generated ${renamedPages.length} page images`);
+        return renamedPages;
+        
+    } catch (error) {
+        console.error('❌ PDF conversion error:', error);
+        throw error;
+    }
+}
     setupRoutes() {
         // Serve static files first
         this.app.use(express.static(path.join(this.__dirname, 'public')));
@@ -297,11 +399,36 @@ class ScreenshotServer {
 
             const metadataPath = path.join(sessionDir, 'metadata.json');
             let metadata = [];
+            let sourceUrl = null;
+
             if (fs.existsSync(metadataPath)) {
-                metadata = await fs.readJson(metadataPath);
+                const metadataContent = await fs.readJson(metadataPath);
+                
+                // Extract source URL if present
+                if (metadataContent.sourceUrl) {
+                    sourceUrl = metadataContent.sourceUrl;
+                }
+
+                if (Array.isArray(metadataContent)) {
+                    metadata = metadataContent;
+                } else if (metadataContent.metadata) {
+                    metadata = metadataContent.metadata;
+                }
+
+                // Add sourceUrl to each metadata entry
+                if (sourceUrl) {
+                    metadata = metadata.map(meta => ({
+                        ...meta,
+                        sourceUrl: sourceUrl
+                    }));
+                }
             }
 
-            res.json({ screenshots: screenshotUrls, metadata });
+            res.json({ 
+                screenshots: screenshotUrls, 
+                metadata,
+                sourceUrl
+            });
         } catch (error) {
             console.error('❌ Error fetching screenshots:', error);
             res.status(500).json({ error: 'Failed to retrieve screenshots' });
@@ -322,66 +449,172 @@ class ScreenshotServer {
 
         try {
             await this.captureMockup(url, sessionDir);
-            res.json({ success: true, message: `Screenshots captured for ${url}`, sessionId });
+
+            // Store source URL in metadata
+            const metadataPath = path.join(sessionDir, 'metadata.json');
+            const files = await fs.readdir(sessionDir);
+            const imageFiles = files.filter(file => file.match(/\.(png|jpg|jpeg)$/i));
+
+            const metadata = {
+                sourceUrl: url,
+                capturedAt: new Date().toISOString(),
+                shared: false,
+                metadata: imageFiles.map(filename => ({
+                    filename,
+                    title: `Screenshot from ${url}`,
+                    description: `Captured section of ${url}`,
+                    sourceUrl: url
+                }))
+            };
+
+            await fs.writeJson(metadataPath, metadata, { spaces: 2 });
+            console.log(`📝 Saved metadata with source URL: ${url}`);
+
+            res.json({ 
+                success: true, 
+                message: `Screenshots captured for ${url}`, 
+                sessionId,
+                sourceUrl: url,
+                fileCount: imageFiles.length
+            });
         } catch (error) {
             console.error('❌ Screenshot capture failed:', error);
             res.status(500).json({ error: 'Failed to capture screenshot', details: error.message });
         }
     }
 
-    async handleUpload(req, res) {
-        const sessionId = req.params.sessionId || uuidv4();
-        console.log(`Uploading files for sessionId: ${sessionId}`);
-        const sessionDir = path.join(this.outputDir, sessionId);
+async handleUpload(req, res) {
+    const sessionId = req.params.sessionId || uuidv4();
+    console.log(`Uploading files for sessionId: ${sessionId}`);
+    const sessionDir = path.join(this.outputDir, sessionId);
 
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ error: 'No files uploaded' });
+    if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    try {
+        await fs.ensureDir(sessionDir);
+        if (req.params.sessionId && fs.existsSync(sessionDir)) {
+            await fs.emptyDir(sessionDir);
+            console.log(`🗑️ Cleared existing files in session: ${sessionId}`);
         }
 
-        try {
-            await fs.ensureDir(sessionDir);
-            if (req.params.sessionId && fs.existsSync(sessionDir)) {
-                await fs.emptyDir(sessionDir);
-                console.log(`🗑️ Cleared existing files in session: ${sessionId}`);
+        const filePaths = [];
+        const metadata = [];
+
+        for (let i = 0; i < req.files.length; i++) {
+            const file = req.files[i];
+            const ext = path.extname(file.originalname).toLowerCase();
+            
+            // Handle PowerPoint files
+            if (['.ppt', '.pptx', '.odp'].includes(ext)) {
+                const tempPptPath = path.join(this.outputDir, `temp_${Date.now()}_${file.originalname}`);
+                await fs.writeFile(tempPptPath, file.buffer);
+                
+                try {
+                    const slideImages = await this.convertPptToImages(tempPptPath, sessionDir);
+                    
+                    slideImages.forEach((slideFile, slideIndex) => {
+                        filePaths.push(`/screenshots/${sessionId}/${slideFile}`);
+                        metadata.push({ 
+                            filename: slideFile, 
+                            title: `${req.body.title?.[i] || file.originalname} - Slide ${slideIndex + 1}`,
+                            description: req.body.description?.[i] || '',
+                            artist: req.body.artist?.[i] || 'Presentation',
+                            type: 'image'
+                        });
+                    });
+                    
+                    await fs.unlink(tempPptPath);
+                    console.log(`✅ PPT processed: ${slideImages.length} slides`);
+                } catch (error) {
+                    console.error(`Failed to process PPT: ${error}`);
+                    await fs.unlink(tempPptPath).catch(() => {});
+                }
             }
-
-            const filePaths = [];
-            const metadata = [];
-
-            for (let i = 0; i < req.files.length; i++) {
-                const file = req.files[i];
-                const filename = `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+            // Handle PDF files
+            else if (ext === '.pdf') {
+                const tempPdfPath = path.join(this.outputDir, `temp_${Date.now()}_${file.originalname}`);
+                await fs.writeFile(tempPdfPath, file.buffer);
+                
+                try {
+                    const pageImages = await this.convertPdfToImages(tempPdfPath, sessionDir);
+                    
+                    pageImages.forEach((pageFile, pageIndex) => {
+                        filePaths.push(`/screenshots/${sessionId}/${pageFile}`);
+                        metadata.push({ 
+                            filename: pageFile, 
+                            title: `${req.body.title?.[i] || file.originalname} - Page ${pageIndex + 1}`,
+                            description: req.body.description?.[i] || '',
+                            artist: req.body.artist?.[i] || 'PDF Document',
+                            type: 'image'
+                        });
+                    });
+                    
+                    await fs.unlink(tempPdfPath);
+                    console.log(`✅ PDF processed: ${pageImages.length} pages`);
+                } catch (error) {
+                    console.error(`Failed to process PDF: ${error}`);
+                    await fs.unlink(tempPdfPath).catch(() => {});
+                }
+            }
+            // ✨ Handle Video files
+            else if (['.mp4', '.webm', '.mov', '.avi'].includes(ext)) {
+                const filename = `video-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
                 const filePath = path.join(sessionDir, filename);
                 await fs.writeFile(filePath, file.buffer);
-                console.log(`✅ Saved: ${filePath}`);
+                console.log(`✅ Saved video: ${filePath}`);
                 filePaths.push(`/screenshots/${sessionId}/${filename}`);
-
-                const title = Array.isArray(req.body.title) && req.body.title[i] ? req.body.title[i] : 'Untitled';
-                const description = Array.isArray(req.body.description) && req.body.description[i] ? req.body.description[i] : '';
-                const artist = Array.isArray(req.body.artist) && req.body.artist[i] ? req.body.artist[i] : 'Unknown';
-                metadata.push({ filename, title, description, artist });
+                
+                metadata.push({ 
+                    filename, 
+                    title: req.body.title?.[i] || file.originalname.replace(ext, ''),
+                    description: req.body.description?.[i] || '',
+                    artist: req.body.artist?.[i] || 'Video',
+                    type: 'video' // ⚠️ CRITICAL: Mark as video
+                });
             }
-
-            const metadataPath = path.join(sessionDir, 'metadata.json');
-            const metadataObj = {
-                metadata,
-                shared: false,
-                htmlPath: null
-            };
-            await fs.writeJson(metadataPath, metadataObj, { spaces: 2 });
-            console.log(`📝 Metadata saved: ${metadataPath}`);
-
-            res.json({
-                success: true,
-                message: `Uploaded ${req.files.length} images successfully`,
-                sessionId,
-                filePaths
-            });
-        } catch (error) {
-            console.error('❌ Error handling upload:', error);
-            res.status(500).json({ error: 'Failed to upload images', details: error.message });
+            // Handle regular images
+            else if (['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext)) {
+                const filename = `image-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+                const filePath = path.join(sessionDir, filename);
+                await fs.writeFile(filePath, file.buffer);
+                console.log(`✅ Saved image: ${filePath}`);
+                filePaths.push(`/screenshots/${sessionId}/${filename}`);
+                
+                metadata.push({ 
+                    filename, 
+                    title: req.body.title?.[i] || 'Untitled',
+                    description: req.body.description?.[i] || '',
+                    artist: req.body.artist?.[i] || 'Unknown',
+                    type: 'image'
+                });
+            }
+            else {
+                console.warn(`⚠️ Unsupported file type: ${ext}`);
+            }
         }
+
+        const metadataPath = path.join(sessionDir, 'metadata.json');
+        const metadataObj = {
+            metadata,
+            shared: false,
+            htmlPath: null
+        };
+        await fs.writeJson(metadataPath, metadataObj, { spaces: 2 });
+        console.log(`📝 Metadata saved: ${metadataPath}`);
+
+        res.json({
+            success: true,
+            message: `Uploaded ${filePaths.length} items successfully`,
+            sessionId,
+            filePaths
+        });
+    } catch (error) {
+        console.error('❌ Error handling upload:', error);
+        res.status(500).json({ error: 'Failed to upload files', details: error.message });
     }
+}
 
     async captureMockup(url, sessionDir) {
         console.log(`🌐 Navigating to: ${url}`);

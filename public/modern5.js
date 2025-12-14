@@ -140,7 +140,7 @@ class ThreeJSApp {
         this.createGallery();
         this.setupAudio();
         this.setupEventListeners();
-        this.createAvatar();
+        // this.createAvatar();
 
         this.isLoading = true;
         this.showPreloader();
@@ -264,263 +264,1111 @@ this.setupMobileControls();
         }
     }
     addLighting() {
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        this.scene.add(ambientLight);
+    // Reduced ambient (space is dark)
+    const ambientLight = new THREE.AmbientLight(0x4a5f7f, 0.3);
+    this.scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(0, 20, 20);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 100;
-        this.scene.add(directionalLight);
-    }
+    // Main station light (from Earth direction)
+    const earthLight = new THREE.DirectionalLight(0x88ccff, 0.8);
+    earthLight.position.set(0, 10, -50);
+    earthLight.castShadow = true;
+    earthLight.shadow.mapSize.width = 2048;
+    earthLight.shadow.mapSize.height = 2048;
+    this.scene.add(earthLight);
+    
+    // Secondary rim light
+    const rimLight = new THREE.DirectionalLight(0xff8844, 0.3);
+    rimLight.position.set(20, 5, 20);
+    this.scene.add(rimLight);
+}
 
-    createGallery() {
-        const textureLoader = new THREE.TextureLoader();
+// ============================================================================
+// OPTIMIZED UNDERWATER GALLERY - FIXED UNIFORM LIMIT ERROR
+// Replace your existing createGallery() method with this version
+// ============================================================================
 
-        const floorMaterial = new THREE.MeshStandardMaterial({
-            color: 0xf0e8e0,
-            roughness: 0.3,
-            metalness: 0.1
-        });
-        const noiseTexture = new THREE.Texture(this.generateNoiseCanvas(256, 256));
-        noiseTexture.needsUpdate = true;
-        noiseTexture.wrapS = noiseTexture.wrapT = THREE.RepeatWrapping;
-        noiseTexture.repeat.set(16, 16);
-        floorMaterial.map = noiseTexture;
+createGallery() {
+    const room1 = new THREE.Group();
+    const galleryRadius = 28;
+    const galleryHeight = 10;
 
-        const ceilingMaterial = new THREE.MeshStandardMaterial({
-            color: 0xe0e0e0,
-            roughness: 0.3,
-            metalness: 0.2
-        });
+    // ====== SHARED MATERIALS (CRITICAL: Reuse to reduce uniforms) ======
+    
+    const premiumWaterMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x0088bb,
+        metalness: 0,
+        roughness: 0.05,
+        transparent: true,
+        opacity: 0.2,
+        transmission: 0.98,
+        thickness: 4.0,
+        envMapIntensity: 2.0,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05,
+        ior: 1.33
+    });
 
-        const glassMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0x90a4ae,
+    const crystalFloorMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x99ddff,
+        metalness: 0.1,
+        roughness: 0.01,
+        transparent: true,
+        opacity: 0.5,
+        transmission: 0.95,
+        thickness: 0.8,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05
+    });
+
+    const titaniumFrameMaterial = new THREE.MeshStandardMaterial({
+        color: 0x3a5a6a,
+        roughness: 0.25,
+        metalness: 0.95
+    });
+
+    const goldBrassMaterial = new THREE.MeshStandardMaterial({
+        color: 0xd4af37,
+        roughness: 0.2,
+        metalness: 0.98,
+        emissive: 0xd4af37,
+        emissiveIntensity: 0.15
+    });
+
+    const enchantedCoralMaterial = new THREE.MeshStandardMaterial({
+        color: 0xff7f7f,
+        roughness: 0.8,
+        emissive: 0xff6b9d,
+        emissiveIntensity: 0.5
+    });
+
+    const shimmeringSandMaterial = new THREE.MeshStandardMaterial({
+        color: 0xf9f3e8,
+        roughness: 0.9,
+        metalness: 0.1
+    });
+
+    const bioLumMaterial = new THREE.MeshStandardMaterial({
+        color: 0x00ffdd,
+        emissive: 0x00ffdd,
+        emissiveIntensity: 3.5,
+        transparent: true,
+        opacity: 0.85
+    });
+
+    // Shared jellyfish bell materials
+    const jellyfishBellMaterials = [
+        new THREE.MeshStandardMaterial({
+            color: 0x88aaff,
+            emissive: 0x88aaff,
+            emissiveIntensity: 2.0,
             transparent: true,
-            opacity: 0.5,
-            roughness: 0.1,
-            metalness: 0.4,
-            transmission: 0.9,
-            clearcoat: 0.5
-        });
+            opacity: 0.75,
+            side: THREE.DoubleSide
+        }),
+        new THREE.MeshStandardMaterial({
+            color: 0xff88ff,
+            emissive: 0xff88ff,
+            emissiveIntensity: 2.0,
+            transparent: true,
+            opacity: 0.75,
+            side: THREE.DoubleSide
+        }),
+        new THREE.MeshStandardMaterial({
+            color: 0x88ffaa,
+            emissive: 0x88ffaa,
+            emissiveIntensity: 2.0,
+            transparent: true,
+            opacity: 0.75,
+            side: THREE.DoubleSide
+        }),
+        new THREE.MeshStandardMaterial({
+            color: 0xffaa88,
+            emissive: 0xffaa88,
+            emissiveIntensity: 2.0,
+            transparent: true,
+            opacity: 0.75,
+            side: THREE.DoubleSide
+        })
+    ];
 
-        const frameMaterial = new THREE.MeshStandardMaterial({
-            color: 0x212121,
-            roughness: 0.3,
-            metalness: 0.8
-        });
+    const tentacleMaterial = new THREE.MeshStandardMaterial({
+        color: 0x00ffff,
+        emissive: 0x00ffff,
+        emissiveIntensity: 2.5,
+        transparent: true,
+        opacity: 0.85
+    });
 
-        const wallMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.3,
-            metalness: 0.0
-        });
+    // Shared plankton materials
+    const planktonMaterials = [
+        new THREE.MeshStandardMaterial({
+            color: 0x00ffcc,
+            emissive: 0x00ffcc,
+            emissiveIntensity: 3.5,
+            transparent: true,
+            opacity: 0.8
+        }),
+        new THREE.MeshStandardMaterial({
+            color: 0x00ccff,
+            emissive: 0x00ccff,
+            emissiveIntensity: 3.5,
+            transparent: true,
+            opacity: 0.8
+        }),
+        new THREE.MeshStandardMaterial({
+            color: 0xccff00,
+            emissive: 0xccff00,
+            emissiveIntensity: 3.5,
+            transparent: true,
+            opacity: 0.8
+        })
+    ];
 
-        const charcoalWallMaterial = new THREE.MeshStandardMaterial({
-            color: 0x424242,
-            roughness: 0.4,
-            metalness: 0.3
-        });
-        const wallTexture = new THREE.Texture(this.generateModernWallTexture(256, 256));
-        wallTexture.needsUpdate = true;
-        wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
-        wallTexture.repeat.set(4, 4);
-        charcoalWallMaterial.normalMap = wallTexture;
-        charcoalWallMaterial.normalScale.set(0.3, 0.3);
+    // ====== HEXAGONAL GLASS FLOOR WITH SIMPLIFIED LED GRID ======
+    
+    const floor = new THREE.Mesh(
+        new THREE.CircleGeometry(galleryRadius, 6),
+        crystalFloorMaterial
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = 0.1;
+    floor.receiveShadow = true;
+    room1.add(floor);
 
-        this.ledMaterial = new THREE.MeshStandardMaterial({
-            color: 0xe0e0e0,
-            emissive: 0xe0e0e0,
-            emissiveIntensity: 1.2,
-            roughness: 0.2,
-            metalness: 0.5
-        });
+    // Simplified grid (fewer beams)
+    const gridSpacing = 4; // Increased from 2.5
+    for (let x = -galleryRadius; x <= galleryRadius; x += gridSpacing) {
+        for (let z = -galleryRadius; z <= galleryRadius; z += gridSpacing) {
+            if (Math.sqrt(x*x + z*z) < galleryRadius) {
+                const beam = new THREE.Mesh(
+                    new THREE.BoxGeometry(gridSpacing * 1.2, 0.08, 0.08),
+                    titaniumFrameMaterial
+                );
+                beam.position.set(x, 0.15, z);
+                beam.receiveShadow = true;
+                room1.add(beam);
 
-        const room1 = new THREE.Group();
-        const radius = 20;
-        const height = 12;
-
-        const floor1 = new THREE.Mesh(new THREE.CircleGeometry(radius, 64), floorMaterial);
-        floor1.rotation.x = -Math.PI / 2;
-        floor1.position.y = 0;
-        floor1.receiveShadow = true;
-        room1.add(floor1);
-
-        const ceilingGroup = new THREE.Group();
-        const panelRadius = 2;
-        const panelDepth = 0.2;
-        const panelGeometry = new THREE.CylinderGeometry(panelRadius, panelRadius, panelDepth, 6);
-        for (let y = -4; y <= 4; y++) {
-            for (let x = -4; x <= 4; x++) {
-                const panel = new THREE.Mesh(panelGeometry, ceilingMaterial);
-                const offsetX = x * panelRadius * 1.8 + (y % 2 === 0 ? 0 : panelRadius * 0.9);
-                const offsetY = y * panelRadius * 1.5;
-                if (Math.sqrt(offsetX * offsetX + offsetY * offsetY) < radius - 2) {
-                    panel.position.set(offsetX, height - panelDepth / 2, offsetY);
-                    panel.rotation.x = Math.PI / 2;
-                    panel.receiveShadow = true;
-                    ceilingGroup.add(panel);
-                }
+                // LED node (no individual lights)
+                const ledNode = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.08, 12, 12),
+                    bioLumMaterial
+                );
+                ledNode.position.set(x, 0.2, z);
+                room1.add(ledNode);
             }
         }
-        room1.add(ceilingGroup);
+    }
 
-        this.ceilingLights = [];
-        for (let i = 0; i < 6; i++) {
-            const angle = (i / 6) * Math.PI * 2;
-            const lightGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.05, 32);
-            const light = new THREE.Mesh(lightGeometry, this.ledMaterial);
-            light.position.set(Math.cos(angle) * (radius - 4), height - 0.025, Math.sin(angle) * (radius - 4));
-            light.rotation.x = Math.PI / 2;
-            room1.add(light);
+    // Hexagonal trim
+    for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const segmentLength = 2 * galleryRadius * Math.sin(Math.PI / 6);
+        
+        const trimSegment = new THREE.Mesh(
+            new THREE.BoxGeometry(segmentLength, 0.2, 0.25),
+            goldBrassMaterial
+        );
+        trimSegment.position.set(
+            Math.cos(angle + Math.PI / 12) * (galleryRadius - 0.15),
+            0.15,
+            Math.sin(angle + Math.PI / 12) * (galleryRadius - 0.15)
+        );
+        trimSegment.rotation.y = angle + Math.PI / 2;
+        room1.add(trimSegment);
+    }
 
-            const spotLight = new THREE.SpotLight(0xffffff, 1.5, 15, Math.PI / 6, 0.5);
-            spotLight.position.set(Math.cos(angle) * (radius - 4), height - 0.1, Math.sin(angle) * (radius - 4));
-            spotLight.target.position.set(Math.cos(angle) * (radius - 4), 0, Math.sin(angle) * (radius - 4));
-            spotLight.castShadow = true;
-            room1.add(spotLight);
-            room1.add(spotLight.target);
-            this.ceilingLights.push({ mesh: light, spot: spotLight });
+    // Sandy floor
+    const sandBottom = new THREE.Mesh(
+        new THREE.CircleGeometry(galleryRadius + 8, 64),
+        shimmeringSandMaterial
+    );
+    sandBottom.rotation.x = -Math.PI / 2;
+    sandBottom.position.y = -5;
+    room1.add(sandBottom);
+
+    // Simplified sand ripples
+    for (let i = 0; i < 10; i++) {
+        const ripple = new THREE.Mesh(
+            new THREE.TorusGeometry(5 + i * 3, 0.08, 8, 32),
+            shimmeringSandMaterial
+        );
+        ripple.rotation.x = Math.PI / 2;
+        ripple.position.y = -4.9;
+        room1.add(ripple);
+    }
+
+    // ====== CURVED GLASS WALLS ======
+    
+    const wallSegments = 48;
+    for (let i = 0; i < wallSegments; i++) {
+        const angle = (i / wallSegments) * Math.PI * 2;
+        const nextAngle = ((i + 1) / wallSegments) * Math.PI * 2;
+        
+        const wallSegment = new THREE.Mesh(
+            new THREE.BoxGeometry(
+                Math.abs(Math.cos(nextAngle) - Math.cos(angle)) * galleryRadius * 2,
+                galleryHeight,
+                0.3
+            ),
+            premiumWaterMaterial
+        );
+        wallSegment.position.set(
+            Math.cos(angle + (nextAngle - angle) / 2) * galleryRadius,
+            galleryHeight / 2,
+            Math.sin(angle + (nextAngle - angle) / 2) * galleryRadius
+        );
+        wallSegment.rotation.y = angle + (nextAngle - angle) / 2;
+        wallSegment.receiveShadow = true;
+        room1.add(wallSegment);
+
+        // Frames every 3rd segment
+        if (i % 3 === 0) {
+            const frame = new THREE.Mesh(
+                new THREE.BoxGeometry(0.2, galleryHeight + 0.5, 0.4),
+                titaniumFrameMaterial
+            );
+            frame.position.set(
+                Math.cos(angle) * galleryRadius,
+                galleryHeight / 2,
+                Math.sin(angle) * galleryRadius
+            );
+            frame.rotation.y = angle;
+            room1.add(frame);
+
+            // Brass rivets
+            for (let j = 0; j < 10; j++) {
+                const rivet = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.06, 0.08, 0.1, 12),
+                    goldBrassMaterial
+                );
+                rivet.position.set(
+                    Math.cos(angle) * (galleryRadius - 0.15),
+                    j * (galleryHeight / 9) + 0.5,
+                    Math.sin(angle) * (galleryRadius - 0.15)
+                );
+                rivet.rotation.z = Math.PI / 2;
+                rivet.rotation.y = angle;
+                room1.add(rivet);
+            }
+
+            // LED strip
+            const ledStrip = new THREE.Mesh(
+                new THREE.BoxGeometry(0.05, galleryHeight, 0.05),
+                bioLumMaterial
+            );
+            ledStrip.position.set(
+                Math.cos(angle) * (galleryRadius - 0.25),
+                galleryHeight / 2,
+                Math.sin(angle) * (galleryRadius - 0.25)
+            );
+            ledStrip.rotation.y = angle;
+            room1.add(ledStrip);
+        }
+    }
+
+    // ====== OBSERVATION PORTALS (SIMPLIFIED) ======
+    
+    const portalPositions = [
+        { angle: 0, label: 'NORTH ↑', size: 7 },
+        { angle: Math.PI / 2, label: 'EAST →', size: 7 },
+        { angle: Math.PI, label: 'SOUTH ↓', size: 7 },
+        { angle: -Math.PI / 2, label: 'WEST ←', size: 7 }
+    ];
+
+    portalPositions.forEach(portal => {
+        const portalGroup = new THREE.Group();
+        
+        const outerFrame = new THREE.Mesh(
+            new THREE.TorusGeometry(portal.size / 2, 0.3, 16, 32),
+            titaniumFrameMaterial
+        );
+        portalGroup.add(outerFrame);
+
+        const innerRing = new THREE.Mesh(
+            new THREE.TorusGeometry(portal.size / 2 - 0.4, 0.12, 12, 32),
+            goldBrassMaterial
+        );
+        portalGroup.add(innerRing);
+        
+        // Single glass layer instead of 4
+        const glass = new THREE.Mesh(
+            new THREE.CircleGeometry(portal.size / 2 - 0.6, 32),
+            premiumWaterMaterial
+        );
+        glass.position.z = 0.3;
+        portalGroup.add(glass);
+
+        // Cross beams
+        const crossBeams = [
+            { w: portal.size - 1, h: 0.15, angle: 0 },
+            { w: portal.size - 1, h: 0.15, angle: Math.PI / 2 }
+        ];
+
+        crossBeams.forEach(beam => {
+            const cross = new THREE.Mesh(
+                new THREE.BoxGeometry(beam.w, beam.h, 0.1),
+                titaniumFrameMaterial
+            );
+            cross.rotation.z = beam.angle;
+            cross.position.z = 0.9;
+            portalGroup.add(cross);
+
+            const ledBeam = new THREE.Mesh(
+                new THREE.BoxGeometry(beam.w - 0.2, 0.08, 0.08),
+                bioLumMaterial
+            );
+            ledBeam.rotation.z = beam.angle;
+            ledBeam.position.z = 0.95;
+            portalGroup.add(ledBeam);
+        });
+
+        // Label
+        const labelCanvas = document.createElement('canvas');
+        labelCanvas.width = 512;
+        labelCanvas.height = 128;
+        const ctx = labelCanvas.getContext('2d');
+        ctx.fillStyle = '#00ffff';
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 20;
+        ctx.font = 'bold 72px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(portal.label, 256, 80);
+        
+        const labelTexture = new THREE.CanvasTexture(labelCanvas);
+        const label = new THREE.Mesh(
+            new THREE.PlaneGeometry(2.5, 0.6),
+            new THREE.MeshBasicMaterial({ 
+                map: labelTexture, 
+                transparent: true,
+                opacity: 0.9
+            })
+        );
+        label.position.set(0, -portal.size / 2 - 0.8, 1.0);
+        portalGroup.add(label);
+
+        portalGroup.position.set(
+            Math.cos(portal.angle) * (galleryRadius - 0.5),
+            galleryHeight / 2,
+            Math.sin(portal.angle) * (galleryRadius - 0.5)
+        );
+        portalGroup.rotation.y = portal.angle + Math.PI;
+        
+        room1.add(portalGroup);
+    });
+
+    // ====== GEODESIC DOME ======
+    
+    const dome = new THREE.Mesh(
+        new THREE.SphereGeometry(galleryRadius, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2.5),
+        premiumWaterMaterial
+    );
+    dome.position.y = galleryHeight;
+    dome.receiveShadow = true;
+    room1.add(dome);
+
+    // Simplified ribs (12 instead of 16)
+    const ribCount = 12;
+    for (let i = 0; i < ribCount; i++) {
+        const angle = (i / ribCount) * Math.PI * 2;
+        
+        const rib = new THREE.Mesh(
+            new THREE.BoxGeometry(0.25, galleryRadius * 1.2, 0.25),
+            titaniumFrameMaterial
+        );
+        rib.position.set(
+            Math.cos(angle) * (galleryRadius / 2.5),
+            galleryHeight + galleryRadius / 2.5,
+            Math.sin(angle) * (galleryRadius / 2.5)
+        );
+        rib.rotation.z = Math.PI / 2.8;
+        rib.rotation.y = angle;
+        room1.add(rib);
+
+        const ribLED = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, galleryRadius * 1.15, 0.1),
+            bioLumMaterial
+        );
+        ribLED.position.copy(rib.position);
+        ribLED.rotation.copy(rib.rotation);
+        room1.add(ribLED);
+    }
+
+    // Dome hub with rotating rings
+    const hubGroup = new THREE.Group();
+    
+    const hub = new THREE.Mesh(
+        new THREE.SphereGeometry(1.2, 24, 24),
+        titaniumFrameMaterial
+    );
+    hubGroup.add(hub);
+
+    for (let i = 0; i < 4; i++) {
+        const holoRing = new THREE.Mesh(
+            new THREE.TorusGeometry(1.5 + i * 0.3, 0.04, 16, 32),
+            bioLumMaterial
+        );
+        holoRing.rotation.x = (i * Math.PI / 8);
+        holoRing.userData.rotationSpeed = 0.01 + i * 0.005;
+        hubGroup.add(holoRing);
+    }
+
+    hubGroup.position.y = galleryHeight + galleryRadius - 2;
+    room1.add(hubGroup);
+    this.domeHub = hubGroup;
+
+    // ====== JELLYFISH DISPLAYS (REDUCED LIGHTS) ======
+    
+    const jellyfishPositions = [
+        { x: -10, y: 4, z: -22, rot: 0 },
+        { x: 0, y: 4, z: -24, rot: 0 },
+        { x: 10, y: 4, z: -22, rot: 0 },
+        { x: -24, y: 4, z: -10, rot: Math.PI / 2 },
+        { x: -22, y: 4, z: 0, rot: Math.PI / 2 },
+        { x: -24, y: 4, z: 10, rot: Math.PI / 2 },
+        { x: 24, y: 4, z: -10, rot: -Math.PI / 2 },
+        { x: 22, y: 4, z: 0, rot: -Math.PI / 2 },
+        { x: 24, y: 4, z: 10, rot: -Math.PI / 2 },
+        { x: -10, y: 4, z: 22, rot: Math.PI },
+        { x: 0, y: 4, z: 24, rot: Math.PI },
+        { x: 10, y: 4, z: 22, rot: Math.PI }
+    ];
+
+    jellyfishPositions.forEach((pos, index) => {
+        const jellyfishGroup = new THREE.Group();
+        
+        const bellMaterial = jellyfishBellMaterials[index % 4];
+        
+        const bell = new THREE.Mesh(
+            new THREE.SphereGeometry(0.6, 24, 24, 0, Math.PI * 2, 0, Math.PI / 1.8),
+            bellMaterial
+        );
+        bell.position.y = 2.0;
+        bell.scale.set(1, 0.7, 1);
+        jellyfishGroup.add(bell);
+
+        const innerGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.45, 16, 16),
+            bellMaterial
+        );
+        innerGlow.position.y = 2.0;
+        jellyfishGroup.add(innerGlow);
+        
+        // Tentacles
+        for (let i = 0; i < 16; i++) {
+            const angle = (i / 16) * Math.PI * 2;
+            const length = 1.8 + Math.random() * 0.8;
+            
+            const tentacle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.008, length, 12),
+                tentacleMaterial
+            );
+            tentacle.position.set(
+                Math.cos(angle) * 0.5,
+                2.0 - length / 2,
+                Math.sin(angle) * 0.5
+            );
+            tentacle.rotation.z = (Math.random() - 0.5) * 0.4;
+            jellyfishGroup.add(tentacle);
+        }
+        
+        // Frame
+        const frameThickness = 0.15;
+        const frameParts = [
+            { w: 4.5, h: frameThickness, x: 0, y: 2.2 },
+            { w: 4.5, h: frameThickness, x: 0, y: -2.2 },
+            { w: frameThickness, h: 4.4, x: -2.25, y: 0 },
+            { w: frameThickness, h: 4.4, x: 2.25, y: 0 }
+        ];
+        
+        frameParts.forEach(part => {
+            const frame = new THREE.Mesh(
+                new THREE.BoxGeometry(part.w, part.h, 0.2),
+                titaniumFrameMaterial
+            );
+            frame.position.set(part.x, part.y, 0.15);
+            jellyfishGroup.add(frame);
+
+            const led = new THREE.Mesh(
+                new THREE.BoxGeometry(part.w * 0.95, 0.06, 0.06),
+                bioLumMaterial
+            );
+            led.position.set(part.x, part.y, 0.25);
+            jellyfishGroup.add(led);
+        });
+        
+        // Corner decorations
+        const corners = [
+            { x: -2.25, y: 2.2 }, { x: 2.25, y: 2.2 },
+            { x: -2.25, y: -2.2 }, { x: 2.25, y: -2.2 }
+        ];
+        
+        corners.forEach(corner => {
+            const decoration = new THREE.Mesh(
+                new THREE.OctahedronGeometry(0.18, 0),
+                goldBrassMaterial
+            );
+            decoration.position.set(corner.x, corner.y, 0.2);
+            jellyfishGroup.add(decoration);
+
+            const cornerLED = new THREE.Mesh(
+                new THREE.SphereGeometry(0.08, 12, 12),
+                bioLumMaterial
+            );
+            cornerLED.position.set(corner.x, corner.y, 0.3);
+            jellyfishGroup.add(cornerLED);
+        });
+        
+        // CRITICAL: Only add lights to every 4th jellyfish
+        if (index % 4 === 0) {
+            const jellyfishLight = new THREE.PointLight(
+                jellyfishBellMaterials[index % 4].color,
+                2.5,
+                15
+            );
+            jellyfishLight.position.y = 2.0;
+            jellyfishGroup.add(jellyfishLight);
+        }
+        
+        jellyfishGroup.userData.floatSpeed = 0.0006 + Math.random() * 0.0004;
+        jellyfishGroup.userData.floatOffset = Math.random() * Math.PI * 2;
+        jellyfishGroup.userData.baseY = pos.y;
+        jellyfishGroup.userData.pulseSpeed = 0.015 + Math.random() * 0.01;
+        
+        jellyfishGroup.position.set(pos.x, pos.y, pos.z);
+        jellyfishGroup.rotation.y = pos.rot;
+        
+        room1.add(jellyfishGroup);
+    });
+
+    // ====== CORAL GARDENS (SIMPLIFIED) ======
+    
+    const coralClusters = [
+        { x: -20, z: -20 },
+        { x: 20, z: -20 },
+        { x: -20, z: 20 },
+        { x: 20, z: 20 }
+    ];
+
+    coralClusters.forEach(cluster => {
+        // Simplified coral - fewer pieces
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const radius = 0.5 + Math.random() * 1.5;
+            const height = 1.0 + Math.random() * 2.5;
+            
+            const coral = new THREE.Mesh(
+                new THREE.ConeGeometry(0.15, height, 8),
+                enchantedCoralMaterial
+            );
+            coral.position.set(
+                cluster.x + Math.cos(angle) * radius,
+                height / 2,
+                cluster.z + Math.sin(angle) * radius
+            );
+            coral.rotation.z = (Math.random() - 0.5) * 0.5;
+            room1.add(coral);
         }
 
-        this.glassSpotlights = [];
-        const glassSegments = 12;
-        for (let i = 0; i < glassSegments; i++) {
-            const angle = (i / glassSegments) * Math.PI * 2;
-            const windowWidth = (Math.PI * 2 * radius) / glassSegments;
+        // Brain coral centerpiece
+        const brainCoral = new THREE.Mesh(
+            new THREE.SphereGeometry(0.6, 16, 16),
+            enchantedCoralMaterial
+        );
+        brainCoral.position.set(cluster.x, 0.3, cluster.z);
+        brainCoral.scale.set(1, 0.5, 1);
+        room1.add(brainCoral);
+    });
 
-            const glassShape = new THREE.Shape();
-            glassShape.moveTo(-windowWidth / 2, 0);
-            glassShape.lineTo(windowWidth / 2, 0);
-            glassShape.lineTo(windowWidth / 2 - 0.5, height - 1.5);
-            glassShape.lineTo(-windowWidth / 2 + 0.5, height - 1.5);
-            glassShape.lineTo(-windowWidth / 2, 0);
-            const glassGeometry = new THREE.ExtrudeGeometry(glassShape, { depth: 0.1, bevelEnabled: false });
-            const glass = new THREE.Mesh(glassGeometry, glassMaterial);
-            glass.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-            glass.rotation.y = angle + Math.PI / 2;
-            glass.castShadow = true;
-            glass.receiveShadow = true;
-            glass.userData = { baseIntensity: 0.8 };
-            room1.add(glass);
+    // ====== PLANKTON (REDUCED COUNT, SHARED MATERIALS) ======
+    
+    for (let i = 0; i < 300; i++) { // Reduced from 500
+        const size = 0.03 + Math.random() * 0.05;
+        const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(size, 8, 8),
+            planktonMaterials[i % 3]
+        );
+        particle.position.set(
+            (Math.random() - 0.5) * galleryRadius * 2.2,
+            Math.random() * galleryHeight,
+            (Math.random() - 0.5) * galleryRadius * 2.2
+        );
+        particle.userData.floatSpeed = Math.random() * 0.018 + 0.01;
+        particle.userData.floatOffset = Math.random() * Math.PI * 2;
+        particle.userData.driftX = (Math.random() - 0.5) * 0.03;
+        particle.userData.driftZ = (Math.random() - 0.5) * 0.03;
+        particle.userData.glowSpeed = Math.random() * 4 + 2;
+        particle.userData.baseIntensity = 3.5;
+        room1.add(particle);
+    }
 
-            const frameTopGeometry = new THREE.BoxGeometry(windowWidth * 0.95, 0.2, 0.2);
-            const frameTop = new THREE.Mesh(frameTopGeometry, frameMaterial);
-            frameTop.position.set(Math.cos(angle) * radius, height - 0.1, Math.sin(angle) * radius);
-            frameTop.rotation.y = angle + Math.PI / 2;
-            frameTop.rotation.z = Math.PI / 12;
-            frameTop.castShadow = true;
-            room1.add(frameTop);
+    // ====== KELP FOREST ======
+    
+    const kelpMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2d5016,
+        roughness: 0.85
+    });
 
-            const frameSideGeometry = new THREE.BoxGeometry(0.15, height - 1.5, 0.15);
-            const frameLeft = new THREE.Mesh(frameSideGeometry, frameMaterial);
-            frameLeft.position.set(
-                Math.cos(angle) * radius - Math.sin(angle) * (windowWidth / 2 - 0.1),
-                (height - 1.5) / 2,
-                Math.sin(angle) * radius + Math.cos(angle) * (windowWidth / 2 - 0.1)
+    const kelpFrondMaterial = new THREE.MeshStandardMaterial({
+        color: 0x3a6f0b,
+        roughness: 0.75,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.9
+    });
+
+    for (let i = 0; i < 40; i++) { // Reduced from 50
+        const angle = (i / 40) * Math.PI * 2;
+        const radius = galleryRadius * 0.9;
+        const height = 4 + Math.random() * 3;
+        
+        const kelp = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.1, 0.06, height, 8),
+            kelpMaterial
+        );
+        kelp.position.set(
+            Math.cos(angle) * radius,
+            height / 2,
+            Math.sin(angle) * radius
+        );
+        kelp.userData.swaySpeed = 0.002 + Math.random() * 0.003;
+        kelp.userData.swayAmount = 0.3 + Math.random() * 0.3;
+        kelp.userData.baseRotation = kelp.rotation.clone();
+        room1.add(kelp);
+
+        // Fewer fronds
+        for (let j = 0; j < 5; j++) {
+            const frond = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.35, 0.6),
+                kelpFrondMaterial
             );
-            frameLeft.rotation.y = angle + Math.PI / 2;
-            frameLeft.castShadow = true;
-            room1.add(frameLeft);
-
-            const frameRight = new THREE.Mesh(frameSideGeometry, frameMaterial);
-            frameRight.position.set(
-                Math.cos(angle) * radius + Math.sin(angle) * (windowWidth / 2 - 0.1),
-                (height - 1.5) / 2,
-                Math.sin(angle) * radius - Math.cos(angle) * (windowWidth / 2 - 0.1)
-            );
-            frameRight.rotation.y = angle + Math.PI / 2;
-            frameRight.castShadow = true;
-            room1.add(frameRight);
-
-            const accentGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.3, 32);
-            const accentLight = new THREE.Mesh(accentGeometry, this.ledMaterial);
-            accentLight.position.set(Math.cos(angle) * radius, height - 0.4, Math.sin(angle) * radius);
-            accentLight.rotation.y = angle + Math.PI / 2;
-            accentLight.rotation.x = -Math.PI / 4;
-            room1.add(accentLight);
-
-            const spotLight = new THREE.SpotLight(0xffffff, 0.8, 10, Math.PI / 8, 0.7);
-            spotLight.position.copy(accentLight.position);
-            spotLight.target.position.set(
+            frond.position.set(
                 Math.cos(angle) * radius,
-                (height - 1.5) / 2,
+                (j + 1) * (height / 6),
                 Math.sin(angle) * radius
             );
-            spotLight.castShadow = true;
-            room1.add(spotLight);
-            room1.add(spotLight.target);
-            this.glassSpotlights.push({ mesh: accentLight, spot: spotLight, position: spotLight.position.clone() });
+            frond.rotation.y = angle + (Math.random() - 0.5) * 0.6;
+            frond.userData.swaySpeed = kelp.userData.swaySpeed;
+            room1.add(frond);
         }
-
-        this.wallLights = [];
-        const charcoalWallHeight = 8;
-        const charcoalWallWidth = 4;
-        for (let i = 0; i < 4; i++) {
-            const angle = (i / 4) * Math.PI * 2 + Math.PI / 8;
-            const wallGroup = new THREE.Group();
-
-            const baseGeometry = new THREE.PlaneGeometry(charcoalWallWidth, charcoalWallHeight);
-            const baseWall = new THREE.Mesh(baseGeometry, charcoalWallMaterial);
-            baseWall.position.set(0, charcoalWallHeight / 2, 0);
-            baseWall.castShadow = true;
-            baseWall.receiveShadow = true;
-            wallGroup.add(baseWall);
-
-            const hexRadiusDense = 0.4;
-            const hexDepthDense = 0.35;
-            const hexGeometryDense = new THREE.CylinderGeometry(hexRadiusDense, hexRadiusDense, hexDepthDense, 6);
-            for (let y = 0; y < 6; y++) {
-                for (let x = 0; x < 5; x++) {
-                    const hex = new THREE.Mesh(hexGeometryDense, charcoalWallMaterial);
-                    const offsetX = (x - 2) * hexRadiusDense * 1.5 + (y % 2 === 0 ? 0 : hexRadiusDense * 0.75);
-                    const offsetY = (y - 2.5) * hexRadiusDense * 1.3;
-                    hex.position.set(offsetX, offsetY + charcoalWallHeight / 2, hexDepthDense / 2);
-                    hex.rotation.x = Math.PI / 2;
-                    hex.castShadow = true;
-                    hex.receiveShadow = true;
-                    wallGroup.add(hex);
-                }
-            }
-
-            const ledGeometry = new THREE.BoxGeometry(0.1, charcoalWallHeight * 0.85, 0.1);
-            const ledLeft = new THREE.Mesh(ledGeometry, this.ledMaterial);
-            ledLeft.position.set(-charcoalWallWidth / 2 + 0.2, charcoalWallHeight / 2, hexDepthDense + 0.05);
-            wallGroup.add(ledLeft);
-
-            const ledRight = new THREE.Mesh(ledGeometry, this.ledMaterial);
-            ledRight.position.set(charcoalWallWidth / 2 - 0.2, charcoalWallHeight / 2, hexDepthDense + 0.05);
-            wallGroup.add(ledRight);
-
-            this.wallLights.push({ left: ledLeft, right: ledRight, position: wallGroup.position.clone() });
-
-            wallGroup.position.set(Math.cos(angle) * (radius - 2), 0, Math.sin(angle) * (radius - 2));
-            wallGroup.rotation.y = angle + Math.PI / 2;
-            room1.add(wallGroup);
-        }
-
-        const pillarGeometry = new THREE.CylinderGeometry(1, 1, height, 32);
-        const pillar = new THREE.Mesh(pillarGeometry, wallMaterial);
-        pillar.position.set(0, height / 2, 0);
-        pillar.castShadow = true;
-        pillar.receiveShadow = true;
-        room1.add(pillar);
-
-        const plantGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.7, 32);
-        const plantMaterial = new THREE.MeshStandardMaterial({ color: 0x616161 });
-        const plant = new THREE.Mesh(plantGeometry, plantMaterial);
-        plant.position.set(0, 0.85, -10);
-        room1.add(plant);
-
-        room1.position.set(0, 0, 0);
-        this.rooms.push(room1);
-
-        this.rooms.forEach(room => this.scene.add(room));
     }
 
+    // ====== GIANT CLAM ======
+    
+    const clamGroup = new THREE.Group();
+
+    const shellMaterial = new THREE.MeshStandardMaterial({
+        color: 0xd9d0cb,
+        roughness: 0.6,
+        metalness: 0.4
+    });
+
+    const shellBottom = new THREE.Mesh(
+        new THREE.SphereGeometry(2.5, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
+        shellMaterial
+    );
+    shellBottom.rotation.x = -Math.PI / 2;
+    shellBottom.position.y = 0.6;
+    clamGroup.add(shellBottom);
+
+    const shellTop = new THREE.Mesh(
+        new THREE.SphereGeometry(2.5, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
+        shellMaterial
+    );
+    shellTop.rotation.x = Math.PI / 2;
+    shellTop.position.y = 2.0;
+    shellTop.rotation.z = 0.4;
+    shellTop.userData.openSpeed = 0.002;
+    shellTop.userData.maxOpen = 0.5;
+    shellTop.userData.minOpen = 0.3;
+    clamGroup.add(shellTop);
+
+    const pearl = new THREE.Mesh(
+        new THREE.SphereGeometry(1.2, 32, 32),
+        new THREE.MeshStandardMaterial({
+            color: 0xfffff0,
+            roughness: 0.02,
+            metalness: 0.98,
+            emissive: 0xfffff0,
+            emissiveIntensity: 1.2
+        })
+    );
+    pearl.position.y = 1.3;
+    clamGroup.add(pearl);
+
+    // Pearl aura rings
+    for (let i = 0; i < 3; i++) {
+        const aura = new THREE.Mesh(
+            new THREE.TorusGeometry(1.5 + i * 0.3, 0.04, 16, 32),
+            bioLumMaterial
+        );
+        aura.position.y = 1.3;
+        aura.rotation.x = Math.PI / 2;
+        aura.userData.rotationSpeed = 0.01 + i * 0.005;
+        clamGroup.add(aura);
+    }
+
+    // Single pearl light
+    const pearlLight = new THREE.PointLight(0xfffff0, 5, 25);
+    pearlLight.position.y = 1.3;
+    clamGroup.add(pearlLight);
+
+    room1.add(clamGroup);
+    this.giantClam = clamGroup;
+
+    // ====== CONTROL STATIONS ======
+    
+    const stationPositions = [
+        { x: -12, y: 2, z: 0, rot: Math.PI / 2 },
+        { x: 12, y: 2, z: 0, rot: -Math.PI / 2 }
+    ];
+
+    stationPositions.forEach(station => {
+        const stationGroup = new THREE.Group();
+        
+        const console = new THREE.Mesh(
+            new THREE.BoxGeometry(2.5, 2, 0.2),
+            titaniumFrameMaterial
+        );
+        stationGroup.add(console);
+
+        const screen = new THREE.Mesh(
+            new THREE.PlaneGeometry(2.2, 1.5),
+            new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.7
+            })
+        );
+        screen.position.z = 0.15;
+        stationGroup.add(screen);
+
+        // Control buttons
+        const buttonMaterials = [
+            new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 1.2,
+                roughness: 0.2,
+                metalness: 0.9
+            }),
+            new THREE.MeshStandardMaterial({
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 1.2,
+                roughness: 0.2,
+                metalness: 0.9
+            }),
+            new THREE.MeshStandardMaterial({
+                color: 0x0000ff,
+                emissive: 0x0000ff,
+                emissiveIntensity: 1.2,
+                roughness: 0.2,
+                metalness: 0.9
+            }),
+            new THREE.MeshStandardMaterial({
+                color: 0xffff00,
+                emissive: 0xffff00,
+                emissiveIntensity: 1.2,
+                roughness: 0.2,
+                metalness: 0.9
+            })
+        ];
+
+        for (let i = 0; i < 16; i++) {
+            const button = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.1, 0.1, 0.08, 16),
+                buttonMaterials[i % 4]
+            );
+            const row = Math.floor(i / 4);
+            const col = i % 4;
+            button.position.set(
+                col * 0.5 - 0.75,
+                -0.7 - row * 0.4,
+                0.15
+            );
+            button.rotation.x = Math.PI / 2;
+            stationGroup.add(button);
+
+            const ledRing = new THREE.Mesh(
+                new THREE.TorusGeometry(0.12, 0.02, 8, 16),
+                bioLumMaterial
+            );
+            ledRing.position.copy(button.position);
+            ledRing.position.z += 0.05;
+            ledRing.rotation.x = Math.PI / 2;
+            stationGroup.add(ledRing);
+        }
+
+        stationGroup.position.set(station.x, station.y, station.z);
+        stationGroup.rotation.y = station.rot;
+        room1.add(stationGroup);
+    });
+
+    // ====== OPTIMIZED LIGHTING (FEWER LIGHTS, NO SHADOWS ON MOST) ======
+    
+    const ambientLight = new THREE.AmbientLight(0x1a4d6d, 0.7);
+    room1.add(ambientLight);
+
+    // Only 4 sunbeams with shadows (reduced from 12)
+    for (let i = 0; i < 4; i++) {
+        const sunbeam = new THREE.SpotLight(0x4da6ff, 2.5, 35, Math.PI / 8, 0.95);
+        sunbeam.position.set(
+            (Math.random() - 0.5) * 50,
+            galleryHeight + 15,
+            (Math.random() - 0.5) * 50
+        );
+        sunbeam.target.position.set(sunbeam.position.x, -2, sunbeam.position.z);
+        sunbeam.castShadow = true;
+        sunbeam.shadow.mapSize.width = 512; // Reduced from 1024
+        sunbeam.shadow.mapSize.height = 512;
+        
+        sunbeam.userData.driftSpeed = 0.02 + Math.random() * 0.02;
+        sunbeam.userData.driftRadius = 3 + Math.random() * 2;
+        sunbeam.userData.baseX = sunbeam.position.x;
+        sunbeam.userData.baseZ = sunbeam.position.z;
+        
+        room1.add(sunbeam);
+        room1.add(sunbeam.target);
+    }
+
+    // Ocean abyss
+    const oceanAbyss = new THREE.Mesh(
+        new THREE.SphereGeometry(140, 64, 64),
+        new THREE.MeshStandardMaterial({
+            color: 0x000d1a,
+            emissive: 0x000a15,
+            emissiveIntensity: 0.2,
+            roughness: 0.95
+        })
+    );
+    oceanAbyss.position.set(0, -140 - 70, 0);
+    room1.add(oceanAbyss);
+
+    // Fish (simplified - no individual lights)
+    const fishMaterial = new THREE.MeshStandardMaterial({
+        color: 0x00aaff,
+        emissive: 0x0088dd,
+        emissiveIntensity: 1.5
+    });
+
+    for (let i = 0; i < 40; i++) { // Reduced from 60
+        const fish = new THREE.Mesh(
+            new THREE.ConeGeometry(0.15, 0.4, 8),
+            fishMaterial
+        );
+        fish.position.set(
+            (Math.random() - 0.5) * galleryRadius * 2.5,
+            Math.random() * galleryHeight,
+            (Math.random() - 0.5) * galleryRadius * 2.5
+        );
+        fish.rotation.z = Math.PI / 2;
+        fish.rotation.y = Math.random() * Math.PI * 2;
+        fish.userData.swimSpeed = 0.015 + Math.random() * 0.01;
+        fish.userData.swimPath = Math.random() * Math.PI * 2;
+        room1.add(fish);
+    }
+
+    room1.position.set(0, 0, 0);
+    this.rooms.push(room1);
+    this.rooms.forEach(room => this.scene.add(room));
+    
+    console.log("🌊 Optimized underwater gallery created (uniform limit fixed)");
+}
+
+generateMetalGridPattern(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Dark metallic base
+    ctx.fillStyle = '#1a2332';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Grid lines
+    ctx.strokeStyle = '#2a3f5f';
+    ctx.lineWidth = 3;
+    
+    const gridSize = 128;
+    for (let x = 0; x < width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+    }
+    
+    for (let y = 0; y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+    }
+    
+    // Tech details (random panels)
+    ctx.fillStyle = '#00d4ff';
+    ctx.globalAlpha = 0.3;
+    for (let i = 0; i < 20; i++) {
+        const x = Math.floor(Math.random() * (width / gridSize)) * gridSize;
+        const y = Math.floor(Math.random() * (height / gridSize)) * gridSize;
+        ctx.fillRect(x + 10, y + 10, gridSize - 20, gridSize - 20);
+    }
+    
+    return canvas;
+}
+
+generateEarthTexture(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Ocean base
+    ctx.fillStyle = '#0a3d62';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Continents (simplified)
+    ctx.fillStyle = '#2d5016';
+    
+    // Africa
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.5, width * 0.15, height * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Americas
+    ctx.beginPath();
+    ctx.ellipse(width * 0.2, height * 0.4, width * 0.1, height * 0.25, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.ellipse(width * 0.25, height * 0.6, width * 0.08, height * 0.15, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Asia
+    ctx.beginPath();
+    ctx.ellipse(width * 0.7, height * 0.35, width * 0.18, height * 0.15, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Europe
+    ctx.beginPath();
+    ctx.ellipse(width * 0.52, height * 0.32, width * 0.08, height * 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Australia
+    ctx.beginPath();
+    ctx.ellipse(width * 0.78, height * 0.65, width * 0.09, height * 0.08, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Clouds
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    for (let i = 0; i < 100; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const r = Math.random() * 50 + 20;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Ice caps
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.05, width * 0.2, height * 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.95, width * 0.15, height * 0.06, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    return canvas;
+}
+
+generateBlackMarquina(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Deep black base
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Gold and white veining
+    const numVeins = 30;
+    for (let i = 0; i < numVeins; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        // Mix of gold and white veins
+        const isGold = Math.random() > 0.6;
+        const color = isGold 
+            ? `rgba(218, 165, 32, ${0.4 + Math.random() * 0.3})`  // Gold
+            : `rgba(255, 255, 255, ${0.2 + Math.random() * 0.2})`; // White
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.random() * 3 + 1;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        let angle = Math.random() * Math.PI * 2;
+        
+        for (let j = 0; j < 120; j++) {
+            angle += (Math.random() - 0.5) * 0.4;
+            x += Math.cos(angle) * 10;
+            y += Math.sin(angle) * 10;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Polished finish
+    const gradient = ctx.createRadialGradient(
+        width / 2, height / 2, 0,
+        width / 2, height / 2, width / 2
+    );
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    return canvas;
+}
+
+generateMarbleNormalMap(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base normal map color (neutral normal)
+    ctx.fillStyle = '#8080ff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const imageData = ctx.getImageData(0, 0, width, height);
+    
+    // Generate subtle height variation for normal map
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            
+            // Perlin-like noise for realistic surface
+            const noise = (Math.sin(x * 0.02) * Math.cos(y * 0.02)) * 0.5 + 0.5;
+            const variation = (Math.random() - 0.5) * 30;
+            
+            // Normal map RGB channels (X, Y, Z surface normals)
+            imageData.data[i] = 128 + noise * 25 + variation;     // R (X normal)
+            imageData.data[i + 1] = 128 + noise * 25 + variation; // G (Y normal)
+            imageData.data[i + 2] = 200 + noise * 45;             // B (Z normal - pointing up)
+            imageData.data[i + 3] = 255;                           // Alpha
+        }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+}
     generateModernWallTexture(width, height) {
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -562,95 +1410,95 @@ this.setupMobileControls();
         return canvas;
     }
 
-    createAvatar() {
-        this.avatarGroup = new THREE.Group();
-        const avatarMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.3
-        });
+    // createAvatar() {
+    //     this.avatarGroup = new THREE.Group();
+    //     const avatarMaterial = new THREE.MeshBasicMaterial({
+    //         color: 0xffffff,
+    //         transparent: true,
+    //         opacity: 0.3
+    //     });
 
-        const clickablePlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.5, 0.5),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
-        );
-        clickablePlane.position.set(2, 1.7, 2);
-        this.avatarGroup.add(clickablePlane);
+    //     const clickablePlane = new THREE.Mesh(
+    //         new THREE.PlaneGeometry(0.5, 0.5),
+    //         new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
+    //     );
+    //     clickablePlane.position.set(2, 1.7, 2);
+    //     this.avatarGroup.add(clickablePlane);
 
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
-        body.position.set(2, 0.5, 2);
-        this.avatarGroup.add(body);
+    //     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
+    //     body.position.set(2, 0.5, 2);
+    //     this.avatarGroup.add(body);
 
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
-        head.position.set(2, 1.2, 2);
-        this.avatarGroup.add(head);
+    //     const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
+    //     head.position.set(2, 1.2, 2);
+    //     this.avatarGroup.add(head);
 
-        const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-        const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
-        leftArm.position.set(1.7, 0.7, 2);
-        leftArm.rotation.z = Math.PI / 4;
-        this.avatarGroup.add(leftArm);
+    //     const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
+    //     const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
+    //     leftArm.position.set(1.7, 0.7, 2);
+    //     leftArm.rotation.z = Math.PI / 4;
+    //     this.avatarGroup.add(leftArm);
 
-        const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
-        rightArm.position.set(2.3, 0.7, 2);
-        rightArm.rotation.z = -Math.PI / 4;
-        this.avatarGroup.add(rightArm);
+    //     const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
+    //     rightArm.position.set(2.3, 0.7, 2);
+    //     rightArm.rotation.z = -Math.PI / 4;
+    //     this.avatarGroup.add(rightArm);
 
-        const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-        const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-        leftLeg.position.set(1.8, 0.25, 2);
-        this.avatarGroup.add(leftLeg);
+    //     const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
+    //     const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
+    //     leftLeg.position.set(1.8, 0.25, 2);
+    //     this.avatarGroup.add(leftLeg);
 
-        const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-        rightLeg.position.set(2.2, 0.25, 2);
-        this.avatarGroup.add(rightLeg);
+    //     const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
+    //     rightLeg.position.set(2.2, 0.25, 2);
+    //     this.avatarGroup.add(rightLeg);
 
-        this.avatarGroup.userData = { isAvatar: true };
-        this.scene.add(this.avatarGroup);
+    //     this.avatarGroup.userData = { isAvatar: true };
+    //     this.scene.add(this.avatarGroup);
 
-        this.setupAvatarAnimation();
-        this.updateAvatarPosition();
-    }
+    //     this.setupAvatarAnimation();
+    //     this.updateAvatarPosition();
+    // }
 
-    setupAvatarAnimation() {
-        const times = [0, 1, 2];
-        const armValues = [
-            [Math.PI / 4, -Math.PI / 4],
-            [-Math.PI / 4, Math.PI / 4],
-            [Math.PI / 4, -Math.PI / 4]
-        ];
+    // setupAvatarAnimation() {
+    //     const times = [0, 1, 2];
+    //     const armValues = [
+    //         [Math.PI / 4, -Math.PI / 4],
+    //         [-Math.PI / 4, Math.PI / 4],
+    //         [Math.PI / 4, -Math.PI / 4]
+    //     ];
 
-        const leftArmTrack = new THREE.NumberKeyframeTrack(
-            '.children[3].rotation[z]',
-            times,
-            armValues.map(v => v[0])
-        );
-        const rightArmTrack = new THREE.NumberKeyframeTrack(
-            '.children[4].rotation[z]',
-            times,
-            armValues.map(v => v[1])
-        );
+    //     const leftArmTrack = new THREE.NumberKeyframeTrack(
+    //         '.children[3].rotation[z]',
+    //         times,
+    //         armValues.map(v => v[0])
+    //     );
+    //     const rightArmTrack = new THREE.NumberKeyframeTrack(
+    //         '.children[4].rotation[z]',
+    //         times,
+    //         armValues.map(v => v[1])
+    //     );
 
-        const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
-        const action = this.animationMixer.clipAction(clip, this.avatarGroup);
-        action.setLoop(THREE.LoopRepeat);
-        action.play();
-    }
+    //     const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
+    //     const action = this.animationMixer.clipAction(clip, this.avatarGroup);
+    //     action.setLoop(THREE.LoopRepeat);
+    //     action.play();
+    // }
 
-    updateAvatarPosition() {
-        if (this.isMobile) {
-            const roomCenter = this.rooms[this.currentRoom].position.clone();
-            this.avatarGroup.position.copy(roomCenter);
-            this.avatarGroup.position.y = 0.5;
-        } else {
-            const direction = new THREE.Vector3();
-            this.camera.getWorldDirection(direction);
-            direction.y = 0;
-            direction.normalize().multiplyScalar(3);
-            this.avatarGroup.position.copy(this.camera.position).add(direction);
-            this.avatarGroup.position.y = 0.5;
-        }
-    }
+    // updateAvatarPosition() {
+    //     if (this.isMobile) {
+    //         const roomCenter = this.rooms[this.currentRoom].position.clone();
+    //         this.avatarGroup.position.copy(roomCenter);
+    //         this.avatarGroup.position.y = 0.5;
+    //     } else {
+    //         const direction = new THREE.Vector3();
+    //         this.camera.getWorldDirection(direction);
+    //         direction.y = 0;
+    //         direction.normalize().multiplyScalar(3);
+    //         this.avatarGroup.position.copy(this.camera.position).add(direction);
+    //         this.avatarGroup.position.y = 0.5;
+    //     }
+    // }
 
     async setupAudio() {
             try {
@@ -712,10 +1560,41 @@ this.setupMobileControls();
         this.update();
         this.updateImageEffects();
         this.updateLighting();
+        // ✨ SPACE STATION ANIMATIONS
+// ✨ SPACE STATION ANIMATIONS
+    if (this.earth) {
+        // Rotate Earth
+        this.earth.rotation.y += this.earth.userData.rotationSpeed;
+    }
+    
+    if (this.starField) {
+        // Slow starfield rotation for parallax effect
+        this.starField.rotation.y += 0.0001;
+    }
+    
+    if (this.holoRings) {
+        this.holoRings.forEach(ring => {
+            ring.rotation.z += ring.userData.rotationSpeed;
+        });
+    }
+    
+    if (this.holoSphere) {
+        this.holoSphere.rotation.x += this.holoSphere.userData.rotationSpeed;
+        this.holoSphere.rotation.y += this.holoSphere.userData.rotationSpeed * 0.7;
+    }
+    
+    // Animate floating artworks (zero gravity effect)
+    this.images.forEach((img, index) => {
+        const floatSpeed = 0.3 + (index % 3) * 0.1;
+        const floatOffset = index * 0.5;
+        img.mesh.position.y += Math.sin(this.time * floatSpeed + floatOffset) * 0.001;
+        img.mesh.rotation.y += 0.0002;
+    });
+    
         this.renderer.render(this.scene, this.camera);
         this.updateArtworkProgress();
         if (this.isMobile) this.controls.update();
-        this.updateAvatarPosition();
+        // this.updateAvatarPosition();
         
         if (this.isRecording) {
             // Frame capture handled by MediaRecorder
@@ -1030,34 +1909,138 @@ toggleHelpOverlay() {
         }
     }
 
-    updateLighting() {
-        const time = this.time || 0;
+   updateLighting() {
+    const time = this.time || 0;
 
-        const hue = (Math.sin(time * 0.5) + 1) / 2;
-        const color = new THREE.Color().setHSL(hue, 0.5, 0.7);
+    // ✨ DYNAMIC COLOR-SHIFTING LED MATERIAL
+    const hue = (Math.sin(time * 0.3) + 1) / 2; // Slower, more elegant
+    const color = new THREE.Color().setHSL(hue * 0.15 + 0.1, 0.3, 0.8); // Warm color range
+    
+    if (this.ledMaterial) {
         this.ledMaterial.emissive.copy(color);
         this.ledMaterial.color.copy(color);
-
-        this.wallLights.forEach(light => {
-            const distance = this.camera.position.distanceTo(light.position);
-            const intensity = Math.max(0.8, Math.min(1.5, 2 - distance / 10));
-            light.left.material.emissiveIntensity = intensity;
-            light.right.material.emissiveIntensity = intensity;
-        });
-
-        this.glassSpotlights.forEach(light => {
-            const distance = this.camera.position.distanceTo(light.position);
-            const intensity = Math.max(0.8, Math.min(2.0, 3 - distance / 6));
-            light.spot.intensity = intensity;
-            light.mesh.material.emissiveIntensity = intensity * 0.8;
-        });
-
-        const pulse = 1.5 + Math.sin(time * 2) * 0.3;
-        this.ceilingLights.forEach(light => {
-            light.spot.intensity = pulse;
-            light.mesh.material.emissiveIntensity = pulse * 0.8;
-        });
     }
+
+    // 🔥 DYNAMIC CEILING LIGHTS (Pulsing)
+    const ceilingPulse = 2.0 + Math.sin(time * 1.5) * 0.4;
+    this.ceilingLights.forEach((light, index) => {
+        const offset = index * 0.5; // Stagger the pulse
+        const individualPulse = 2.0 + Math.sin(time * 1.5 + offset) * 0.3;
+        
+        light.spot.intensity = individualPulse;
+       
+        
+        // Subtle color warmth variation
+        const warmth = 0.9 + Math.sin(time * 0.8 + offset) * 0.1;
+        light.spot.color.setRGB(1.0, warmth, 0.65);
+    });
+
+    // 🎨 ARTWORK TRACK LIGHTING (Distance-based + Flickering)
+    this.glassSpotlights.forEach((light, index) => {
+        const distance = this.camera.position.distanceTo(light.position);
+        const baseIntensity = Math.max(1.2, Math.min(2.8, 4 - distance / 5));
+        
+        // Add subtle flicker effect
+        const flicker = Math.sin(time * 3 + index * 0.7) * 0.15;
+        const finalIntensity = baseIntensity + flicker;
+        
+        light.spot.intensity = finalIntensity;
+        
+        // Warm up as you approach
+        const proximity = Math.max(0, 1 - distance / 15);
+        light.spot.color.setRGB(1.0, 0.95 + proximity * 0.05, 0.85 + proximity * 0.1);
+    });
+
+    // 💡 WALL LIGHTS (if you have them - legacy support)
+    this.wallLights.forEach((light, index) => {
+        if (light.left && light.right) {
+            const distance = this.camera.position.distanceTo(light.position);
+            const intensity = Math.max(0.8, Math.min(1.8, 3 - distance / 8));
+            const glow = Math.sin(time * 2 + index) * 0.2 + 1.0;
+            
+            light.left.material.emissiveIntensity = intensity * glow;
+            light.right.material.emissiveIntensity = intensity * glow;
+        }
+    });
+
+    // 🕯️ CHANDELIER CANDLES (Flickering flames)
+    if (this.chandelier) {
+        // Animate all point lights (candles)
+        this.chandelier.children.forEach((child, index) => {
+            if (child instanceof THREE.PointLight) {
+                // Realistic candle flicker
+                const baseFlicker = Math.sin(time * 8 + index * 2.1) * 0.15;
+                const microFlicker = Math.sin(time * 25 + index * 5.3) * 0.08;
+                const flicker = 1.0 + baseFlicker + microFlicker;
+                
+                child.intensity = 1.2 * flicker;
+                
+                // Warm candle glow variation
+                const warmth = 0.95 + Math.sin(time * 1.5 + index) * 0.05;
+                child.color.setRGB(1.0, warmth, 0.86);
+            }
+            
+            // Animate flame meshes (if they exist)
+            if (child.material && child.material.emissive && 
+                child.geometry.type === 'SphereGeometry' && 
+                child.scale.y > 1.2) { // Flames are stretched spheres
+                
+                const flameFlicker = 1.5 + Math.sin(time * 12 + index * 3) * 0.4;
+                child.material.emissiveIntensity = flameFlicker;
+                
+                // Subtle flame movement
+                child.scale.y = 1.5 + Math.sin(time * 8 + index * 2) * 0.15;
+            }
+        });
+        
+        // Main chandelier ambient light pulse
+        const mainLight = this.chandelier.children.find(
+            child => child instanceof THREE.PointLight && child.intensity > 2
+        );
+        if (mainLight) {
+            mainLight.intensity = 2.5 + Math.sin(time * 1.2) * 0.3;
+        }
+    }
+
+    // 🪔 WALL SCONCES (Flickering)
+    this.scene.traverse((child) => {
+        if (child.userData && child.userData.isSconce) {
+            child.children.forEach((sconcePart, index) => {
+                if (sconcePart instanceof THREE.PointLight) {
+                    const flicker = 0.5 + Math.sin(time * 10 + index * 3) * 0.15;
+                    sconcePart.intensity = flicker;
+                }
+                
+                if (sconcePart.material && sconcePart.material.emissive) {
+                    const glow = 1.0 + Math.sin(time * 8 + index * 2) * 0.3;
+                    sconcePart.material.emissiveIntensity = glow;
+                }
+            });
+        }
+    });
+
+    // 🌟 ARTWORK SPOTLIGHTS (Individual pulsing per artwork)
+    this.images.forEach((img, index) => {
+        if (img.mesh.material.uniforms) {
+            img.mesh.material.uniforms.time.value = time + index;
+        }
+        
+        // Find the spotlight targeting this artwork
+        const spotlight = img.mesh.parent.children.find(
+            child => child instanceof THREE.SpotLight && child.target === img.mesh
+        );
+        
+        if (spotlight) {
+            // Gentle spotlight pulse
+            const pulse = 2.0 + Math.sin(time * 1.8 + index * 0.6) * 0.25;
+            spotlight.intensity = pulse;
+            
+            // Slight warmth variation
+            const warmth = 0.96 + Math.sin(time * 0.9 + index * 0.4) * 0.04;
+            spotlight.color.setRGB(1.0, warmth, 0.9);
+        }
+    });
+}
 
     updateImageEffects() {
         this.images.forEach((img, index) => {

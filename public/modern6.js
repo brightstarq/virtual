@@ -6,7 +6,8 @@ class CustomPointerLockControls extends PointerLockControls {
     constructor(camera, domElement) {
         super(camera, domElement);
         this.sensitivity = 0.001;
-        this.camera = camera; // Store camera reference
+        this.camera = camera; // ✓ FIXED: Store camera reference
+        this.boundMouseMove = this.onMouseMove.bind(this); // ✓ FIXED: Store bound function to prevent memory leak
     }
 
     getObject() {
@@ -14,15 +15,15 @@ class CustomPointerLockControls extends PointerLockControls {
     }
 
     lock() {
-        console.log("Attempting to lock pointer");
         super.lock();
-        this.domElement.ownerDocument.addEventListener("mousemove", this.onMouseMove.bind(this));
+        // ✓ FIXED: Use stored bound function
+        this.domElement.ownerDocument.addEventListener("mousemove", this.boundMouseMove);
     }
 
     unlock() {
-        console.log("Unlocking pointer");
         super.unlock();
-        this.domElement.ownerDocument.removeEventListener("mousemove", this.onMouseMove.bind(this));
+        // ✓ FIXED: Remove correct reference
+        this.domElement.ownerDocument.removeEventListener("mousemove", this.boundMouseMove);
     }
 
     onMouseMove(event) {
@@ -48,28 +49,11 @@ class CustomPointerLockControls extends PointerLockControls {
 
 class ThreeJSApp {
     constructor() {
-        this.config = {
-            roomSize: 15,
-            wallHeight: 5,
-            cameraHeight: 1.6,
-            initialCameraDistance: 5,
-            maxImagesPerWall: null,
-            displayWidth: 3.5,
-            displayHeight: 2.5,
-            displayDepth: 0.2,
-            frameThickness: 0.1,
-            wallOffset: 0.3,
-            lightIntensity: 0.8,
-            ambientIntensity: 0.5,
-            maxTextureSize: 1024,
-        };
-
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         
         this.roomCameraSettings = [
-            { position: new THREE.Vector3(0, this.config.cameraHeight, this.config.initialCameraDistance), 
-              lookAt: new THREE.Vector3(0, this.config.cameraHeight, 0) }
+            { position: new THREE.Vector3(0, 1.6, 10), lookAt: new THREE.Vector3(0, 1.6, 0) }
         ];
         const initialSettings = this.roomCameraSettings[0];
         this.camera.position.copy(initialSettings.position);
@@ -82,6 +66,11 @@ class ThreeJSApp {
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(this.renderer.domElement);
+        this.isSliderActive = false;
+        this.currentSliderIndex = 0;
+        this.sliderImages = [];
+        this.isControlPressed = false;
+        this.pendingFiles = []; 
         this.metadata = []; 
         this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
         
@@ -91,17 +80,16 @@ class ThreeJSApp {
             this.controls.enableDamping = true;
             this.controls.dampingFactor = 0.05;
             this.controls.minDistance = 1;
-            this.controls.maxDistance = 10;
+            this.controls.maxDistance = 20;
             this.controls.enablePan = true;
             this.controls.enableZoom = true;
         } else {
             this.controls = new CustomPointerLockControls(this.camera, this.renderer.domElement);
             this.controls.getObject().position.copy(initialSettings.position);
         }
-        
+
         this.images = [];
         this.sessionId = localStorage.getItem('sessionId');
-        this.shareUrl = null;
         this.textureLoader = new THREE.TextureLoader();
 
         this.audioListener = new THREE.AudioListener();
@@ -115,11 +103,9 @@ class ThreeJSApp {
 
         this.rooms = [];
         this.currentRoom = 0;
+        this.isMoving = false;
         this.isFocused = false;
         this.isLocked = false;
-        this.isSliderActive = false; 
-        this.sliderImages = []; 
-        this.currentSliderIndex = 0; 
 
         this.previousCameraState = {
             position: this.camera.position.clone(),
@@ -129,16 +115,17 @@ class ThreeJSApp {
 
         this.lastClickTime = 0;
         this.clickDelay = 300;
+        this.moveSpeed = 0.15;
+        this.rotationSpeed = 0.05;
         this.keys = { w: false, a: false, s: false, d: false, q: false, e: false };
-        this.moveSpeed = 0.1;
-        this.rotationSpeed = 0.02; 
-       
-        
-        this.time = 0;
-        this.lightWall = null;
-        this.interactionCooldown = 0;
 
-      
+        this.time = 0;
+        this.wallLights = [];
+        this.glassSpotlights = [];
+        this.ceilingLights = [];
+        this.ledMaterial = null;
+
+        // Animation and Recording Properties
         this.isRecording = false;
         this.recordedFrames = [];
         this.mediaRecorder = null;
@@ -149,20 +136,15 @@ class ThreeJSApp {
         this.isAnimatingObjects = false;
         this.animationSpeed = 1.0;
 
-        // Web frame modal system
-        this.webFrameData = [];
-        this.activeWebModal = null;
-
         this.addLighting();
         this.createGallery();
         this.setupAudio();
         this.setupEventListeners();
         this.createAvatar();
-        this.initializeWebFrameModal(); // Initialize modal system
 
         this.isLoading = true;
         this.showPreloader();
-        this.lastRaycastTime = 0;
+this.lastRaycastTime = 0;
 this.raycastInterval = 100; // Throttle raycasting
 
 // Initialize UI components
@@ -184,7 +166,7 @@ this.setupMobileControls();
                 metadata: {
                     filename: 'demo2.jpg',
                     title: 'Urban Landscape',
-                    description: 'A vibrant depiction of a city skyline at dusk.',
+                    description: 'A vibrant city skyline at dusk.',
                     artist: 'Demo Artist'
                 }
             },
@@ -193,7 +175,7 @@ this.setupMobileControls();
                 metadata: {
                     filename: 'demo3.jpg',
                     title: 'Nature Harmony',
-                    description: 'A serene landscape with rolling hills and a clear sky.',
+                    description: 'Rolling hills under a clear sky.',
                     artist: 'Demo Artist'
                 }
             },
@@ -201,8 +183,8 @@ this.setupMobileControls();
                 url: 'https://picsum.photos/800/600?random=4',
                 metadata: {
                     filename: 'demo4.jpg',
-                    title: 'Nature Harmony',
-                    description: 'A serene landscape with rolling hills and a clear sky.',
+                    title: 'Modern Architecture', // ✓ IMPROVED: Added variety
+                    description: 'Geometric patterns in contemporary design.',
                     artist: 'Demo Artist'
                 }
             },
@@ -210,8 +192,8 @@ this.setupMobileControls();
                 url: 'https://picsum.photos/800/600?random=5',
                 metadata: {
                     filename: 'demo5.jpg',
-                    title: 'Nature Harmony',
-                    description: 'A serene landscape with rolling hills and a clear sky.',
+                    title: 'Ocean Waves', // ✓ IMPROVED: Added variety
+                    description: 'The rhythmic motion of the sea.',
                     artist: 'Demo Artist'
                 }
             },
@@ -219,16 +201,15 @@ this.setupMobileControls();
                 url: 'https://picsum.photos/800/600?random=6',
                 metadata: {
                     filename: 'demo6.jpg',
-                    title: 'Nature Harmony',
-                    description: 'A serene landscape with rolling hills and a clear sky.',
+                    title: 'Night Sky', // ✓ IMPROVED: Added variety
+                    description: 'Stars scattered across the cosmos.',
                     artist: 'Demo Artist'
                 }
             }
         ];
     }
 
-
-   showPreloader() {
+    showPreloader() {
     const preloader = document.createElement('div');
     preloader.id = 'preloader';
     preloader.style.cssText = `
@@ -282,249 +263,374 @@ this.setupMobileControls();
             }, 500);
         }
     }
-
     addLighting() {
-        const ambientLight = new THREE.AmbientLight(0xffffff, this.config.ambientIntensity);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         this.scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, this.config.lightIntensity);
-        directionalLight.position.set(0, this.config.wallHeight * 2, this.config.roomSize);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(0, 20, 20);
         directionalLight.castShadow = true;
         directionalLight.shadow.mapSize.width = 2048;
         directionalLight.shadow.mapSize.height = 2048;
         directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = this.config.roomSize * 3;
+        directionalLight.shadow.camera.far = 100;
         this.scene.add(directionalLight);
     }
 
-    
-    createGallery() {
-        const concreteColor = 0x888888;
-        const concreteRoughness = 0.7;
-        const concreteMetalness = 0.1;
-    
-        const floorMaterial = new THREE.MeshStandardMaterial({
-            color: concreteColor,
-            roughness: 0.2,
-            metalness: concreteMetalness
-        });
-        const noiseTexture = new THREE.Texture(this.generateNoiseCanvas(256, 256));
-        noiseTexture.needsUpdate = true;
-        noiseTexture.wrapS = noiseTexture.wrapT = THREE.RepeatWrapping;
-        noiseTexture.repeat.set(4, 4);
-        floorMaterial.map = noiseTexture;
-        floorMaterial.normalMap = noiseTexture;
-        floorMaterial.normalScale.set(0.05, 0.05);
-    
-        const waveTexture = new THREE.TextureLoader().load('/wave.jpg');
-        waveTexture.wrapS = waveTexture.wrapT = THREE.RepeatWrapping;
-        waveTexture.repeat.set(2, 1);
-        const wallMaterial = new THREE.MeshStandardMaterial({
-            color: 0xf5f5f5,
-            roughness: 0.4,
-            metalness: 0,
-            normalMap: waveTexture,
-            normalScale: new THREE.Vector2(0.1, 0.1)
-        });
-    
-        const ceilingMaterial = new THREE.MeshStandardMaterial({
-            color: 0xaaaaaa,
-            roughness: 0.4,
-            metalness: concreteMetalness,
-            map: noiseTexture
-        });
-        const glassMaterial = new THREE.MeshPhysicalMaterial({ 
-            color: 0xaaaaaa, 
-            transparent: true, 
-            opacity: 0.3, 
-            roughness: 0, 
-            metalness: 0.1, 
-            transmission: 0.9 
-        });
-        const metalMaterial = new THREE.MeshStandardMaterial({
-            color: 0xaaaaaa,
-            roughness: 0.3,
-            metalness: 0.8
-        });
-        const acrylicMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.8,
-            roughness: 0.1,
-            metalness: 0.2,
-            transmission: 0.9
-        });
-        const ledMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    
-        const room = new THREE.Group();
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(this.config.roomSize, this.config.roomSize), floorMaterial);
-        floor.rotation.x = -Math.PI / 2;
-        floor.receiveShadow = true;
-        room.add(floor);
-    
+createGallery() {
+    const room1 = new THREE.Group();
+    const galleryRadius = 25;
+    const galleryHeight = 6;
+
+    // **AQUATIC MATERIALS**
+    const waterMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x006994,
+        metalness: 0,
+        roughness: 0.1,
+        transparent: true,
+        opacity: 0.3,
+        transmission: 0.9,
+        thickness: 2.0
+    });
+
+    const glassFloorMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x88ccff,
+        metalness: 0.1,
+        roughness: 0.05,
+        transparent: true,
+        opacity: 0.7,
+        transmission: 0.8
+    });
+
+    const biolumMaterial = new THREE.MeshStandardMaterial({
+        color: 0x00ffff,
+        emissive: 0x00ffff,
+        emissiveIntensity: 2.0,
+        transparent: true,
+        opacity: 0.8
+    });
+
+    const coralMaterial = new THREE.MeshStandardMaterial({
+        color: 0xff6b6b,
+        roughness: 0.9,
+        emissive: 0xff6b6b,
+        emissiveIntensity: 0.2
+    });
+
+    // **GLASS FLOOR**
+    const floor = new THREE.Mesh(
+        new THREE.CircleGeometry(galleryRadius, 64),
+        glassFloorMaterial
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = 0;
+    floor.receiveShadow = true;
+    room1.add(floor);
+
+    // **CURVED GLASS WALLS**
+    const wallSegments = 32;
+    for (let i = 0; i < wallSegments; i++) {
+        const angle = (i / wallSegments) * Math.PI * 2;
+        const nextAngle = ((i + 1) / wallSegments) * Math.PI * 2;
         
-        const ledStripGeometry = new THREE.BoxGeometry(this.config.roomSize, 0.02, 0.1);
-        const ledSpacing = this.config.roomSize / 5;
-        for (let i = -this.config.roomSize / 2 + ledSpacing; i < this.config.roomSize / 2; i += ledSpacing) {
-            const stripX = new THREE.Mesh(ledStripGeometry, ledMaterial);
-            stripX.position.set(0, 0.01, i);
-            stripX.rotation.x = -Math.PI / 2;
-            room.add(stripX);
-    
-            const stripZ = new THREE.Mesh(ledStripGeometry, ledMaterial);
-            stripZ.position.set(i, 0.01, 0);
-            stripZ.rotation.x = -Math.PI / 2;
-            stripZ.rotation.z = Math.PI / 2;
-            room.add(stripZ);
-    
-            const ledLight = new THREE.PointLight(0xffffff, 0.5, 2);
-            ledLight.position.set(i, 0.05, i);
-            room.add(ledLight);
+        const wallSegment = new THREE.Mesh(
+            new THREE.BoxGeometry(
+                Math.abs(Math.cos(nextAngle) - Math.cos(angle)) * galleryRadius * 2,
+                galleryHeight,
+                0.3
+            ),
+            waterMaterial
+        );
+        wallSegment.position.set(
+            Math.cos(angle + (nextAngle - angle) / 2) * galleryRadius,
+            galleryHeight / 2,
+            Math.sin(angle + (nextAngle - angle) / 2) * galleryRadius
+        );
+        wallSegment.rotation.y = angle + (nextAngle - angle) / 2;
+        room1.add(wallSegment);
+    }
+
+    // **GLASS DOME CEILING**
+    const ceiling = new THREE.Mesh(
+        new THREE.SphereGeometry(galleryRadius, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+        waterMaterial
+    );
+    ceiling.position.y = galleryHeight;
+    room1.add(ceiling);
+
+    // **FLOATING JELLYFISH DISPLAYS** (12 positions for artwork)
+    const jellyfishPositions = Array(12).fill(0).map((_, i) => ({
+        angle: (i / 12) * Math.PI * 2,
+        radius: galleryRadius * 0.7,
+        height: 2 + Math.sin(i) * 0.5
+    }));
+
+    this.artworkPositions = []; // Store for your image placement
+
+    jellyfishPositions.forEach((pos, index) => {
+        const jellyfishGroup = new THREE.Group();
+        
+        // Jellyfish bell (glowing)
+        const bell = new THREE.Mesh(
+            new THREE.SphereGeometry(0.4, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({
+                color: 0x88aaff,
+                emissive: 0x88aaff,
+                emissiveIntensity: 1.5,
+                transparent: true,
+                opacity: 0.7
+            })
+        );
+        bell.scale.set(1, 0.6, 1);
+        jellyfishGroup.add(bell);
+        
+        // Tentacles
+        for (let i = 0; i < 8; i++) {
+            const tentacleAngle = (i / 8) * Math.PI * 2;
+            const tentacle = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.02, 0.01, 1.2, 8),
+                biolumMaterial
+            );
+            tentacle.position.set(
+                Math.cos(tentacleAngle) * 0.3,
+                -0.6,
+                Math.sin(tentacleAngle) * 0.3
+            );
+            jellyfishGroup.add(tentacle);
         }
-    
-        // Metal baseboards between wall and floor
-        const baseboardHeight = 0.15;
-        const baseboardDepth = 0.05;
-        const baseboardGeometry = new THREE.BoxGeometry(this.config.roomSize, baseboardHeight, baseboardDepth);
-        const wallEdge = this.config.roomSize / 2;
-    
-        const baseboards = [
-            { position: new THREE.Vector3(0, baseboardHeight / 2, -wallEdge + baseboardDepth / 2), rotation: { x: 0, y: 0, z: 0 } },
-            { position: new THREE.Vector3(0, baseboardHeight / 2, wallEdge - baseboardDepth / 2), rotation: { x: 0, y: Math.PI, z: 0 } },
-            { position: new THREE.Vector3(-wallEdge + baseboardDepth / 2, baseboardHeight / 2, 0), rotation: { x: 0, y: Math.PI / 2, z: 0 } },
-            { position: new THREE.Vector3(wallEdge - baseboardDepth / 2, baseboardHeight / 2, 0), rotation: { x: 0, y: -Math.PI / 2, z: 0 } }
+        
+        // Bioluminescent frame for artwork
+        const frameThickness = 0.08;
+        const frameParts = [
+            [0, 1.3, 3.2, frameThickness], // top
+            [0, -1.3, 3.2, frameThickness], // bottom
+            [-1.6, 0, frameThickness, 2.6], // left
+            [1.6, 0, frameThickness, 2.6]   // right
         ];
-    
-        baseboards.forEach(config => {
-            const baseboard = new THREE.Mesh(baseboardGeometry, metalMaterial);
-            baseboard.position.copy(config.position);
-            baseboard.rotation.set(config.rotation.x, config.rotation.y, config.rotation.z);
-            baseboard.castShadow = true;
-            baseboard.receiveShadow = true;
-            room.add(baseboard);
+        
+        frameParts.forEach(([x, y, w, h]) => {
+            const frame = new THREE.Mesh(
+                new THREE.BoxGeometry(w, h, frameThickness),
+                biolumMaterial
+            );
+            frame.position.set(x, y - 0.3, 0.1);
+            jellyfishGroup.add(frame);
         });
+        
+        // Point light
+        const jellyfishLight = new THREE.PointLight(0x88aaff, 1.5, 10);
+        jellyfishLight.position.y = 0;
+        if (index % 2 === 0) {
+            jellyfishLight.castShadow = true;
+            jellyfishLight.shadow.mapSize.width = 256;
+            jellyfishLight.shadow.mapSize.height = 256;
+        }
+        jellyfishGroup.add(jellyfishLight);
+        
+        jellyfishGroup.position.set(
+            Math.cos(pos.angle) * pos.radius,
+            pos.height,
+            Math.sin(pos.angle) * pos.radius
+        );
+        jellyfishGroup.rotation.y = -pos.angle;
+        jellyfishGroup.userData.floatSpeed = 0.0005 + Math.random() * 0.0003;
+        jellyfishGroup.userData.floatOffset = Math.random() * Math.PI * 2;
+        
+        room1.add(jellyfishGroup);
+        
+        // Store position for image placement
+        this.artworkPositions.push({
+            position: new THREE.Vector3(
+                Math.cos(pos.angle) * pos.radius,
+                pos.height - 0.3,
+                Math.sin(pos.angle) * pos.radius
+            ),
+            rotation: -pos.angle,
+            group: jellyfishGroup
+        });
+    });
+
+    // **CORAL REEFS**
+    const coralPositions = [
+        { x: -15, z: -15 }, { x: 15, z: -15 },
+        { x: -15, z: 15 }, { x: 15, z: 15 }
+    ];
+
+    coralPositions.forEach(pos => {
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const height = 1 + Math.random() * 1.5;
+            
+            const coral = new THREE.Mesh(
+                new THREE.ConeGeometry(0.15, height, 8),
+                coralMaterial
+            );
+            coral.position.set(
+                pos.x + Math.cos(angle) * 0.5,
+                height / 2,
+                pos.z + Math.sin(angle) * 0.5
+            );
+            coral.rotation.z = (Math.random() - 0.5) * 0.5;
+            room1.add(coral);
+        }
+    });
+
+    // **PARTICLES**
+    for (let i = 0; i < 200; i++) {
+        const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03, 6, 6),
+            new THREE.MeshStandardMaterial({
+                color: 0x00ffaa,
+                emissive: 0x00ffaa,
+                emissiveIntensity: 2.0,
+                transparent: true,
+                opacity: 0.6
+            })
+        );
+        particle.position.set(
+            (Math.random() - 0.5) * galleryRadius * 2,
+            Math.random() * galleryHeight,
+            (Math.random() - 0.5) * galleryRadius * 2
+        );
+        particle.userData.floatSpeed = Math.random() * 0.01 + 0.005;
+        particle.userData.driftX = (Math.random() - 0.5) * 0.02;
+        particle.userData.driftZ = (Math.random() - 0.5) * 0.02;
+        room1.add(particle);
+    }
+
+    // **LIGHTING**
+    const ambientLight = new THREE.AmbientLight(0x1a4d6d, 0.4);
+    room1.add(ambientLight);
+
+    for (let i = 0; i < 5; i++) {
+        const sunbeam = new THREE.SpotLight(0x4da6ff, 1.0, 20, Math.PI / 8, 0.8);
+        sunbeam.position.set(
+            (Math.random() - 0.5) * 30,
+            galleryHeight + 5,
+            (Math.random() - 0.5) * 30
+        );
+        sunbeam.target.position.set(sunbeam.position.x, 0, sunbeam.position.z);
+        room1.add(sunbeam);
+        room1.add(sunbeam.target);
+    }
+
+    room1.position.set(0, 0, 0);
+    this.rooms.push(room1);
+    this.rooms.forEach(room => this.scene.add(room));
     
-        const hexGeometry = new THREE.CircleGeometry(1, 6);
-        const ceilingTileSpacing = this.config.roomSize / 5;
-        for (let i = -2; i <= 2; i++) {
-            for (let j = -2; j <= 2; j++) {
-                if (Math.abs(i) === 2 && Math.abs(j) === 2) continue;
-                const panel = new THREE.Mesh(hexGeometry, ceilingMaterial);
-                const heightOffset = Math.random() * 0.5 + this.config.wallHeight - 0.5;
-                panel.position.set(i * ceilingTileSpacing, heightOffset, j * ceilingTileSpacing);
-                panel.rotation.x = Math.PI / 2;
-                panel.receiveShadow = true;
-                room.add(panel);
+    this.wallLights = [];
+    this.glassSpotlights = [];
+    this.ceilingLights = [];
+}
+
+generateBlackMarquina(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
     
-                const led = new THREE.Mesh(new THREE.CircleGeometry(0.3, 6), ledMaterial);
-                led.position.set(i * ceilingTileSpacing, heightOffset - 0.05, j * ceilingTileSpacing);
-                led.rotation.x = Math.PI / 2;
-                room.add(led);
+    // Deep black base
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, width, height);
     
-                const panelLight = new THREE.PointLight(0xffffff, 1, this.config.roomSize / 3);
-                panelLight.position.set(i * ceilingTileSpacing, heightOffset - 0.1, j * ceilingTileSpacing);
-                room.add(panelLight);
+    // Gold and white veining
+    const numVeins = 30;
+    for (let i = 0; i < numVeins; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        // Mix of gold and white veins
+        const isGold = Math.random() > 0.6;
+        const color = isGold 
+            ? `rgba(218, 165, 32, ${0.4 + Math.random() * 0.3})`  // Gold
+            : `rgba(255, 255, 255, ${0.2 + Math.random() * 0.2})`; // White
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.random() * 3 + 1;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        let angle = Math.random() * Math.PI * 2;
+        
+        for (let j = 0; j < 120; j++) {
+            angle += (Math.random() - 0.5) * 0.4;
+            x += Math.cos(angle) * 10;
+            y += Math.sin(angle) * 10;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Polished finish
+    const gradient = ctx.createRadialGradient(
+        width / 2, height / 2, 0,
+        width / 2, height / 2, width / 2
+    );
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    return canvas;
+}
+
+generateMarbleNormalMap(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base normal map color (neutral normal)
+    ctx.fillStyle = '#8080ff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const imageData = ctx.getImageData(0, 0, width, height);
+    
+    // Generate subtle height variation for normal map
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            
+            // Perlin-like noise for realistic surface
+            const noise = (Math.sin(x * 0.02) * Math.cos(y * 0.02)) * 0.5 + 0.5;
+            const variation = (Math.random() - 0.5) * 30;
+            
+            // Normal map RGB channels (X, Y, Z surface normals)
+            imageData.data[i] = 128 + noise * 25 + variation;     // R (X normal)
+            imageData.data[i + 1] = 128 + noise * 25 + variation; // G (Y normal)
+            imageData.data[i + 2] = 200 + noise * 45;             // B (Z normal - pointing up)
+            imageData.data[i + 3] = 255;                           // Alpha
+        }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+}
+    generateModernWallTexture(width, height) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        const imageData = context.createImageData(width, height);
+
+        for (let x = 0; x < width; x++) {
+            for (let y = 0; y < height; y++) {
+                const i = (y * width + x) * 4;
+                const noise = Math.sin(x * 0.05 + y * 0.05) * 0.5 + 0.5;
+                imageData.data[i] = noise * 255;
+                imageData.data[i + 1] = noise * 255;
+                imageData.data[i + 2] = 255;
+                imageData.data[i + 3] = 255;
             }
         }
-    
-        const walls = [
-            new THREE.Mesh(new THREE.PlaneGeometry(this.config.roomSize, this.config.wallHeight), wallMaterial),
-            new THREE.Mesh(new THREE.PlaneGeometry(this.config.roomSize, this.config.wallHeight), wallMaterial),
-            new THREE.Mesh(new THREE.PlaneGeometry(this.config.roomSize, this.config.wallHeight), wallMaterial),
-            new THREE.Mesh(new THREE.PlaneGeometry(this.config.roomSize, this.config.wallHeight), wallMaterial)
-        ];
-        const wallCenter = this.config.wallHeight / 2;
-        walls[0].position.set(0, wallCenter, -wallEdge);
-        walls[1].position.set(0, wallCenter, wallEdge);
-        walls[1].rotation.y = Math.PI;
-        walls[2].position.set(-wallEdge, wallCenter, 0);
-        walls[2].rotation.y = Math.PI / 2;
-        walls[3].position.set(wallEdge, wallCenter, 0);
-        walls[3].rotation.y = -Math.PI / 2;
-        walls.forEach(wall => {
-            wall.receiveShadow = true;
-            room.add(wall);
-        });
-    
-        const curvePoints = [];
-        const curveSegments = 20;
-        for (let i = 0; i <= curveSegments; i++) {
-            const angle = (i / curveSegments) * Math.PI;
-            const x = Math.cos(angle) * 2 - wallEdge;
-            const z = Math.sin(angle) * 2 - wallEdge;
-            curvePoints.push(new THREE.Vector3(x, 0, z));
-        }
-        const curve = new THREE.CatmullRomCurve3(curvePoints);
-        const glassGeometry = new THREE.ExtrudeGeometry(
-            new THREE.Shape([
-                new THREE.Vector2(-wallEdge, 0), 
-                new THREE.Vector2(wallEdge, 0), 
-                new THREE.Vector2(wallEdge, this.config.wallHeight), 
-                new THREE.Vector2(-wallEdge, this.config.wallHeight)
-            ]),
-            { depth: 0.1, extrudePath: curve }
-        );
-        const curvedWindow = new THREE.Mesh(glassGeometry, glassMaterial);
-        curvedWindow.position.set(0, 0, 0);
-        room.add(curvedWindow);
-    
-        const metalStripGeometry = new THREE.BoxGeometry(0.05, this.config.wallHeight, 0.05);
-        const stripSpacing = this.config.roomSize / 7;
-        for (let i = -wallEdge + stripSpacing; i < wallEdge; i += stripSpacing) {
-            const strip = new THREE.Mesh(metalStripGeometry, metalMaterial);
-            strip.position.set(i, wallCenter, -wallEdge + 0.1);
-            strip.castShadow = true;
-            room.add(strip);
-        }
-    
-        const benchWidth = this.config.roomSize / 4;
-        const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(benchWidth, 0.3, 1), acrylicMaterial);
-        benchSeat.position.set(0, 0.15, this.config.roomSize / 5);
-        benchSeat.castShadow = true;
-        benchSeat.receiveShadow = true;
-        room.add(benchSeat);
-    
-        const benchFrameGeometry = new THREE.BoxGeometry(benchWidth + 0.1, 0.05, 0.05);
-        const benchFrame1 = new THREE.Mesh(benchFrameGeometry, metalMaterial);
-        benchFrame1.position.set(0, 0.3, this.config.roomSize / 5);
-        benchFrame1.castShadow = true;
-        room.add(benchFrame1);
-    
-        const benchFrame2 = new THREE.Mesh(benchFrameGeometry, metalMaterial);
-        benchFrame2.position.set(0, 0, this.config.roomSize / 5);
-        benchFrame2.castShadow = true;
-        room.add(benchFrame2);
-    
-        for (let i = 0; i < 4; i++) {
-            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 16), metalMaterial);
-            leg.position.set(
-                (i % 2 === 0 ? -benchWidth / 2 + 0.1 : benchWidth / 2 - 0.1),
-                0.15,
-                this.config.roomSize / 5 + (i < 2 ? -0.5 : 0.5)
-            );
-            leg.castShadow = true;
-            leg.receiveShadow = true;
-            room.add(leg);
-        }
-    
-        // Removed lightWall (dynamic colored rods on back wall)
-        /*
-        this.lightWall = new THREE.Group();
-        this.lightWall.userData = { isInteractive: true, type: 'lightWall' };
-        const rodGeometry = new THREE.CylinderGeometry(0.05, 0.05, this.config.wallHeight - 1, 16);
-        const rodSpacing = this.config.roomSize / 13;
-        for (let i = -wallEdge + rodSpacing; i < wallEdge; i += rodSpacing) {
-            const rod = new THREE.Mesh(rodGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff }));
-            rod.position.set(i, wallCenter, wallEdge - 0.01);
-            rod.userData = { baseColor: 0xffffff, intensity: 1 };
-            this.lightWall.add(rod);
-        }
-        room.add(this.lightWall);
-        */
-    
-        room.position.set(0, 0, 0);
-        this.rooms.push(room);
-        this.scene.add(room);
+
+        context.putImageData(imageData, 0, 0);
+        return canvas;
     }
 
     generateNoiseCanvas(width, height) {
@@ -592,18 +698,16 @@ this.setupMobileControls();
         this.avatarGroup.userData = { isAvatar: true };
         this.scene.add(this.avatarGroup);
 
-        // Add keyframe animation for avatar
         this.setupAvatarAnimation();
-
         this.updateAvatarPosition();
     }
 
     setupAvatarAnimation() {
         const times = [0, 1, 2];
         const armValues = [
-            [Math.PI / 4, -Math.PI / 4],   // Start
-            [-Math.PI / 4, Math.PI / 4],   // Mid
-            [Math.PI / 4, -Math.PI / 4]    // End
+            [Math.PI / 4, -Math.PI / 4],
+            [-Math.PI / 4, Math.PI / 4],
+            [Math.PI / 4, -Math.PI / 4]
         ];
 
         const leftArmTrack = new THREE.NumberKeyframeTrack(
@@ -625,89 +729,94 @@ this.setupMobileControls();
 
     updateAvatarPosition() {
         if (this.isMobile) {
-            const roomCenter = this.rooms[0].position.clone();
+            const roomCenter = this.rooms[this.currentRoom].position.clone();
             this.avatarGroup.position.copy(roomCenter);
             this.avatarGroup.position.y = 0.5;
         } else {
             const direction = new THREE.Vector3();
             this.camera.getWorldDirection(direction);
             direction.y = 0;
-            direction.normalize().multiplyScalar(2);
+            direction.normalize().multiplyScalar(3);
             this.avatarGroup.position.copy(this.camera.position).add(direction);
             this.avatarGroup.position.y = 0.5;
         }
     }
 
     async setupAudio() {
-        try {
-            const backgroundBuffer = await this.loadAudio('/sweet.mp3');
-            this.backgroundAudio.setBuffer(backgroundBuffer);
-            this.backgroundAudio.setLoop(true);
-            this.backgroundAudio.setVolume(0.2);
-            this.backgroundAudio.play();
-
-            const clickBuffer = await this.loadAudio('/sweet.mp3');
-            this.clickSound.setBuffer(clickBuffer);
-            this.clickSound.setVolume(0.5);
-        } catch (error) {
-            console.error("Error loading audio:", error);
-        }
-    }
-
-    loadAudio(url) {
-        return new Promise((resolve, reject) => {
-            const audioLoader = new THREE.AudioLoader();
-            audioLoader.load(
-                url,
-                (audioBuffer) => resolve(audioBuffer),
-                undefined,
-                (err) => reject(err)
-            );
-        });
-    }
-    async init() {
-        console.log("🚀 Virtual Gallery loading...");
-        if (this.sessionId) {
-            await this.loadImages(this.sessionId);
-            // Check if images were loaded successfully
-            if (!this.imagesToLoad || this.imagesToLoad.length === 0) {
-                console.warn("No images loaded for session, using fallback images");
-                this.useFallbackImages();
-                await this.displayImagesInGallery();
+            try {
+                const backgroundBuffer = await this.loadAudio('/sweet.mp3');
+                this.backgroundAudio.setBuffer(backgroundBuffer);
+                this.backgroundAudio.setLoop(true);
+                this.backgroundAudio.setVolume(0.2);
+                this.backgroundAudio.play();
+    
+                const clickBuffer = await this.loadAudio('/sweet.mp3');
+                this.clickSound.setBuffer(clickBuffer);
+                this.clickSound.setVolume(0.5);
+            } catch (error) {
+                console.error("Error loading audio:", error);
             }
-        } else {
-            console.log("No sessionId, using fallback images");
-            this.useFallbackImages();
-            await this.displayImagesInGallery();
         }
-        await this.setupAudio(); // Ensure audio is loaded
-        this.animate();
-        window.addEventListener("resize", () => this.handleResize());
-        this.hidePreloader();
-        console.log("🚀 Virtual Gallery loaded");
-    }
+    
+        loadAudio(url) {
+            return new Promise((resolve, reject) => {
+                const audioLoader = new THREE.AudioLoader();
+                audioLoader.load(
+                    url,
+                    (audioBuffer) => resolve(audioBuffer),
+                    undefined,
+                    (err) => reject(err)
+                );
+            });
+        }
+
+   
+   async init() {
+           console.log("🚀 Virtual Gallery loading...");
+           if (this.sessionId) {
+               await this.loadImages(this.sessionId);
+               // Check if images were loaded successfully
+               if (!this.imagesToLoad || this.imagesToLoad.length === 0) {
+                   console.warn("No images loaded for session, using fallback images");
+                   this.useFallbackImages();
+                   await this.displayImagesInGallery();
+               }
+           } else {
+               console.log("No sessionId, using fallback images");
+               this.useFallbackImages();
+               await this.displayImagesInGallery();
+           }
+           await this.setupAudio(); // Ensure audio is loaded
+           this.animate();
+           window.addEventListener("resize", () => this.handleResize());
+           this.hidePreloader();
+           console.log("🚀 Virtual Gallery loaded");
+       }
+
+
 
     animate() {
         requestAnimationFrame(() => this.animate());
-        if (!this.isLoading) { // Only update scene when loading is complete
-            this.time += 0.016;
-            this.update();
-            this.updateImageEffects();
-            this.renderer.render(this.scene, this.camera);
-            // ADD THIS LINE inside the animate() method, after renderer.render():
-this.updateArtworkProgress();
-            if (this.isMobile) this.controls.update();
-            this.updateAvatarPosition();
-            
-            if (this.isRecording) {
-                // Frame capture handled by MediaRecorder
-            }
-            this.animationMixer.update(0.016 * this.animationSpeed);
-            this.updateObjectAnimations();
+        const delta = 0.016;
+        this.time += delta;
+        this.update();
+        this.updateImageEffects();
+        this.updateLighting();
+        this.renderer.render(this.scene, this.camera);
+        this.updateArtworkProgress();
+        if (this.isMobile) this.controls.update();
+        this.updateAvatarPosition();
+        
+        if (this.isRecording) {
+            // Frame capture handled by MediaRecorder
         }
-    }
+        this.animationMixer.update(delta * this.animationSpeed);
+        this.updateObjectAnimations();
 
-    showArtworkInfo(index) {
+
+        
+    }
+showArtworkInfo(index) {
     const metadata = this.metadata[index];
     if (!metadata) return;
     
@@ -852,9 +961,6 @@ toggleHelpOverlay() {
     document.body.appendChild(help);
     document.getElementById('closeHelp').addEventListener('click', () => help.remove());
 }
-
-
-
     async startRecording() {
         if (this.isRecording) return;
     
@@ -1007,13 +1113,281 @@ toggleHelpOverlay() {
             this.images.forEach(img => {
                 img.mesh.rotation.y += 0.02 * this.animationSpeed;
             });
-            if (this.lightWall) {
-                this.lightWall.children.forEach(rod => {
-                    rod.rotation.y += 0.03 * this.animationSpeed;
-                });
-            }
+            this.wallLights.forEach(light => {
+                light.left.rotation.y += 0.03 * this.animationSpeed;
+                light.right.rotation.y += 0.03 * this.animationSpeed;
+            });
+            this.glassSpotlights.forEach(light => {
+                light.mesh.rotation.y += 0.01 * this.animationSpeed;
+            });
         }
     }
+
+   updateLighting() {
+    const time = this.time || 0;
+
+    // ✨ DYNAMIC COLOR-SHIFTING LED MATERIAL
+    const hue = (Math.sin(time * 0.3) + 1) / 2; // Slower, more elegant
+    const color = new THREE.Color().setHSL(hue * 0.15 + 0.1, 0.3, 0.8); // Warm color range
+    
+    if (this.ledMaterial) {
+        this.ledMaterial.emissive.copy(color);
+        this.ledMaterial.color.copy(color);
+    }
+
+    this.scene.traverse((child) => {
+    if (child.userData.floatSpeed) {
+        const time = this.time || 0;
+        child.position.y += Math.sin(time + (child.userData.floatOffset || 0)) * child.userData.floatSpeed;
+        
+        if (child.userData.driftX) {
+            child.position.x += child.userData.driftX;
+            child.position.z += child.userData.driftZ;
+            
+            // Wrap around
+            if (Math.abs(child.position.x) > 30) child.position.x *= -0.9;
+            if (Math.abs(child.position.z) > 30) child.position.z *= -0.9;
+        }
+    }
+    
+    // Animate seaweed swaying
+    if (child.userData.swaySpeed) {
+        const time = this.time || 0;
+        child.rotation.z = Math.sin(time * child.userData.swaySpeed) * child.userData.swayAmount;
+    }
+});
+
+
+    // 🔥 DYNAMIC CEILING LIGHTS (Pulsing)
+    const ceilingPulse = 2.0 + Math.sin(time * 1.5) * 0.4;
+    this.ceilingLights.forEach((light, index) => {
+        const offset = index * 0.5; // Stagger the pulse
+        const individualPulse = 2.0 + Math.sin(time * 1.5 + offset) * 0.3;
+        
+        light.spot.intensity = individualPulse;
+        light.mesh.material.emissiveIntensity = individualPulse * 0.6;
+        
+        // Subtle color warmth variation
+        const warmth = 0.9 + Math.sin(time * 0.8 + offset) * 0.1;
+        light.spot.color.setRGB(1.0, warmth, 0.65);
+    });
+
+    // ====== CHANDELIER ANIMATION CODE (SAFE VERSION) ======
+// Add this to your updateLighting() method
+// This version has complete error checking to prevent crashes
+
+// 🕯️ CHANDELIER ANIMATION & LIGHTING EFFECTS
+if (this.chandelier) {
+    // SLOW ROTATION
+    if (this.chandelier.userData && this.chandelier.userData.rotationSpeed) {
+        this.chandelier.rotation.y += this.chandelier.userData.rotationSpeed;
+    }
+    
+    // Animate all candle flames and point lights
+    this.chandelier.children.forEach((child, index) => {
+        if (!child) return; // Skip null/undefined children
+        
+        // ✨ CANDLE FLAME FLICKER (for PointLight objects)
+        if (child.isPointLight) {
+            try {
+                // Realistic multi-layered flicker
+                const baseFlicker = Math.sin(time * 8 + index * 2.1) * 0.15;
+                const microFlicker = Math.sin(time * 25 + index * 5.3) * 0.08;
+                const flicker = 1.0 + baseFlicker + microFlicker;
+                
+                child.intensity = 1.2 * flicker;
+                
+                // Warm candle color variation
+                const warmth = 0.95 + Math.sin(time * 1.5 + index) * 0.05;
+                child.color.setRGB(1.0, warmth, 0.86);
+            } catch (e) {
+                console.warn('Error animating point light:', e);
+            }
+        }
+        
+        // 🔥 FLAME MESH ANIMATION (only for meshes with geometry)
+        if (child.isMesh && child.geometry && child.material) {
+            try {
+                // Check if it's a flame (stretched sphere with emissive material)
+                const isFlame = child.geometry.type === 'SphereGeometry' && 
+                               child.material.emissive && 
+                               child.scale.y > 1.2;
+                
+                if (isFlame) {
+                    const flameFlicker = 1.5 + Math.sin(time * 12 + index * 3) * 0.4;
+                    child.material.emissiveIntensity = flameFlicker;
+                    
+                    // Subtle vertical movement
+                    child.scale.y = 1.5 + Math.sin(time * 8 + index * 2) * 0.15;
+                }
+            } catch (e) {
+                console.warn('Error animating flame:', e);
+            }
+        }
+        
+        // 💎 CRYSTAL PENDANTS GENTLE SWAY (only for crystal meshes)
+        if (child.isMesh && child.geometry) {
+            try {
+                const isCrystal = child.geometry.type === 'OctahedronGeometry' || 
+                                 child.geometry.type === 'TetrahedronGeometry';
+                
+                if (isCrystal) {
+                    // Gentle rotation
+                    child.rotation.y += 0.002;
+                    child.rotation.x = Math.sin(time * 0.5 + index) * 0.1;
+                    
+                    // Subtle sparkle effect
+                    if (child.material && child.material.transmission !== undefined) {
+                        child.material.opacity = 0.92 + Math.sin(time * 3 + index) * 0.03;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error animating crystal:', e);
+            }
+        }
+    });
+    
+    // 💡 MAIN CHANDELIER AMBIENT LIGHT PULSE
+    try {
+        const mainLight = this.chandelier.children.find(
+            child => child && child.isPointLight && child.intensity > 2
+        );
+        if (mainLight) {
+            mainLight.intensity = 2.5 + Math.sin(time * 1.2) * 0.3;
+        }
+    } catch (e) {
+        console.warn('Error animating main light:', e);
+    }
+}
+
+// ====== END OF CHANDELIER ANIMATION ======
+
+// ALTERNATIVE: Simplified version (if you still get errors)
+// Uncomment this and comment out the above code:
+
+/*
+if (this.chandelier) {
+    // Just rotate the chandelier - no fancy animations
+    this.chandelier.rotation.y += 0.0005;
+    
+    // Basic flickering for all lights
+    this.chandelier.traverse((child) => {
+        if (child.isPointLight) {
+            const flicker = 1.0 + Math.sin(time * 8) * 0.15;
+            child.intensity = child.userData.baseIntensity 
+                ? child.userData.baseIntensity * flicker 
+                : 1.2 * flicker;
+        }
+    });
+}
+*/
+    // 🎨 ARTWORK TRACK LIGHTING (Distance-based + Flickering)
+    this.glassSpotlights.forEach((light, index) => {
+        const distance = this.camera.position.distanceTo(light.position);
+        const baseIntensity = Math.max(1.2, Math.min(2.8, 4 - distance / 5));
+        
+        // Add subtle flicker effect
+        const flicker = Math.sin(time * 3 + index * 0.7) * 0.15;
+        const finalIntensity = baseIntensity + flicker;
+        
+        light.spot.intensity = finalIntensity;
+        light.mesh.material.emissiveIntensity = finalIntensity * 0.5;
+        
+        // Warm up as you approach
+        const proximity = Math.max(0, 1 - distance / 15);
+        light.spot.color.setRGB(1.0, 0.95 + proximity * 0.05, 0.85 + proximity * 0.1);
+    });
+
+    // 💡 WALL LIGHTS (if you have them - legacy support)
+    this.wallLights.forEach((light, index) => {
+        if (light.left && light.right) {
+            const distance = this.camera.position.distanceTo(light.position);
+            const intensity = Math.max(0.8, Math.min(1.8, 3 - distance / 8));
+            const glow = Math.sin(time * 2 + index) * 0.2 + 1.0;
+            
+            light.left.material.emissiveIntensity = intensity * glow;
+            light.right.material.emissiveIntensity = intensity * glow;
+        }
+    });
+
+    // 🕯️ CHANDELIER CANDLES (Flickering flames)
+    if (this.chandelier) {
+        // Animate all point lights (candles)
+        this.chandelier.children.forEach((child, index) => {
+            if (child instanceof THREE.PointLight) {
+                // Realistic candle flicker
+                const baseFlicker = Math.sin(time * 8 + index * 2.1) * 0.15;
+                const microFlicker = Math.sin(time * 25 + index * 5.3) * 0.08;
+                const flicker = 1.0 + baseFlicker + microFlicker;
+                
+                child.intensity = 1.2 * flicker;
+                
+                // Warm candle glow variation
+                const warmth = 0.95 + Math.sin(time * 1.5 + index) * 0.05;
+                child.color.setRGB(1.0, warmth, 0.86);
+            }
+            
+            // Animate flame meshes (if they exist)
+            if (child.material && child.material.emissive && 
+                child.geometry.type === 'SphereGeometry' && 
+                child.scale.y > 1.2) { // Flames are stretched spheres
+                
+                const flameFlicker = 1.5 + Math.sin(time * 12 + index * 3) * 0.4;
+                child.material.emissiveIntensity = flameFlicker;
+                
+                // Subtle flame movement
+                child.scale.y = 1.5 + Math.sin(time * 8 + index * 2) * 0.15;
+            }
+        });
+        
+        // Main chandelier ambient light pulse
+        const mainLight = this.chandelier.children.find(
+            child => child instanceof THREE.PointLight && child.intensity > 2
+        );
+        if (mainLight) {
+            mainLight.intensity = 2.5 + Math.sin(time * 1.2) * 0.3;
+        }
+    }
+
+    // 🪔 WALL SCONCES (Flickering)
+    this.scene.traverse((child) => {
+        if (child.userData && child.userData.isSconce) {
+            child.children.forEach((sconcePart, index) => {
+                if (sconcePart instanceof THREE.PointLight) {
+                    const flicker = 0.5 + Math.sin(time * 10 + index * 3) * 0.15;
+                    sconcePart.intensity = flicker;
+                }
+                
+                if (sconcePart.material && sconcePart.material.emissive) {
+                    const glow = 1.0 + Math.sin(time * 8 + index * 2) * 0.3;
+                    sconcePart.material.emissiveIntensity = glow;
+                }
+            });
+        }
+    });
+
+    // 🌟 ARTWORK SPOTLIGHTS (Individual pulsing per artwork)
+    this.images.forEach((img, index) => {
+        if (img.mesh.material.uniforms) {
+            img.mesh.material.uniforms.time.value = time + index;
+        }
+        
+        // Find the spotlight targeting this artwork
+        const spotlight = img.mesh.parent.children.find(
+            child => child instanceof THREE.SpotLight && child.target === img.mesh
+        );
+        
+        if (spotlight) {
+            // Gentle spotlight pulse
+            const pulse = 2.0 + Math.sin(time * 1.8 + index * 0.6) * 0.25;
+            spotlight.intensity = pulse;
+            
+            // Slight warmth variation
+            const warmth = 0.96 + Math.sin(time * 0.9 + index * 0.4) * 0.04;
+            spotlight.color.setRGB(1.0, warmth, 0.9);
+        }
+    });
+}
 
     updateImageEffects() {
         this.images.forEach((img, index) => {
@@ -1056,13 +1430,6 @@ toggleHelpOverlay() {
         // Click event for canvas interactions
         this.renderer.domElement.addEventListener("click", (event) => {
             console.log("Canvas clicked, isLocked:", this.isLocked, "isFocused:", this.isFocused, "isSliderActive:", this.isSliderActive);
-            
-            // Check for web frame click first
-            const handledWebFrame = this.handleWebFrameClick(event);
-            if (handledWebFrame) {
-                return; // Don't process other click handlers
-            }
-            
             this.onCanvasClick(event);
         });
     
@@ -1227,7 +1594,6 @@ toggleHelpOverlay() {
             this.onKeyDown(event);
         });
     }
-
     setupMobileControls() {
     if (!this.isMobile) return;
     
@@ -1311,7 +1677,6 @@ toggleHelpOverlay() {
     document.addEventListener('touchend', resetJoystick);
     document.addEventListener('touchcancel', resetJoystick);
 }
-    
     // Restore UI controls
     restoreControls() {
         console.log("Restoring controls, isLocked:", this.isLocked, "isSliderActive:", this.isSliderActive);
@@ -1383,6 +1748,7 @@ toggleHelpOverlay() {
             }
         });
     }
+
 
    
     async handleShare() {
@@ -1520,17 +1886,17 @@ toggleHelpOverlay() {
             tutorial.innerHTML = `
                 Good job! More tips:<br>
                 • Double-click art to zoom in<br>
-                • Press <strong>Esc or Right Click</strong> to exit Focus<br>
+                • Press <strong>Esc or Right Click</strong> to exit focus<br>
                 • Click the avatar for help<br>
                 Enjoy exploring!
             `;
             tutorial.dataset.step = "zoom";
-            // Fade out after a delay
+           
             setTimeout(() => {
                 tutorial.style.transition = "opacity 1s";
                 tutorial.style.opacity = "0";
                 setTimeout(() => tutorial.remove(), 1000);
-            }, 6000); // Show for 5 seconds before fading
+            }, 5000); 
         }
     }
 
@@ -1569,7 +1935,7 @@ toggleHelpOverlay() {
                 <h4>${file.name}</h4>
                 <input type="text" id="title-${index}" placeholder="Image Title" value="${file.name.split('.')[0]}">
                 <input type="text" id="description-${index}" placeholder="Description">
-                <input type="text" id="artist-${index}" placeholder="Url">
+                 <input type="text" id="artist-${index}" placeholder="Url">
             `;
             inputsContainer.appendChild(div);
         });
@@ -1597,8 +1963,6 @@ toggleHelpOverlay() {
         this.handleUploadSubmit({ preventDefault: () => {} });
     }
 
-
-
     toggleControls() {
         this.controlsVisible = !this.controlsVisible;
         const controlPanels = document.querySelectorAll(".control-panel");
@@ -1614,7 +1978,6 @@ toggleHelpOverlay() {
     }
 
    onKeyDown(event) {
-    
     // Existing movement keys
     switch(event.key.toLowerCase()) {
         case "w": this.keys.w = true; break;
@@ -1624,8 +1987,6 @@ toggleHelpOverlay() {
         case "q": this.keys.q = true; break;
         case "e": this.keys.e = true; break;
         case "control": this.isControlPressed = true; break;
-
-        
     }
     
     // ✨ NEW: Number keys for artwork navigation
@@ -1671,7 +2032,7 @@ toggleHelpOverlay() {
             this.camera.getWorldDirection(direction);
             direction.y = 0;
             direction.normalize();
-    
+
             if (this.keys.w) movement.addScaledVector(direction, this.moveSpeed);
             if (this.keys.s) movement.addScaledVector(direction, -this.moveSpeed);
             if (this.keys.a) {
@@ -1682,47 +2043,31 @@ toggleHelpOverlay() {
                 const right = new THREE.Vector3().crossVectors(this.camera.up, direction).normalize();
                 movement.addScaledVector(right, this.moveSpeed);
             }
-    
+
             this.controls.getObject().position.add(movement);
             this.checkCollisions();
-    
+
             const euler = new THREE.Euler(0, 0, 0, "YXZ");
             euler.setFromQuaternion(this.camera.quaternion);
             if (this.keys.q) euler.y += this.rotationSpeed;
             if (this.keys.e) euler.y -= this.rotationSpeed;
             this.camera.quaternion.setFromEuler(euler);
         }
-        // Removed lightWall dynamic coloring
-        /*
-        if (this.lightWall) {
-            const cameraPos = this.camera.position;
-            this.lightWall.children.forEach(rod => {
-                const dist = cameraPos.distanceTo(rod.position);
-                const intensity = Math.max(0.5, Math.min(1.5, 5 / dist));
-                const hue = (dist / 10 + this.time) % 1;
-                rod.material.color.setHSL(hue, 0.8, intensity * 0.5);
-                rod.userData.intensity = intensity;
-            });
-        }
-        */
-        if (this.interactionCooldown > 0) this.interactionCooldown -= 0.016;
         this.updateAutoRotate();
     }
-
-    resetCameraPosition() {
+  resetCameraPosition() {
     const initialSettings = this.roomCameraSettings[0];
     this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
     this.isFocused = false;
 }
     checkCollisions() {
         if (!this.isMobile) {
-            this.camera.position.y = this.config.cameraHeight;
-            const roomBounds = this.rooms[0].position;
-            const edge = this.config.roomSize / 2 - 1;
-            const minX = roomBounds.x - edge;
-            const maxX = roomBounds.x + edge;
-            const minZ = roomBounds.z - edge;
-            const maxZ = roomBounds.z + edge;
+            this.camera.position.y = 1.6;
+            const roomBounds = this.rooms[this.currentRoom].position;
+            const minX = roomBounds.x - 15;
+            const maxX = roomBounds.x + 15;
+            const minZ = roomBounds.z - 15;
+            const maxZ = roomBounds.z + 15;
 
             this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
             this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
@@ -1734,105 +2079,95 @@ toggleHelpOverlay() {
         return new Promise((resolve) => {
             const img = texture.image;
             const canvas = document.createElement('canvas');
-            canvas.width = 8;
-            canvas.height = 8;
+            canvas.width = img.width;
+            canvas.height = img.height;
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, 8, 8);
-            const imageData = ctx.getImageData(0, 0, 8, 8).data;
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, img.width, img.height).data;
 
             let hash = 0;
             for (let i = 0; i < imageData.length; i += 4) {
-                hash += imageData[i] + imageData[i + 1] + imageData[i + 2];
+                hash += imageData[i] + imageData[i + 1] + imageData[i + 2] + imageData[i + 3];
             }
             resolve(hash.toString());
         });
     }
 
     async loadImages(sessionId) {
-    const maxRetries = 3;
-    let attempt = 0;
-
-    while (attempt < maxRetries) {
-        try {
-            const response = await fetch(`/api/screenshots/${sessionId}/`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json();
-            console.log("📸 Fetched data for session", sessionId, ":", data);
-
-            if (!Array.isArray(data.screenshots) || data.screenshots.length === 0) {
-                console.warn("No valid screenshots in response, using fallback");
-                this.useFallbackImages();
-                await this.displayImagesInGallery();
-                return;
-            }
-
-            this.imagesToLoad = data.screenshots
-                .filter(s => s && typeof s === 'string')
-                .map(s => s.trim());
-            
-            // Handle metadata
-            this.metadata = [];
-            if (data.metadata && typeof data.metadata === 'object') {
-                if (Array.isArray(data.metadata.metadata)) {
-                    this.metadata = data.metadata.metadata.map(m => ({
-                        filename: m.filename,
-                        title: m.title || 'Untitled',
-                        description: m.description || '',
-                        artist: m.artist || 'Unknown',
-                        type: m.type || 'image' // ⚠️ CRITICAL: Preserve type
-                    }));
-                } else if (Array.isArray(data.metadata)) {
-                    this.metadata = data.metadata.map(m => ({
-                        filename: m.filename,
-                        title: m.title || 'Untitled',
-                        description: m.description || '',
-                        artist: m.artist || 'Unknown',
-                        type: m.type || 'image'
+        const maxRetries = 3;
+        let attempt = 0;
+    
+        while (attempt < maxRetries) {
+            try {
+                const response = await fetch(`/api/screenshots/${sessionId}/`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                console.log("📸 Fetched data for session", sessionId, ":", data);
+    
+                // Validate and sanitize screenshots
+                if (!Array.isArray(data.screenshots) || data.screenshots.length === 0) {
+                    console.warn("No valid screenshots in response, using fallback");
+                    this.useFallbackImages();
+                    await this.displayImagesInGallery();
+                    return;
+                }
+    
+                this.imagesToLoad = data.screenshots
+                    .filter(s => s && typeof s === 'string')
+                    .map(s => s.trim());
+                // Handle metadata as object or array
+                this.metadata = [];
+                if (data.metadata && typeof data.metadata === 'object') {
+                    if (Array.isArray(data.metadata.metadata)) {
+                        this.metadata = data.metadata.metadata.map(m => ({
+                            filename: m.filename,
+                            title: m.title || 'Untitled',
+                            description: m.description || '',
+                            artist: m.artist || 'Unknown'
+                        }));
+                    } else if (Array.isArray(data.metadata)) {
+                        this.metadata = data.metadata.map(m => ({
+                            filename: m.filename,
+                            title: m.title || 'Untitled',
+                            description: m.description || '',
+                            artist: m.artist || 'Unknown'
+                        }));
+                    }
+                }
+                // Fallback if no metadata
+                if (!this.metadata.length && this.imagesToLoad.length) {
+                    this.metadata = this.imagesToLoad.map(filename => ({
+                        filename: filename.split('/').pop(),
+                        title: 'Untitled',
+                        description: '',
+                        artist: 'Unknown'
                     }));
                 }
-            }
-            
-            // ✨ DEBUG: Log what types we have
-            console.log("📋 Loaded files by type:");
-            const types = this.metadata.reduce((acc, m) => {
-                acc[m.type] = (acc[m.type] || 0) + 1;
-                return acc;
-            }, {});
-            console.log(types);
-            
-            if (!this.metadata.length && this.imagesToLoad.length) {
-                this.metadata = this.imagesToLoad.map(filename => ({
-                    filename: filename.split('/').pop(),
-                    title: 'Untitled',
-                    description: '',
-                    artist: 'Unknown',
-                    type: 'image'
-                }));
-            }
-
-            console.log("Sanitized imagesToLoad:", this.imagesToLoad);
-            console.log("Sanitized metadata:", this.metadata);
-
-            if (!this.imagesToLoad.length) {
-                console.error("No valid files after sanitization");
-                this.useFallbackImages();
-            }
-
-            await this.displayImagesInGallery();
-            return;
-        } catch (error) {
-            console.error("❌ Error fetching files (attempt " + attempt + "):", error);
-            attempt++;
-            if (attempt === maxRetries) {
-                console.error("Max retries reached, using fallback");
-                this.useFallbackImages();
+    
+                console.log("Sanitized imagesToLoad:", this.imagesToLoad);
+                console.log("Sanitized metadata:", this.metadata);
+    
+                if (!this.imagesToLoad.length) {
+                    console.error("No valid images to load after sanitization, using fallback");
+                    this.useFallbackImages();
+                }
+    
                 await this.displayImagesInGallery();
-            } else {
-                await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+                return;
+            } catch (error) {
+                console.error("❌ Error fetching images (attempt " + attempt + "):", error);
+                attempt++;
+                if (attempt === maxRetries) {
+                    console.error("Max retries reached, using fallback");
+                    this.useFallbackImages();
+                    await this.displayImagesInGallery();
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+                }
             }
         }
     }
-}
+
     useFallbackImages() {
         this.imagesToLoad = this.fallbackImages.map(img => img.url);
         this.metadata = this.fallbackImages.map(img => img.metadata);
@@ -1840,129 +2175,70 @@ toggleHelpOverlay() {
         console.log("Fallback metadata:", this.metadata);
     }
 
-  async displayImagesInGallery() {
-    if (!this.imagesToLoad || !Array.isArray(this.imagesToLoad) || this.imagesToLoad.length === 0) {
-        console.error("imagesToLoad is invalid or empty:", this.imagesToLoad);
-        return;
-    }
-
-    this.clearScene();
-    const totalImages = this.imagesToLoad.length;
-    let imageIndex = 0;
-    const seenHashes = new Set();
-
-    const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.8 });
-    const fallbackMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5, metalness: 0 });
-
-    const room = this.rooms[0];
-    const wallLength = this.config.roomSize;
-
-    // ✅ ALL 4 WALLS with proper naming
-    const wallConfigs = [
-        { basePos: new THREE.Vector3(0, this.config.wallHeight / 2, -wallLength / 2 + this.config.wallOffset), rot: 0, dir: 'x', name: 'Back' },
-        { basePos: new THREE.Vector3(0, this.config.wallHeight / 2, wallLength / 2 - this.config.wallOffset), rot: Math.PI, dir: 'x', name: 'Front' },
-        { basePos: new THREE.Vector3(-wallLength / 2 + this.config.wallOffset, this.config.wallHeight / 2, 0), rot: Math.PI / 2, dir: 'z', name: 'Left' },
-        { basePos: new THREE.Vector3(wallLength / 2 - this.config.wallOffset, this.config.wallHeight / 2, 0), rot: -Math.PI / 2, dir: 'z', name: 'Right' }
-    ];
-
-    // ✅ PRE-CALCULATE distribution: how many images each wall gets
-    const imagesPerWall = Math.floor(totalImages / 4);
-    const extraImages = totalImages % 4; // Leftover images
-
-    const wallDistribution = wallConfigs.map((wall, index) => {
-        // Give each wall equal share, plus 1 extra to first N walls if there's remainder
-        return imagesPerWall + (index < extraImages ? 1 : 0);
-    });
-
-    console.log(`🎨 Distributing ${totalImages} images:`);
-    wallConfigs.forEach((wall, i) => {
-        console.log(`   ${wall.name} wall: ${wallDistribution[i]} images`);
-    });
-
-    // ✅ PLACE IMAGES WITH EXACT DISTRIBUTION
-    for (let wallIdx = 0; wallIdx < wallConfigs.length; wallIdx++) {
-        const wall = wallConfigs[wallIdx];
-        const imagesThisWall = wallDistribution[wallIdx];
-
-        if (imagesThisWall === 0) {
-            console.log(`⏭️ ${wall.name} wall: 0 images, skipping`);
-            continue;
-        }
-
-        console.log(`📍 Placing ${imagesThisWall} images on ${wall.name} wall...`);
-
-        const spacing = wallLength / (imagesThisWall + 1);
-
-        for (let i = 0; i < imagesThisWall; i++) {
-            if (imageIndex >= totalImages) break;
-
-            const offset = -wallLength / 2 + (i + 1) * spacing;
-            const pos = wall.basePos.clone();
-            
-            if (wall.dir === 'x') {
-                pos.x += offset;
-            } else {
-                pos.z += offset;
+    async displayImagesInGallery() {
+        if (!this.imagesToLoad) return;
+    
+        this.clearScene();
+        const totalImages = this.imagesToLoad.length;
+        let imageIndex = 0;
+        const seenHashes = new Set();
+    
+        const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.8 });
+        const fallbackMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5, metalness: 0 });
+    
+        const room = this.rooms[0];
+        const wallLength = 30;
+        const displayWidth = 4;
+        const displayHeight = 3;
+        const displayDepth = 0.2;
+        const numImagesPerWall = Math.ceil(this.imagesToLoad.length / 4);
+        const spacing = wallLength / (numImagesPerWall + 1);
+        const backWallOffset = 0.5;
+        const maxImagesInRoom = Math.min(16, numImagesPerWall * 4);
+    
+        const wallConfigs = [
+            { basePos: new THREE.Vector3(0, 2.5, -wallLength / 2 + backWallOffset), rot: 0, dir: 'x' },
+            { basePos: new THREE.Vector3(-wallLength / 2 + backWallOffset, 2.5, 0), rot: Math.PI / 2, dir: 'z' },
+            { basePos: new THREE.Vector3(wallLength / 2 - backWallOffset, 2.5, 0), rot: -Math.PI / 2, dir: 'z' },
+            { basePos: new THREE.Vector3(0, 2.5, wallLength / 2 - backWallOffset), rot: Math.PI, dir: 'x' }
+        ];
+    
+        for (let wall of wallConfigs) {
+            if (imageIndex >= totalImages || this.images.length >= maxImagesInRoom) break;
+    
+            const wallPositions = [];
+            for (let i = 0; i < numImagesPerWall && imageIndex < totalImages && this.images.length < maxImagesInRoom; i++) {
+                const offset = -wallLength / 2 + (i + 0.5) * (wallLength / numImagesPerWall);
+                const pos = wall.basePos.clone();
+                if (wall.dir === 'x') pos.x += offset;
+                else pos.z += offset;
+                wallPositions.push({ pos, rot: wall.rot });
             }
-
-            const filename = this.imagesToLoad[imageIndex];
-            if (!filename || typeof filename !== 'string') {
-                console.error(`Invalid filename at index ${imageIndex}:`, filename);
-                imageIndex++;
-                continue;
-            }
-
-            const fileBaseName = filename.split('/').pop();
-            const meta = this.metadata.find(m => m.filename === fileBaseName) || {
-                filename: fileBaseName,
-                title: 'Untitled',
-                description: '',
-                artist: 'Unknown',
-                type: 'image'
-            };
-
-            try {
-                let material;
-                let aspectRatio = 16/9;
-                let hash = null;
-
-                const isVideo = meta.type === 'video' || filename.match(/\.(mp4|webm|mov)$/i);
-
-                if (isVideo) {
-                    const video = document.createElement('video');
-                    video.src = filename;
-                    video.crossOrigin = 'anonymous';
-                    video.loop = true;
-                    video.muted = true;
-                    video.playsInline = true;
-                    video.preload = 'auto';
-                    
-                    const videoTexture = new THREE.VideoTexture(video);
-                    videoTexture.minFilter = THREE.LinearFilter;
-                    videoTexture.magFilter = THREE.LinearFilter;
-                    videoTexture.format = THREE.RGBFormat;
-                    
-                    material = new THREE.MeshBasicMaterial({ 
-                        map: videoTexture,
-                        side: THREE.DoubleSide
-                    });
-
-                    material.userData = { video, isVideo: true, filename };
-                    hash = `video_${filename}`;
-                } else {
+    
+            for (let { pos, rot } of wallPositions) {
+                if (imageIndex >= totalImages) break;
+    
+                const filename = this.imagesToLoad[imageIndex];
+                const meta = this.metadata.find(m => m.filename === filename.split('/').pop()) || {
+                    title: 'Untitled',
+                    description: '',
+                    artist: 'Unknown'
+                };
+                console.log(`Assigning metadata to ${filename}:`, meta);
+    
+                try {
                     const texture = await this.loadTexture(filename);
-                    hash = await this.computeImageHash(texture);
-
+                    const hash = await this.computeImageHash(texture);
+    
                     if (seenHashes.has(hash)) {
-                        console.warn(`Duplicate, skipping`);
+                        console.warn(`Duplicate image content detected for ${filename} with hash ${hash}, skipping`);
                         imageIndex++;
-                        i--; // Don't count this toward wall's quota
                         continue;
                     }
-
+                    seenHashes.add(hash);
+    
+                    let material;
                     if (texture.image) {
-                        aspectRatio = texture.image.width / texture.image.height;
-                        
                         material = new THREE.ShaderMaterial({
                             uniforms: {
                                 map: { value: texture },
@@ -1996,103 +2272,81 @@ toggleHelpOverlay() {
                     } else {
                         material = fallbackMaterial;
                     }
+    
+                    const aspectRatio = texture.image ? texture.image.width / texture.image.height : 1;
+                    const maxWidth = 4;
+                    const adjustedWidth = Math.min(displayHeight * aspectRatio, maxWidth);
+    
+                    const geometry = new THREE.BoxGeometry(adjustedWidth, displayHeight, displayDepth);
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.copy(pos).add(room.position);
+                    mesh.rotation.y = rot;
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mesh.userData = {
+                        filename,
+                        hash,
+                        baseScale: mesh.scale.clone(),
+                        metadata: {
+                            title: meta.title,
+                            description: meta.description,
+                            artist: meta.artist
+                        }
+                    };
+                    room.add(mesh);
+                    this.images.push({ mesh, filename, hash, metadata: meta }); // Also store metadata directly in images array
+    
+                    // Frame and spotlight code remains unchanged...
+                    const frameThickness = 0.1;
+                    const frameShape = new THREE.Shape();
+                    frameShape.moveTo(-adjustedWidth / 2 - frameThickness, -displayHeight / 2 - frameThickness);
+                    frameShape.lineTo(adjustedWidth / 2 + frameThickness, -displayHeight / 2 - frameThickness);
+                    frameShape.lineTo(adjustedWidth / 2 + frameThickness, displayHeight / 2 + frameThickness);
+                    frameShape.lineTo(-adjustedWidth / 2 - frameThickness, displayHeight / 2 + frameThickness);
+                    frameShape.lineTo(-adjustedWidth / 2 - frameThickness, -displayHeight / 2 - frameThickness);
+    
+                    const hole = new THREE.Path();
+                    hole.moveTo(-adjustedWidth / 2, -displayHeight / 2);
+                    hole.lineTo(adjustedWidth / 2, -displayHeight / 2);
+                    hole.lineTo(adjustedWidth / 2, displayHeight / 2);
+                    hole.lineTo(-adjustedWidth / 2, displayHeight / 2);
+                    hole.lineTo(-adjustedWidth / 2, -displayHeight / 2);
+                    frameShape.holes.push(hole);
+    
+                    const extrudeSettings = { depth: frameThickness, bevelEnabled: false };
+                    const frameGeometry = new THREE.ExtrudeGeometry(frameShape, extrudeSettings);
+                    const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+                    frame.position.copy(mesh.position);
+                    frame.position.z += (rot === 0 ? -displayDepth / 2 : (rot === Math.PI ? displayDepth / 2 : 0));
+                    frame.position.x += (rot === Math.PI / 2 ? -displayDepth / 2 : (rot === -Math.PI / 2 ? displayDepth / 2 : 0));
+                    frame.rotation.y = rot;
+                    frame.castShadow = true;
+                    frame.receiveShadow = true;
+                    room.add(frame);
+    
+                    const spotlight = new THREE.SpotLight(0xffffff, 2.0, 20, Math.PI / 6, 0.7);
+                    const lightOffset = 2;
+                    spotlight.position.set(
+                        pos.x + (Math.abs(rot) === Math.PI / 2 ? (rot > 0 ? lightOffset : -lightOffset) : 0),
+                        6,
+                        pos.z + (Math.abs(rot) === Math.PI / 2 ? 0 : (rot === 0 ? -lightOffset : lightOffset))
+                    ).add(room.position);
+                    spotlight.target = mesh;
+                    spotlight.castShadow = true;
+                    spotlight.shadow.mapSize.width = 1024;
+                    spotlight.shadow.mapSize.height = 1024;
+                    spotlight.shadow.bias = -0.0001;
+                    room.add(spotlight);
+    
+                    imageIndex++;
+                } catch (error) {
+                    console.error(`Error loading image ${this.imagesToLoad[imageIndex]}:`, error);
+                    imageIndex++;
                 }
-
-                seenHashes.add(hash);
-
-                const maxHeight = this.config.displayHeight * 0.6;
-                const maxWidth = this.config.displayWidth * 0.6;
-                const adjustedWidth = Math.min(maxHeight * aspectRatio, maxWidth);
-
-                const geometry = new THREE.BoxGeometry(adjustedWidth, maxHeight, this.config.displayDepth);
-                const mesh = new THREE.Mesh(geometry, material);
-                mesh.position.copy(pos).add(room.position);
-                mesh.rotation.y = wall.rot;
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                mesh.userData = {
-                    filename,
-                    hash,
-                    baseScale: mesh.scale.clone(),
-                    isVideo: isVideo,
-                    wallName: wall.name,
-                    metadata: {
-                        title: meta.title,
-                        description: meta.description,
-                        artist: meta.artist,
-                        type: meta.type || 'image'
-                    }
-                };
-                room.add(mesh);
-                this.images.push({ mesh, filename, hash, metadata: meta });
-
-                if (meta.sourceUrl) {
-                    this.tagMeshAsWebFrame(mesh, meta.sourceUrl);
-                }
-
-                // Frame
-                const frameShape = new THREE.Shape();
-                frameShape.moveTo(-adjustedWidth / 2 - this.config.frameThickness, -maxHeight / 2 - this.config.frameThickness);
-                frameShape.lineTo(adjustedWidth / 2 + this.config.frameThickness, -maxHeight / 2 - this.config.frameThickness);
-                frameShape.lineTo(adjustedWidth / 2 + this.config.frameThickness, maxHeight / 2 + this.config.frameThickness);
-                frameShape.lineTo(-adjustedWidth / 2 - this.config.frameThickness, maxHeight / 2 + this.config.frameThickness);
-                frameShape.lineTo(-adjustedWidth / 2 - this.config.frameThickness, -maxHeight / 2 - this.config.frameThickness);
-
-                const hole = new THREE.Path();
-                hole.moveTo(-adjustedWidth / 2, -maxHeight / 2);
-                hole.lineTo(adjustedWidth / 2, -maxHeight / 2);
-                hole.lineTo(adjustedWidth / 2, maxHeight / 2);
-                hole.lineTo(-adjustedWidth / 2, maxHeight / 2);
-                hole.lineTo(-adjustedWidth / 2, -maxHeight / 2);
-                frameShape.holes.push(hole);
-
-                const extrudeSettings = { depth: this.config.frameThickness, bevelEnabled: false };
-                const frameGeometry = new THREE.ExtrudeGeometry(frameShape, extrudeSettings);
-                const frame = new THREE.Mesh(frameGeometry, frameMaterial);
-                frame.position.copy(mesh.position);
-                frame.position.z += (wall.rot === 0 ? -this.config.displayDepth / 2 : (wall.rot === Math.PI ? this.config.displayDepth / 2 : 0));
-                frame.position.x += (wall.rot === Math.PI / 2 ? -this.config.displayDepth / 2 : (wall.rot === -Math.PI / 2 ? this.config.displayDepth / 2 : 0));
-                frame.rotation.y = wall.rot;
-                frame.castShadow = true;
-                frame.receiveShadow = true;
-                room.add(frame);
-
-                // Spotlight
-                const spotlight = new THREE.SpotLight(0xffffff, 2.0, this.config.roomSize, Math.PI / 6, 0.7);
-                const lightOffset = 1;
-                spotlight.position.set(
-                    pos.x + (Math.abs(wall.rot) === Math.PI / 2 ? (wall.rot > 0 ? lightOffset : -lightOffset) : 0),
-                    this.config.wallHeight - 0.5,
-                    pos.z + (Math.abs(wall.rot) === Math.PI / 2 ? 0 : (wall.rot === 0 ? -lightOffset : lightOffset))
-                ).add(room.position);
-                spotlight.target = mesh;
-                spotlight.castShadow = true;
-                spotlight.shadow.mapSize.width = 512;
-                spotlight.shadow.mapSize.height = 512;
-                spotlight.shadow.bias = -0.0001;
-                room.add(spotlight);
-
-                imageIndex++;
-                console.log(`   ✅ [${imageIndex}/${totalImages}] ${meta.title} placed on ${wall.name}`);
-
-            } catch (error) {
-                console.error(`Error loading ${filename}:`, error);
-                imageIndex++;
-                i--; // Don't count errors toward wall's quota
             }
         }
+        console.log(`🎨 Images rendered in room ${this.currentRoom}:`, this.images.length, "Unique hashes:", seenHashes.size);
     }
-
-    // Summary
-    const actualDistribution = {};
-    this.images.forEach(img => {
-        const wall = img.mesh.userData.wallName;
-        actualDistribution[wall] = (actualDistribution[wall] || 0) + 1;
-    });
-
-    console.log(`✅ Gallery complete: ${this.images.length}/${totalImages} images`);
-    console.log(`   Distribution:`, actualDistribution);
-}
 
     clearScene() {
         this.images.forEach(img => {
@@ -2107,7 +2361,6 @@ toggleHelpOverlay() {
         this.rooms.forEach(room => {
             const toRemove = room.children.filter(child => 
                 child instanceof THREE.SpotLight || 
-                child.userData.filename || 
                 (child.material?.color?.getHex() === 0x333333)
             );
             toRemove.forEach(child => {
@@ -2120,94 +2373,57 @@ toggleHelpOverlay() {
     }
 
     loadTexture(filename) {
-    return new Promise((resolve, reject) => {
-        this.textureLoader.load(
-            filename,
-            (texture) => {
-                const maxSize = this.config.maxTextureSize;
-                if (texture.image && (texture.image.width > maxSize || texture.image.height > maxSize)) {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    const scale = Math.min(maxSize / texture.image.width, maxSize / texture.image.height);
-                    canvas.width = texture.image.width * scale;
-                    canvas.height = texture.image.height * scale;
-                    ctx.drawImage(texture.image, 0, 0, canvas.width, canvas.height);
-                    texture.image = canvas;
+        return new Promise((resolve, reject) => {
+            this.textureLoader.load(
+                filename,
+                (texture) => {
+                    texture.minFilter = THREE.LinearMipmapLinearFilter;
+                    texture.magFilter = THREE.LinearFilter;
+                    texture.generateMipmaps = true;
+                    texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy() || 1);
                     texture.needsUpdate = true;
+                    resolve(texture);
+                },
+                undefined,
+                (err) => reject(err)
+            );
+        });
+    }
+
+    onCanvasClick(event) {
+        const currentTime = new Date().getTime();
+        const timeSinceLastClick = currentTime - this.lastClickTime;
+
+        if (timeSinceLastClick < this.clickDelay) {
+            this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            const intersects = this.raycaster.intersectObjects([...this.images.map(img => img.mesh), ...this.scene.children.filter(obj => (obj.parent && obj.parent.userData.isAvatar))]);
+
+            if (intersects.length > 0) {
+                const obj = intersects[0].object;
+                if (this.isFocused) {
+                    this.resetCamera();
+                    this.closeSlider();
+                } else if (obj.parent && obj.parent.userData.isAvatar) {
+                    this.showAvatarInstructions();
+                } else if (obj.userData.filename) {
+                    console.log(`Clicked image: ${obj.userData.filename}`);
+                    if (!this.clickSound.isPlaying) this.clickSound.play();
+                    this.focusImage(obj);
+                    this.scaleImage(obj);
+                    this.openSlider(obj);
                 }
-                texture.minFilter = THREE.LinearMipmapLinearFilter;
-                texture.magFilter = THREE.LinearFilter;
-                texture.generateMipmaps = true;
-                texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy() || 1);
-                resolve(texture);
-            },
-            undefined,
-            (err) => {
-                console.error(`Failed to load texture from ${filename}:`, err);
-                // Create a fallback texture (solid color or placeholder)
-                const canvas = document.createElement('canvas');
-                canvas.width = 256;
-                canvas.height = 256;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#ff0000'; // Red to indicate error
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '20px Arial';
-                ctx.fillText('Image Failed', 50, 128);
-                const fallbackTexture = new THREE.CanvasTexture(canvas);
-                fallbackTexture.minFilter = THREE.LinearFilter;
-                fallbackTexture.magFilter = THREE.LinearFilter;
-                resolve(fallbackTexture);
-            }
-        );
-    });
-}
-
-   onCanvasClick(event) {
-    const currentTime = new Date().getTime();
-    const timeSinceLastClick = currentTime - this.lastClickTime;
-
-    if (timeSinceLastClick < this.clickDelay) {
-        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        this.raycaster.setFromCamera(this.mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects([...this.images.map(img => img.mesh), ...this.scene.children.filter(obj => (obj.parent && obj.parent.userData.isAvatar))]);
-
-        if (intersects.length > 0) {
-            const obj = intersects[0].object;
-            
-            // ✨ Check if it's a video
-            if (obj.material.userData && obj.material.userData.isVideo) {
-                const video = obj.material.userData.video;
-                if (video.paused) {
-                    video.play();
-                    console.log('▶️ Video playing');
-                } else {
-                    video.pause();
-                    console.log('⏸️ Video paused');
-                }
-            }
-            
-            if (this.isFocused) {
-                this.resetCamera();
-                this.closeSlider();
-            } else if (obj.parent && obj.parent.userData.isAvatar) {
-                this.showAvatarInstructions();
-            } else if (obj.userData.filename) {
-                console.log(`Clicked: ${obj.userData.filename}`);
-                if (!this.clickSound.isPlaying) this.clickSound.play();
-                this.focusImage(obj);
-                this.scaleImage(obj);
-                this.openSlider(obj);
             }
         }
+        this.lastClickTime = currentTime;
     }
-    this.lastClickTime = currentTime;
-}
 
     openSlider(selectedMesh) {
-        this.updateCameraState(); // Save state before opening slider
+       if (!this.isFocused) {
+    this.updateCameraState(); // Only save if not already focused
+}
         if (!this.images.length) return;
     
         if (!this.isMobile && this.isLocked) {
@@ -2300,7 +2516,7 @@ toggleHelpOverlay() {
             console.error("Slider elements missing:", { sliderImage, sliderIndex, sliderContent });
         }
     }
-    
+
     scaleImage(mesh) {
         const startScale = mesh.scale.clone();
         const targetScale = mesh.userData.baseScale.clone().multiplyScalar(1.2);
@@ -2327,87 +2543,78 @@ toggleHelpOverlay() {
         requestAnimationFrame(animateScale);
     }
 
-   
-   focusImage(mesh) {
-    this.updateCameraState();
-    this.isFocused = true;
+    focusImage(mesh) {
+        this.updateCameraState();
+        this.isFocused = true;
     
-    // ✨ Auto-play video when focused
-    if (mesh.material.userData && mesh.material.userData.isVideo) {
-        const video = mesh.material.userData.video;
-        video.muted = false; // Unmute when focused
-        video.play();
-    }
-    if (this.isMobile) {
-        const targetPos = mesh.position.clone();
-        targetPos.y = this.config.cameraHeight;
-        const distance = 2;
-        const direction = new THREE.Vector3();
-        direction.subVectors(this.camera.position, targetPos).normalize();
-        targetPos.add(direction.multiplyScalar(-distance));
-
-        const startPos = this.camera.position.clone();
-        const startTarget = this.controls.target.clone();
-        const duration = 500;
-        const startTime = performance.now();
-
-        const animateFocus = (time) => {
-            const elapsed = time - startTime;
-            const t = Math.min(elapsed / duration, 1);
-            const easedT = 0.5 - 0.5 * Math.cos(Math.PI * t);
-            this.camera.position.lerpVectors(startPos, targetPos, easedT);
-            this.controls.target.lerpVectors(startTarget, mesh.position, easedT);
-            this.controls.update();
-
-            if (t < 1) requestAnimationFrame(animateFocus);
-            else {
-                console.log(`Focused on mesh at ${mesh.position.toArray()}, camera at ${this.camera.position.toArray()}`);
-            }
-        };
-        requestAnimationFrame(animateFocus);
-    } else {
-        const meshRotation = mesh.rotation.y;
-        const offsetDistance = 2;
-        const normal = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), meshRotation);
-        const targetPos = mesh.position.clone().sub(normal.multiplyScalar(offsetDistance));
-        targetPos.y = this.config.cameraHeight;
-
-        const roomBounds = this.rooms[0].position;
-        const edge = this.config.roomSize / 2 - 1;
-        const minX = roomBounds.x - edge;
-        const maxX = roomBounds.x + edge;
-        const minZ = roomBounds.z - edge;
-        const maxZ = roomBounds.z + edge;
-        targetPos.x = Math.max(minX, Math.min(maxX, targetPos.x));
-        targetPos.z = Math.max(minZ, Math.min(maxZ, targetPos.z));
-
-        const startPos = this.camera.position.clone();
-        const startQuat = this.camera.quaternion.clone();
-        const targetQuat = new THREE.Quaternion().setFromRotationMatrix(
-            new THREE.Matrix4().lookAt(targetPos, mesh.position, new THREE.Vector3(0, 1, 0))
-        );
-        const duration = 500;
-        const startTime = performance.now();
-
-        const animateFocus = (time) => {
-            const elapsed = time - startTime;
-            const t = Math.min(elapsed / duration, 1);
-            const easedT = 0.5 - 0.5 * Math.cos(Math.PI * t);
-            this.camera.position.lerpVectors(startPos, targetPos, easedT);
-            this.camera.quaternion.slerpQuaternions(startQuat, targetQuat, easedT);
-            this.controls.getObject().position.copy(this.camera.position);
-            this.checkCollisions();
-
-            if (t < 1) requestAnimationFrame(animateFocus);
-            else {
-                console.log(`Focused on mesh at ${mesh.position.toArray()}, camera at ${this.camera.position.toArray()}`);
-            }
-        };
-        requestAnimationFrame(animateFocus);
-    }
-}
+        if (this.isMobile) {
+            const targetPos = mesh.position.clone();
+            targetPos.y = 1.6;
+            const distance = 3;
+            const direction = new THREE.Vector3();
+            direction.subVectors(this.camera.position, targetPos).normalize();
+            targetPos.add(direction.multiplyScalar(-distance));
     
-
+            const startPos = this.camera.position.clone();
+            const startTarget = this.controls.target.clone();
+            const duration = 500;
+            const startTime = performance.now();
+    
+            const animateFocus = (time) => {
+                const elapsed = time - startTime;
+                const t = Math.min(elapsed / duration, 1);
+                const easedT = 0.5 - 0.5 * Math.cos(Math.PI * t);
+                this.camera.position.lerpVectors(startPos, targetPos, easedT);
+                this.controls.target.lerpVectors(startTarget, mesh.position, easedT);
+                this.controls.update();
+    
+                if (t < 1) requestAnimationFrame(animateFocus);
+                else {
+                    console.log(`Focused on mesh at ${mesh.position.toArray()}, camera at ${this.camera.position.toArray()}`);
+                }
+            };
+            requestAnimationFrame(animateFocus);
+        } else {
+            const direction = new THREE.Vector3();
+            this.camera.getWorldDirection(direction);
+    
+            const targetPos = mesh.position.clone().sub(direction.multiplyScalar(3));
+            targetPos.y = 1.6;
+    
+            const roomBounds = this.rooms[this.currentRoom].position;
+            const minX = roomBounds.x - 15 + 1;
+            const maxX = roomBounds.x + 15 - 1;
+            const minZ = roomBounds.z - 15 + 1;
+            const maxZ = roomBounds.z + 15 - 1;
+    
+            targetPos.x = Math.max(minX, Math.min(maxX, targetPos.x));
+            targetPos.z = Math.max(minZ, Math.min(maxZ, targetPos.z));
+    
+            const startPos = this.camera.position.clone();
+            const startQuat = this.camera.quaternion.clone();
+            const targetQuat = new THREE.Quaternion().setFromRotationMatrix(
+                new THREE.Matrix4().lookAt(targetPos, mesh.position, new THREE.Vector3(0, 1, 0))
+            );
+            const duration = 500;
+            const startTime = performance.now();
+    
+            const animateFocus = (time) => {
+                const elapsed = time - startTime;
+                const t = Math.min(elapsed / duration, 1);
+                const easedT = 0.5 - 0.5 * Math.cos(Math.PI * t);
+                this.camera.position.lerpVectors(startPos, targetPos, easedT);
+                this.camera.quaternion.slerpQuaternions(startQuat, targetQuat, easedT);
+                this.controls.getObject().position.copy(this.camera.position);
+                this.checkCollisions();
+    
+                if (t < 1) requestAnimationFrame(animateFocus);
+                else {
+                    console.log(`Focused on mesh at ${mesh.position.toArray()}, camera at ${this.camera.position.toArray()}`);
+                }
+            };
+            requestAnimationFrame(animateFocus);
+        }
+    }
 
     resetCamera() {
         console.log("Starting camera reset, target position:", this.previousCameraState.position.toArray(), 
@@ -2477,17 +2684,18 @@ toggleHelpOverlay() {
             requestAnimationFrame(animateReset);
         }
     }
+
     updateCameraState() {
         this.previousCameraState = {
             position: this.camera.position.clone(),
             rotation: this.camera.rotation.clone(),
-            target: this.isMobile ? this.controls.target.clone() : this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(5).add(this.camera.position)
+            target: this.isMobile ? this.controls.target.clone() : this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(10).add(this.camera.position)
         };
         console.log("Updated previousCameraState: position=", this.previousCameraState.position.toArray(), 
                     "rotation=", this.previousCameraState.rotation.toArray());
     }
 
-    handleDownload() {
+   handleDownload() {
     const currentIndex = this.getCurrentArtworkIndex();
     const metadata = this.metadata[currentIndex];
     
@@ -2553,7 +2761,7 @@ showDownloadConfirmation(metadata) {
         zoomValue.textContent = zoomLevel.toFixed(1);
         if (this.isMobile) {
             this.controls.minDistance = 1 / zoomLevel;
-            this.controls.maxDistance = 10 / zoomLevel;
+            this.controls.maxDistance = 20 / zoomLevel;
             this.controls.update();
         } else {
             this.moveSpeed = zoomLevel / 10;
@@ -2561,96 +2769,89 @@ showDownloadConfirmation(metadata) {
             this.camera.updateProjectionMatrix();
         }
     }
-    async handleScreenshotSubmit(event) {
-        event.preventDefault();
-        const url = document.getElementById("url").value;
-        if (!url) {
-            this.showMessage("screenshotStatus", "Please enter a valid URL", "error");
-            return;
-        }
-        
-        this.showStatus("screenshotStatus", true);
-        
-        try {
-            const response = await fetch("/api/capture", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url })
-            });
-            
-            const result = await response.json();
-            if (result.sessionId) {
-                this.sessionId = result.sessionId;
-                localStorage.setItem('sessionId', this.sessionId);
-                this.showMessage("screenshotStatus", `Screenshots captured for ${url}`, "success");
-                this.loadImages(this.sessionId);
-            } else {
-                this.showMessage("screenshotStatus", "Failed to capture screenshot", "error");
-            }
-        } catch (error) {
-            console.error("Error:", error);
-            this.showMessage("screenshotStatus", `Failed to capture screenshot: ${error.message}`, "error");
-        } finally {
-            this.showStatus("screenshotStatus", false);
-        }
-        }
-
 
     
-        async handleUploadSubmit(event) {
+async handleScreenshotSubmit(event) {
     event.preventDefault();
-    if (!this.pendingFiles.length || !this.metadata.length) {
-        console.log("No files or metadata to upload");
+    const url = document.getElementById("url").value;
+    if (!url) {
+        this.showMessage("screenshotStatus", "Please enter a valid URL", "error");
         return;
     }
-
-    const formData = new FormData();
-    this.pendingFiles.forEach((file, index) => {
-        formData.append("images", file);
-        formData.append("title", this.metadata[index].title);
-        formData.append("description", this.metadata[index].description);
-        formData.append("artist", this.metadata[index].artist);
-    });
-
+     
+    this.showStatus("screenshotStatus", true);
+    
     try {
-        const response = await fetch(`/api/upload${this.sessionId ? `/${this.sessionId}` : ''}`, {
+        const response = await fetch("/api/capture", {
             method: "POST",
-            body: formData
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url })
         });
+        
         const result = await response.json();
-        if (result.success) {
+        if (result.sessionId) {
             this.sessionId = result.sessionId;
             localStorage.setItem('sessionId', this.sessionId);
-            
-            // Update metadata with backend filenames
-            this.metadata = result.filePaths.map((filePath, index) => ({
-                filename: filePath.split('/').pop(),
-                title: this.metadata[index].title,
-                description: this.metadata[index].description,
-                artist: this.metadata[index].artist
-            }));
-            
-            console.log("Updated metadata with backend filenames:", this.metadata);
-            
-            // ✅ ADD THIS: Reload images to display immediately
-            await this.loadImages(this.sessionId);
-            
-            // Clear upload form
-            this.pendingFiles = [];
-            document.getElementById('images').value = '';
-            this.previewContainer.innerHTML = '';
-            
-            // ✅ OPTIONAL: Show success message
-            alert(`Successfully uploaded! ${result.filePaths.length} images added to gallery.`);
+            this.showMessage("screenshotStatus", `Screenshots captured for ${url}`, "success");
+            this.loadImages(this.sessionId);
         } else {
-            throw new Error("Upload failed");
+            this.showMessage("screenshotStatus", "Failed to capture screenshot", "error");
         }
     } catch (error) {
-        console.error("Error uploading files:", error);
-        this.showMessage("shareStatus", "Failed to upload images", "error");
+        console.error("Error:", error);
+        this.showMessage("screenshotStatus", `Failed to capture screenshot: ${error.message}`, "error");
+    } finally {
+        this.showStatus("screenshotStatus", false);
     }
-}
+    }
+    
+    async handleUploadSubmit(event) {
+        event.preventDefault();
+        if (!this.pendingFiles.length || !this.metadata.length) {
+            console.log("No files or metadata to upload");
+            return;
+        }
+    
+        const formData = new FormData();
+        this.pendingFiles.forEach((file, index) => {
+            formData.append("images", file);
+            formData.append("title", this.metadata[index].title);
+            formData.append("description", this.metadata[index].description);
+            formData.append("artist", this.metadata[index].artist);
+        });
+    
+        try {
+            const response = await fetch(`/api/upload${this.sessionId ? `/${this.sessionId}` : ''}`, {
+                method: "POST",
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success) {
+                this.sessionId = result.sessionId;
+                localStorage.setItem('sessionId', this.sessionId);
+                // Update this.metadata with backend filenames
+                this.metadata = result.filePaths.map((filePath, index) => ({
+                    filename: filePath.split('/').pop(),
+                    title: this.metadata[index].title,
+                    description: this.metadata[index].description,
+                    artist: this.metadata[index].artist
+                }));
+                console.log("Updated metadata with backend filenames:", this.metadata);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                await this.loadImages(this.sessionId);
+                this.pendingFiles = [];
+                document.getElementById('images').value = '';
+                this.previewContainer.innerHTML = '';
+            } else {
+                throw new Error("Upload failed");
+            }
+        } catch (error) {
+            console.error("Error uploading files:", error);
+            this.showMessage("shareStatus", "Failed to upload images", "error");
+        }
+    }
 
+    
     showStatus(statusId, show) {
         const statusElement = document.getElementById(statusId);
         if (statusElement) {
@@ -2774,7 +2975,9 @@ getCurrentArtworkIndex() {
 }
 
 focusOnArtwork(index) {
-    if (index < 0 || index >= this.images.length) return;
+      if (index < 0 || index >= this.images.length) return;
+    
+    this.isFocused = true; // ✓ ADD THIS LINE
     
     const artwork = this.images[index];
     const artworkPos = artwork.mesh.position.clone();
@@ -2798,8 +3001,6 @@ focusOnArtwork(index) {
     this.showArtworkInfo(index);
     setTimeout(() => this.updateCameraState(), 1100);
 }
-
-
 
 smoothCameraTransition(targetPosition, lookAtPosition) {
     const startPos = this.camera.position.clone();
@@ -2845,6 +3046,160 @@ navigateToPrevArtwork() {
     this.focusOnArtwork(prevIndex);
 }
 
+showArtworkInfo(index) {
+    const metadata = this.metadata[index];
+    if (!metadata) return;
+    
+    // Remove existing info
+    const existing = document.getElementById('artworkInfo');
+    if (existing) existing.remove();
+    
+    const info = document.createElement('div');
+    info.id = 'artworkInfo';
+    info.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(0,0,0,0.9);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        max-width: 350px;
+        z-index: 1000;
+        font-family: Arial, sans-serif;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        animation: slideInLeft 0.3s ease;
+    `;
+    
+    info.innerHTML = `
+        <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #4CAF50;">${metadata.title}</h3>
+        <p style="margin: 5px 0; font-size: 14px; opacity: 0.9;">
+            <strong>Artist:</strong> ${metadata.artist}
+        </p>
+        <p style="margin: 10px 0 0 0; font-size: 13px; line-height: 1.5; opacity: 0.8;">
+            ${metadata.description}
+        </p>
+        <button id="closeArtworkInfo" style="
+            margin-top: 15px;
+            padding: 8px 16px;
+            background: #4CAF50;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        ">Close</button>
+        <style>
+            @keyframes slideInLeft {
+                from { transform: translateX(-100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        </style>
+    `;
+    
+    document.body.appendChild(info);
+    
+    document.getElementById('closeArtworkInfo').addEventListener('click', () => info.remove());
+    
+    // Auto-remove after 12 seconds
+    setTimeout(() => {
+        if (info.parentNode) {
+            info.style.animation = 'fadeOut 0.5s ease';
+            setTimeout(() => info.remove(), 500);
+        }
+    }, 12000);
+}
+
+setupMobileControls() {
+    if (!this.isMobile) return;
+    
+    const joystick = document.createElement('div');
+    joystick.id = 'virtualJoystick';
+    joystick.style.cssText = `
+        position: fixed;
+        bottom: 100px;
+        left: 30px;
+        width: 120px;
+        height: 120px;
+        background: rgba(255,255,255,0.15);
+        border: 3px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        z-index: 1000;
+        touch-action: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    `;
+    
+    const joystickKnob = document.createElement('div');
+    joystickKnob.style.cssText = `
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background: rgba(76, 175, 80, 0.7);
+        border: 2px solid rgba(255,255,255,0.5);
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        transition: all 0.1s;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    `;
+    
+    joystick.appendChild(joystickKnob);
+    document.body.appendChild(joystick);
+    
+    let joystickActive = false;
+    let joystickCenter = { x: 0, y: 0 };
+    
+    joystick.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        joystickActive = true;
+        const rect = joystick.getBoundingClientRect();
+        joystickCenter = {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+        };
+        joystickKnob.style.background = 'rgba(76, 175, 80, 0.9)';
+    }, { passive: false });
+    
+    document.addEventListener('touchmove', (e) => {
+        if (!joystickActive) return;
+        e.preventDefault();
+        
+        const touch = e.touches[0];
+        const dx = touch.clientX - joystickCenter.x;
+        const dy = touch.clientY - joystickCenter.y;
+        const maxDistance = 35;
+        
+        const clampedDx = Math.max(-maxDistance, Math.min(maxDistance, dx));
+        const clampedDy = Math.max(-maxDistance, Math.min(maxDistance, dy));
+        
+        joystickKnob.style.transform = `translate(calc(-50% + ${clampedDx}px), calc(-50% + ${clampedDy}px))`;
+        
+        // Convert to movement
+        const threshold = 8;
+        this.keys.w = clampedDy < -threshold;
+        this.keys.s = clampedDy > threshold;
+        this.keys.a = clampedDx < -threshold;
+        this.keys.d = clampedDx > threshold;
+    }, { passive: false });
+    
+    const resetJoystick = () => {
+        joystickActive = false;
+        joystickKnob.style.transform = 'translate(-50%, -50%)';
+        joystickKnob.style.background = 'rgba(76, 175, 80, 0.7)';
+        this.keys = { w: false, a: false, s: false, d: false, q: false, e: false };
+    };
+    
+    document.addEventListener('touchend', resetJoystick);
+    document.addEventListener('touchcancel', resetJoystick);
+}
+
     showAvatarInstructions() {
         const instructions = document.createElement("div");
         instructions.id = "avatarInstructions";
@@ -2855,6 +3210,7 @@ navigateToPrevArtwork() {
                 <p>Swipe to look around.</p>
                 <p>Pinch to zoom in/out.</p>
                 <p>Tap an artwork to focus, tap again to reset.</p>
+                <p>Double-tap artwork to open image slider.</p>
                 <button id="closeInstructions" style="margin-top:10px; padding:5px 10px; background:#1e90ff; border:none; color:white; border-radius:5px; cursor:pointer;">Close</button>
             `;
         } else {
@@ -2862,8 +3218,10 @@ navigateToPrevArtwork() {
                 <h3>Gallery Controls</h3>
                 <p>Click to lock pointer and start exploring.</p>
                 <p>Use W, A, S, D to move.</p>
-                <p>Mouse to look around.</p>
-                <p>Double-click an artwork to focus and scale, double-click again to reset.</p>
+                <p>Use Q and E to rotate left/right.</p>
+                <p>Mouse to look up/down.</p>
+                <p>Double-click an artwork to focus and open slider.</p>
+                <p>Hold Control key to cycle through images in slider.</p>
                 <button id="closeInstructions" style="margin-top:10px; padding:5px 10px; background:#1e90ff; border:none; color:white; border-radius:5px; cursor:pointer;">Close</button>
             `;
         }
@@ -2872,407 +3230,6 @@ navigateToPrevArtwork() {
         document.getElementById("closeInstructions").addEventListener("click", () => {
             document.body.removeChild(instructions);
         });
-    }
-
-    // ============================================================================
-    // WEB FRAME MODAL SYSTEM
-    // ============================================================================
-
-    initializeWebFrameModal() {
-        console.log("🌐 Initializing web frame modal system");
-        this.createWebFrameModalStyles();
-        this.createWebFrameModalHTML();
-        this.setupWebFrameModalEvents();
-    }
-
-    createWebFrameModalStyles() {
-        const style = document.createElement('style');
-        style.id = 'webFrameModalStyles';
-        style.textContent = `
-            .web-frame-modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.95);
-                z-index: 10000;
-                display: none;
-                flex-direction: column;
-                animation: fadeIn 0.3s ease;
-            }
-
-            .web-frame-modal.active {
-                display: flex !important;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            .web-frame-modal-header {
-                background: #1a1a1a;
-                padding: 15px 20px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 3px solid #4CAF50;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            }
-
-            .web-frame-modal-url {
-                color: #4CAF50;
-                font-family: 'Courier New', monospace;
-                font-size: 16px;
-                font-weight: bold;
-                text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
-            }
-
-            .web-frame-modal-controls {
-                display: flex;
-                gap: 10px;
-            }
-
-            .web-frame-modal-btn {
-                background: #333;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: bold;
-                transition: all 0.3s;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            }
-
-            .web-frame-modal-btn:hover {
-                background: #555;
-                transform: translateY(-2px);
-                box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-            }
-
-            .web-frame-modal-btn.close {
-                background: #e74c3c;
-            }
-
-            .web-frame-modal-btn.close:hover {
-                background: #c0392b;
-            }
-
-            .web-frame-modal-btn.new-tab {
-                background: #3498db;
-            }
-
-            .web-frame-modal-btn.new-tab:hover {
-                background: #2980b9;
-            }
-
-            .web-frame-modal-content {
-                flex: 1;
-                padding: 10px;
-                overflow: hidden;
-            }
-
-            .web-frame-modal-iframe {
-                width: 100%;
-                height: 100%;
-                border: none;
-                border-radius: 5px;
-                background: white;
-                box-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
-            }
-
-            .web-frame-indicator {
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(76, 175, 80, 0.95);
-                color: white;
-                padding: 12px 24px;
-                border-radius: 25px;
-                font-size: 14px;
-                font-weight: bold;
-                pointer-events: none;
-                z-index: 100;
-                display: none;
-                animation: slideUp 0.3s ease;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            }
-
-            @keyframes slideUp {
-                from {
-                    bottom: -50px;
-                    opacity: 0;
-                }
-                to {
-                    bottom: 20px;
-                    opacity: 1;
-                }
-            }
-
-            .web-frame-indicator.show {
-                display: block;
-            }
-
-            .web-frame-loading {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                color: white;
-                font-size: 18px;
-                text-align: center;
-            }
-
-            .web-frame-loading-spinner {
-                border: 4px solid rgba(255,255,255,0.3);
-                border-top: 4px solid #4CAF50;
-                border-radius: 50%;
-                width: 40px;
-                height: 40px;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 15px;
-            }
-
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    createWebFrameModalHTML() {
-        const modal = document.createElement('div');
-        modal.id = 'webFrameModal';
-        modal.className = 'web-frame-modal';
-        modal.innerHTML = `
-            <div class="web-frame-modal-header">
-                <div class="web-frame-modal-url" id="webFrameUrl">🌐 Loading...</div>
-                <div class="web-frame-modal-controls">
-                    <button class="web-frame-modal-btn new-tab" id="webFrameNewTab" title="Open in new browser tab">
-                        <i class="fas fa-external-link-alt"></i> New Tab
-                    </button>
-                    <button class="web-frame-modal-btn close" id="webFrameClose" title="Close and return to gallery">
-                        <i class="fas fa-times"></i> Close (ESC)
-                    </button>
-                </div>
-            </div>
-            <div class="web-frame-modal-content">
-                <div class="web-frame-loading" id="webFrameLoading">
-                    <div class="web-frame-loading-spinner"></div>
-                    <div>Loading website...</div>
-                </div>
-                <iframe 
-                    id="webFrameIframe" 
-                    class="web-frame-modal-iframe" 
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-popups-to-escape-sandbox"
-                    style="display: none;"
-                ></iframe>
-            </div>
-        `;
-        document.body.appendChild(modal);
-
-        // Create hover indicator
-        const indicator = document.createElement('div');
-        indicator.id = 'webFrameIndicator';
-        indicator.className = 'web-frame-indicator';
-        indicator.innerHTML = '<i class="fas fa-globe"></i> Click to browse this website';
-        document.body.appendChild(indicator);
-    }
-
-    setupWebFrameModalEvents() {
-        // Close button
-        document.getElementById('webFrameClose').addEventListener('click', () => {
-            this.closeWebFrameModal();
-        });
-
-        // New tab button
-        document.getElementById('webFrameNewTab').addEventListener('click', () => {
-            const url = this.activeWebModal?.url;
-            if (url) {
-                window.open(url, '_blank');
-            }
-        });
-
-        // ESC key to close
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.activeWebModal) {
-                this.closeWebFrameModal();
-            }
-        });
-
-        // Click backdrop to close
-        document.getElementById('webFrameModal').addEventListener('click', (e) => {
-            if (e.target.id === 'webFrameModal') {
-                this.closeWebFrameModal();
-            }
-        });
-
-        // Mouse move for hover indicator
-        this.renderer.domElement.addEventListener('mousemove', (e) => {
-            this.handleWebFrameHover(e);
-        });
-
-        // Iframe load event
-        document.getElementById('webFrameIframe').addEventListener('load', () => {
-            document.getElementById('webFrameLoading').style.display = 'none';
-            document.getElementById('webFrameIframe').style.display = 'block';
-        });
-    }
-
-    tagMeshAsWebFrame(mesh, url) {
-        mesh.userData.isWebFrame = true;
-        mesh.userData.webUrl = url;
-        
-        this.webFrameData.push({
-            mesh: mesh,
-            url: url
-        });
-
-        console.log(`📄 Tagged mesh as web frame: ${url}`);
-    }
-
-    openWebFrameModal(url) {
-        console.log(`🌐 Opening web frame modal for: ${url}`);
-
-        // Unlock pointer lock if active
-        if (!this.isMobile && this.controls.isLocked) {
-            this.controls.unlock();
-        }
-
-        const modal = document.getElementById('webFrameModal');
-        const iframe = document.getElementById('webFrameIframe');
-        const urlDisplay = document.getElementById('webFrameUrl');
-        const loading = document.getElementById('webFrameLoading');
-
-        // Reset state
-        loading.style.display = 'block';
-        iframe.style.display = 'none';
-        iframe.src = 'about:blank';
-
-        // Set new URL
-        urlDisplay.innerHTML = `🌐 ${url}`;
-        modal.classList.add('active');
-
-        // Load iframe after a brief delay (smoother transition)
-        setTimeout(() => {
-            iframe.src = url;
-        }, 100);
-
-        this.activeWebModal = { url, modal, iframe };
-
-        // Hide gallery UI
-        const uiOverlay = document.getElementById('ui-overlay');
-        if (uiOverlay) uiOverlay.style.opacity = '0';
-        if (uiOverlay) uiOverlay.style.pointerEvents = 'none';
-
-        console.log("✅ Modal opened successfully");
-    }
-
-    closeWebFrameModal() {
-        console.log('🔒 Closing web frame modal');
-
-        const modal = document.getElementById('webFrameModal');
-        const iframe = document.getElementById('webFrameIframe');
-
-        modal.classList.remove('active');
-        
-        // Clear iframe after animation
-        setTimeout(() => {
-            iframe.src = 'about:blank';
-        }, 300);
-
-        this.activeWebModal = null;
-
-        // Restore gallery UI
-        const uiOverlay = document.getElementById('ui-overlay');
-        if (uiOverlay) uiOverlay.style.opacity = '1';
-        if (uiOverlay) uiOverlay.style.pointerEvents = 'auto';
-
-        // Show return message
-        this.showWebFrameTempMessage('🎮 Returned to gallery');
-    }
-
-    handleWebFrameHover(event) {
-        if (this.activeWebModal) return;
-
-        const mouse = new THREE.Vector2();
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        this.raycaster.setFromCamera(mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-
-        let hoveredWebFrame = false;
-        for (let intersect of intersects) {
-            if (intersect.object.userData.isWebFrame) {
-                hoveredWebFrame = true;
-                break;
-            }
-        }
-
-        const indicator = document.getElementById('webFrameIndicator');
-        if (hoveredWebFrame) {
-            indicator.classList.add('show');
-        } else {
-            indicator.classList.remove('show');
-        }
-    }
-
-    handleWebFrameClick(event) {
-        if (this.activeWebModal) return false;
-
-        const mouse = new THREE.Vector2();
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        this.raycaster.setFromCamera(mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-
-        for (let intersect of intersects) {
-            if (intersect.object.userData.isWebFrame) {
-                const url = intersect.object.userData.webUrl;
-                this.openWebFrameModal(url);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    showWebFrameTempMessage(message) {
-        const existing = document.getElementById('webFrameTempMessage');
-        if (existing) existing.remove();
-
-        const messageDiv = document.createElement('div');
-        messageDiv.id = 'webFrameTempMessage';
-        messageDiv.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(76, 175, 80, 0.95);
-            color: white;
-            padding: 15px 30px;
-            border-radius: 25px;
-            z-index: 9999;
-            font-family: Arial, sans-serif;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            animation: slideDown 0.3s ease;
-        `;
-        messageDiv.textContent = message;
-        document.body.appendChild(messageDiv);
-
-        setTimeout(() => {
-            messageDiv.style.animation = 'fadeOut 0.3s ease';
-            setTimeout(() => {
-                if (messageDiv.parentNode) messageDiv.remove();
-            }, 300);
-        }, 2000);
     }
 }
 

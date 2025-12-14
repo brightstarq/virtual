@@ -48,24 +48,35 @@ class CustomPointerLockControls extends PointerLockControls {
 }
 
 class ThreeJSApp {
-    constructor() {
-        this.scene = new THREE.Scene();
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        
-        this.roomCameraSettings = [
-            { position: new THREE.Vector3(0, 1.6, 10), lookAt: new THREE.Vector3(0, 1.6, 0) }
-        ];
-        const initialSettings = this.roomCameraSettings[0];
-        this.camera.position.copy(initialSettings.position);
-        this.camera.lookAt(initialSettings.lookAt);
+ constructor() {
+    this.scene = new THREE.Scene();
+    this.scene.fog = new THREE.Fog(0x1a1a1a, 10, 50); // ✓ ADDED: Atmospheric fog
+    
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    
+ this.roomCameraSettings = [
+    { position: new THREE.Vector3(0, 1.6, 28), lookAt: new THREE.Vector3(0, 1.6, 0) }
+];
 
-        this.renderer = new THREE.WebGLRenderer({ alpha: false, antialias: true, preserveDrawingBuffer: true });
-        this.renderer.setClearColor(0x000000, 1);
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(this.renderer.domElement);
+    const initialSettings = this.roomCameraSettings[0];
+    this.camera.position.copy(initialSettings.position);
+    this.camera.lookAt(initialSettings.lookAt);
+
+    this.renderer = new THREE.WebGLRenderer({ 
+        alpha: false, 
+        antialias: true, 
+        preserveDrawingBuffer: true,
+        powerPreference: "high-performance" // ✓ ADDED
+    });
+    this.renderer.setClearColor(0x1a1a1a, 1); // ✓ FIXED: Darker background
+    this.renderer.shadowMap.enabled = false;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // ✓ FIXED: Cap pixel ratio
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping; // ✓ ADDED: Better tone mapping
+    this.renderer.toneMappingExposure = 1.0;
+    
+    document.body.appendChild(this.renderer.domElement);
         this.isSliderActive = false;
         this.currentSliderIndex = 0;
         this.sliderImages = [];
@@ -140,7 +151,7 @@ class ThreeJSApp {
         this.createGallery();
         this.setupAudio();
         this.setupEventListeners();
-        this.createAvatar();
+        // this.createAvatar();
 
         this.isLoading = true;
         this.showPreloader();
@@ -263,264 +274,1718 @@ this.setupMobileControls();
             }, 500);
         }
     }
-    addLighting() {
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        this.scene.add(ambientLight);
+  addLighting() {
+    // ✓ FIXED: Reduced ambient for more dramatic lighting
+    this.scene.fog = new THREE.FogExp2(0x1a1a1a, 0.008); // Dark fog
+    
+    // Reduced ambient (dramatic shadows)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+    this.scene.add(ambientLight);
+   
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(0, 20, 20);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 100;
-        this.scene.add(directionalLight);
+    
+    // ✓ FIXED: Main directional light (softer, more realistic)
+    const mainLight = new THREE.DirectionalLight(0xffffff, 0.8); // was 1.2
+    mainLight.position.set(10, 20, 10);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 2048;
+    mainLight.shadow.mapSize.height = 2048;
+    mainLight.shadow.camera.near = 0.5;
+    mainLight.shadow.camera.far = 50;
+    mainLight.shadow.camera.left = -25;
+    mainLight.shadow.camera.right = 25;
+    mainLight.shadow.camera.top = 25;
+    mainLight.shadow.camera.bottom = -25;
+    mainLight.shadow.bias = -0.0005; // ✓ ADDED
+    this.scene.add(mainLight);
+    
+    // ✓ FIXED: Fill light (warmer tone)
+    const fillLight = new THREE.DirectionalLight(0xfff5e6, 0.3); // was 0xffffff, 0.4
+    fillLight.position.set(-15, 15, -10);
+    this.scene.add(fillLight);
+}
+
+
+
+createGallery() {
+    const room1 = new THREE.Group();
+    
+    // ========================================
+    // MATERIALS LIBRARY - RAW INDUSTRIAL
+    // ========================================
+    
+    // 1. Raw board-formed concrete
+    const rawConcreteMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4a4a4a,
+        roughness: 0.9,
+        metalness: 0.05,
+        envMapIntensity: 0.3
+    });
+    
+    // Generate concrete texture
+    const concreteTexture = this.generateBoardFormedConcrete(2048, 2048);
+    const concreteTextureObj = new THREE.Texture(concreteTexture);
+    concreteTextureObj.needsUpdate = true;
+    concreteTextureObj.wrapS = concreteTextureObj.wrapT = THREE.RepeatWrapping;
+    concreteTextureObj.repeat.set(4, 4);
+    rawConcreteMaterial.map = concreteTextureObj;
+    
+    // 2. Acid-stained polished concrete floor
+    const polishedFloorMaterial = new THREE.MeshStandardMaterial({
+        color: 0x3d2b1f,
+        roughness: 0.3,
+        metalness: 0.2,
+        envMapIntensity: 0.8
+    });
+    
+    // 3. Weathered rusted steel
+    const rustedSteelMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8b4513,
+        roughness: 0.85,
+        metalness: 0.3,
+        envMapIntensity: 0.5
+    });
+    
+    // 4. Chrome pipes and railings
+    const chromeMaterial = new THREE.MeshStandardMaterial({
+        color: 0xc0c0c0,
+        roughness: 0.1,
+        metalness: 1.0,
+        envMapIntensity: 2.0
+    });
+    
+    // 5. Industrial steel grating (semi-transparent)
+    const gratingMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a2a2a,
+        roughness: 0.8,
+        metalness: 0.9,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide
+    });
+    
+    // 6. Exposed steel I-beams
+    const iBeamMaterial = new THREE.MeshStandardMaterial({
+        color: 0x5a5a5a,
+        roughness: 0.7,
+        metalness: 0.8
+    });
+    
+ 
+    
+    // 8. Graffiti/street art surface
+    const graffitiMaterial = new THREE.MeshStandardMaterial({
+        color: 0x888888,
+        roughness: 0.8,
+        metalness: 0.1
+    });
+    
+    // 9. Frosted industrial glass
+    const industrialGlassMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transmission: 0.7,
+        thickness: 0.5,
+        roughness: 0.4,
+        transparent: true,
+        opacity: 0.6
+    });
+    
+    // ========================================
+    // MASSIVE CONCRETE SHELL STRUCTURE
+    // ========================================
+    
+    const warehouseWidth = 80;
+    const warehouseDepth = 60;
+    const warehouseHeight = 25;
+    
+    // Main polished concrete floor with acid-stain pattern
+    const mainFloor = new THREE.Mesh(
+        new THREE.PlaneGeometry(warehouseWidth, warehouseDepth),
+        polishedFloorMaterial
+    );
+    mainFloor.rotation.x = -Math.PI / 2;
+    mainFloor.receiveShadow = true;
+    room1.add(mainFloor);
+    
+    // Crack lines and expansion joints
+    const crackPositions = [-20, -10, 0, 10, 20];
+    crackPositions.forEach(pos => {
+        // Longitudinal cracks
+        const crackX = new THREE.Mesh(
+            new THREE.BoxGeometry(warehouseWidth * 0.95, 0.05, 0.1),
+            new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 1.0
+            })
+        );
+        crackX.position.set(0, 0.01, pos);
+        crackX.receiveShadow = true;
+        room1.add(crackX);
+        
+        // Lateral cracks
+        const crackZ = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 0.05, warehouseDepth * 0.95),
+            new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 1.0
+            })
+        );
+        crackZ.position.set(pos, 0.01, 0);
+        crackZ.receiveShadow = true;
+        room1.add(crackZ);
+    });
+    
+    // Random oil stains and water damage
+    for (let i = 0; i < 15; i++) {
+        const stain = new THREE.Mesh(
+            new THREE.CircleGeometry(Math.random() * 2 + 0.5, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.95,
+                transparent: true,
+                opacity: 0.6
+            })
+        );
+        stain.position.set(
+            (Math.random() - 0.5) * warehouseWidth * 0.9,
+            0.02,
+            (Math.random() - 0.5) * warehouseDepth * 0.9
+        );
+        stain.rotation.x = -Math.PI / 2;
+        room1.add(stain);
     }
-
-    createGallery() {
-        const textureLoader = new THREE.TextureLoader();
-
-        const floorMaterial = new THREE.MeshStandardMaterial({
-            color: 0xf0e8e0,
-            roughness: 0.3,
-            metalness: 0.1
-        });
-        const noiseTexture = new THREE.Texture(this.generateNoiseCanvas(256, 256));
-        noiseTexture.needsUpdate = true;
-        noiseTexture.wrapS = noiseTexture.wrapT = THREE.RepeatWrapping;
-        noiseTexture.repeat.set(16, 16);
-        floorMaterial.map = noiseTexture;
-
-        const ceilingMaterial = new THREE.MeshStandardMaterial({
-            color: 0xe0e0e0,
-            roughness: 0.3,
-            metalness: 0.2
-        });
-
-        const glassMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0x90a4ae,
-            transparent: true,
-            opacity: 0.5,
-            roughness: 0.1,
-            metalness: 0.4,
-            transmission: 0.9,
-            clearcoat: 0.5
-        });
-
-        const frameMaterial = new THREE.MeshStandardMaterial({
-            color: 0x212121,
-            roughness: 0.3,
-            metalness: 0.8
-        });
-
-        const wallMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.3,
-            metalness: 0.0
-        });
-
-        const charcoalWallMaterial = new THREE.MeshStandardMaterial({
-            color: 0x424242,
-            roughness: 0.4,
-            metalness: 0.3
-        });
-        const wallTexture = new THREE.Texture(this.generateModernWallTexture(256, 256));
-        wallTexture.needsUpdate = true;
-        wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
-        wallTexture.repeat.set(4, 4);
-        charcoalWallMaterial.normalMap = wallTexture;
-        charcoalWallMaterial.normalScale.set(0.3, 0.3);
-
-        this.ledMaterial = new THREE.MeshStandardMaterial({
-            color: 0xe0e0e0,
-            emissive: 0xe0e0e0,
-            emissiveIntensity: 1.2,
-            roughness: 0.2,
-            metalness: 0.5
-        });
-
-        const room1 = new THREE.Group();
-        const radius = 20;
-        const height = 12;
-
-        const floor1 = new THREE.Mesh(new THREE.CircleGeometry(radius, 64), floorMaterial);
-        floor1.rotation.x = -Math.PI / 2;
-        floor1.position.y = 0;
-        floor1.receiveShadow = true;
-        room1.add(floor1);
-
-        const ceilingGroup = new THREE.Group();
-        const panelRadius = 2;
-        const panelDepth = 0.2;
-        const panelGeometry = new THREE.CylinderGeometry(panelRadius, panelRadius, panelDepth, 6);
-        for (let y = -4; y <= 4; y++) {
-            for (let x = -4; x <= 4; x++) {
-                const panel = new THREE.Mesh(panelGeometry, ceilingMaterial);
-                const offsetX = x * panelRadius * 1.8 + (y % 2 === 0 ? 0 : panelRadius * 0.9);
-                const offsetY = y * panelRadius * 1.5;
-                if (Math.sqrt(offsetX * offsetX + offsetY * offsetY) < radius - 2) {
-                    panel.position.set(offsetX, height - panelDepth / 2, offsetY);
-                    panel.rotation.x = Math.PI / 2;
-                    panel.receiveShadow = true;
-                    ceilingGroup.add(panel);
-                }
-            }
-        }
-        room1.add(ceilingGroup);
-
-        this.ceilingLights = [];
+    
+    // ========================================
+    // MASSIVE CONCRETE COLUMNS (2m diameter)
+    // ========================================
+    
+    const columnPositions = [
+        { x: -30, z: -20 }, { x: -30, z: 0 }, { x: -30, z: 20 },
+        { x: 0, z: -20 }, { x: 0, z: 20 },
+        { x: 30, z: -20 }, { x: 30, z: 0 }, { x: 30, z: 20 }
+    ];
+    
+    columnPositions.forEach(pos => {
+        const column = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.0, 1.2, warehouseHeight, 16),
+            rawConcreteMaterial
+        );
+        column.position.set(pos.x, warehouseHeight / 2, pos.z);
+        column.castShadow = true;
+        column.receiveShadow = true;
+        room1.add(column);
+        
+        // Rebar exposed at top (weathering damage)
         for (let i = 0; i < 6; i++) {
             const angle = (i / 6) * Math.PI * 2;
-            const lightGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.05, 32);
-            const light = new THREE.Mesh(lightGeometry, this.ledMaterial);
-            light.position.set(Math.cos(angle) * (radius - 4), height - 0.025, Math.sin(angle) * (radius - 4));
-            light.rotation.x = Math.PI / 2;
-            room1.add(light);
-
-            const spotLight = new THREE.SpotLight(0xffffff, 1.5, 15, Math.PI / 6, 0.5);
-            spotLight.position.set(Math.cos(angle) * (radius - 4), height - 0.1, Math.sin(angle) * (radius - 4));
-            spotLight.target.position.set(Math.cos(angle) * (radius - 4), 0, Math.sin(angle) * (radius - 4));
-            spotLight.castShadow = true;
-            room1.add(spotLight);
-            room1.add(spotLight.target);
-            this.ceilingLights.push({ mesh: light, spot: spotLight });
-        }
-
-        this.glassSpotlights = [];
-        const glassSegments = 12;
-        for (let i = 0; i < glassSegments; i++) {
-            const angle = (i / glassSegments) * Math.PI * 2;
-            const windowWidth = (Math.PI * 2 * radius) / glassSegments;
-
-            const glassShape = new THREE.Shape();
-            glassShape.moveTo(-windowWidth / 2, 0);
-            glassShape.lineTo(windowWidth / 2, 0);
-            glassShape.lineTo(windowWidth / 2 - 0.5, height - 1.5);
-            glassShape.lineTo(-windowWidth / 2 + 0.5, height - 1.5);
-            glassShape.lineTo(-windowWidth / 2, 0);
-            const glassGeometry = new THREE.ExtrudeGeometry(glassShape, { depth: 0.1, bevelEnabled: false });
-            const glass = new THREE.Mesh(glassGeometry, glassMaterial);
-            glass.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-            glass.rotation.y = angle + Math.PI / 2;
-            glass.castShadow = true;
-            glass.receiveShadow = true;
-            glass.userData = { baseIntensity: 0.8 };
-            room1.add(glass);
-
-            const frameTopGeometry = new THREE.BoxGeometry(windowWidth * 0.95, 0.2, 0.2);
-            const frameTop = new THREE.Mesh(frameTopGeometry, frameMaterial);
-            frameTop.position.set(Math.cos(angle) * radius, height - 0.1, Math.sin(angle) * radius);
-            frameTop.rotation.y = angle + Math.PI / 2;
-            frameTop.rotation.z = Math.PI / 12;
-            frameTop.castShadow = true;
-            room1.add(frameTop);
-
-            const frameSideGeometry = new THREE.BoxGeometry(0.15, height - 1.5, 0.15);
-            const frameLeft = new THREE.Mesh(frameSideGeometry, frameMaterial);
-            frameLeft.position.set(
-                Math.cos(angle) * radius - Math.sin(angle) * (windowWidth / 2 - 0.1),
-                (height - 1.5) / 2,
-                Math.sin(angle) * radius + Math.cos(angle) * (windowWidth / 2 - 0.1)
+            const rebar = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.03, 1.5, 8),
+                rustedSteelMaterial
             );
-            frameLeft.rotation.y = angle + Math.PI / 2;
-            frameLeft.castShadow = true;
-            room1.add(frameLeft);
-
-            const frameRight = new THREE.Mesh(frameSideGeometry, frameMaterial);
-            frameRight.position.set(
-                Math.cos(angle) * radius + Math.sin(angle) * (windowWidth / 2 - 0.1),
-                (height - 1.5) / 2,
-                Math.sin(angle) * radius - Math.cos(angle) * (windowWidth / 2 - 0.1)
+            rebar.position.set(
+                pos.x + Math.cos(angle) * 0.9,
+                warehouseHeight - 0.75,
+                pos.z + Math.sin(angle) * 0.9
             );
-            frameRight.rotation.y = angle + Math.PI / 2;
-            frameRight.castShadow = true;
-            room1.add(frameRight);
-
-            const accentGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.3, 32);
-            const accentLight = new THREE.Mesh(accentGeometry, this.ledMaterial);
-            accentLight.position.set(Math.cos(angle) * radius, height - 0.4, Math.sin(angle) * radius);
-            accentLight.rotation.y = angle + Math.PI / 2;
-            accentLight.rotation.x = -Math.PI / 4;
-            room1.add(accentLight);
-
-            const spotLight = new THREE.SpotLight(0xffffff, 0.8, 10, Math.PI / 8, 0.7);
-            spotLight.position.copy(accentLight.position);
-            spotLight.target.position.set(
-                Math.cos(angle) * radius,
-                (height - 1.5) / 2,
-                Math.sin(angle) * radius
+            rebar.castShadow = true;
+            room1.add(rebar);
+        }
+        
+        // Water damage/rust stains running down
+        const stain = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.5, 8),
+            new THREE.MeshStandardMaterial({
+                color: 0x8b4513,
+                transparent: true,
+                opacity: 0.4,
+                side: THREE.DoubleSide
+            })
+        );
+        stain.position.set(pos.x, warehouseHeight / 2, pos.z + 1.0);
+        room1.add(stain);
+    });
+    
+    // ========================================
+    // EXPOSED STEEL I-BEAMS & TRUSSES
+    // ========================================
+    
+    // Main overhead beams (spanning width)
+    for (let z = -25; z <= 25; z += 10) {
+        const beam = new THREE.Mesh(
+            new THREE.BoxGeometry(warehouseWidth, 0.6, 0.4),
+            iBeamMaterial
+        );
+        beam.position.set(0, warehouseHeight - 2, z);
+        beam.castShadow = true;
+        room1.add(beam);
+        
+        // Cross bracing
+        for (let x = -35; x <= 35; x += 10) {
+            const brace = new THREE.Mesh(
+                new THREE.BoxGeometry(0.2, 0.2, 12),
+                iBeamMaterial
             );
-            spotLight.castShadow = true;
-            room1.add(spotLight);
-            room1.add(spotLight.target);
-            this.glassSpotlights.push({ mesh: accentLight, spot: spotLight, position: spotLight.position.clone() });
+            brace.position.set(x, warehouseHeight - 2, z);
+            brace.rotation.x = Math.PI / 6;
+            brace.castShadow = true;
+            room1.add(brace);
         }
-
-        this.wallLights = [];
-        const charcoalWallHeight = 8;
-        const charcoalWallWidth = 4;
-        for (let i = 0; i < 4; i++) {
-            const angle = (i / 4) * Math.PI * 2 + Math.PI / 8;
-            const wallGroup = new THREE.Group();
-
-            const baseGeometry = new THREE.PlaneGeometry(charcoalWallWidth, charcoalWallHeight);
-            const baseWall = new THREE.Mesh(baseGeometry, charcoalWallMaterial);
-            baseWall.position.set(0, charcoalWallHeight / 2, 0);
-            baseWall.castShadow = true;
-            baseWall.receiveShadow = true;
-            wallGroup.add(baseWall);
-
-            const hexRadiusDense = 0.4;
-            const hexDepthDense = 0.35;
-            const hexGeometryDense = new THREE.CylinderGeometry(hexRadiusDense, hexRadiusDense, hexDepthDense, 6);
-            for (let y = 0; y < 6; y++) {
-                for (let x = 0; x < 5; x++) {
-                    const hex = new THREE.Mesh(hexGeometryDense, charcoalWallMaterial);
-                    const offsetX = (x - 2) * hexRadiusDense * 1.5 + (y % 2 === 0 ? 0 : hexRadiusDense * 0.75);
-                    const offsetY = (y - 2.5) * hexRadiusDense * 1.3;
-                    hex.position.set(offsetX, offsetY + charcoalWallHeight / 2, hexDepthDense / 2);
-                    hex.rotation.x = Math.PI / 2;
-                    hex.castShadow = true;
-                    hex.receiveShadow = true;
-                    wallGroup.add(hex);
-                }
-            }
-
-            const ledGeometry = new THREE.BoxGeometry(0.1, charcoalWallHeight * 0.85, 0.1);
-            const ledLeft = new THREE.Mesh(ledGeometry, this.ledMaterial);
-            ledLeft.position.set(-charcoalWallWidth / 2 + 0.2, charcoalWallHeight / 2, hexDepthDense + 0.05);
-            wallGroup.add(ledLeft);
-
-            const ledRight = new THREE.Mesh(ledGeometry, this.ledMaterial);
-            ledRight.position.set(charcoalWallWidth / 2 - 0.2, charcoalWallHeight / 2, hexDepthDense + 0.05);
-            wallGroup.add(ledRight);
-
-            this.wallLights.push({ left: ledLeft, right: ledRight, position: wallGroup.position.clone() });
-
-            wallGroup.position.set(Math.cos(angle) * (radius - 2), 0, Math.sin(angle) * (radius - 2));
-            wallGroup.rotation.y = angle + Math.PI / 2;
-            room1.add(wallGroup);
-        }
-
-        const pillarGeometry = new THREE.CylinderGeometry(1, 1, height, 32);
-        const pillar = new THREE.Mesh(pillarGeometry, wallMaterial);
-        pillar.position.set(0, height / 2, 0);
-        pillar.castShadow = true;
-        pillar.receiveShadow = true;
-        room1.add(pillar);
-
-        const plantGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.7, 32);
-        const plantMaterial = new THREE.MeshStandardMaterial({ color: 0x616161 });
-        const plant = new THREE.Mesh(plantGeometry, plantMaterial);
-        plant.position.set(0, 0.85, -10);
-        room1.add(plant);
-
-        room1.position.set(0, 0, 0);
-        this.rooms.push(room1);
-
-        this.rooms.forEach(room => this.scene.add(room));
     }
+    
+    // Roof trusses
+    for (let x = -30; x <= 30; x += 15) {
+        // Top chord
+        const topChord = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.3, warehouseDepth),
+            iBeamMaterial
+        );
+        topChord.position.set(x, warehouseHeight - 1, 0);
+        topChord.castShadow = true;
+        room1.add(topChord);
+        
+        // Diagonal web members
+        for (let z = -25; z < 25; z += 10) {
+            const web = new THREE.Mesh(
+                new THREE.BoxGeometry(0.15, 0.15, 12),
+                iBeamMaterial
+            );
+            web.position.set(x, warehouseHeight - 2, z + 5);
+            web.rotation.x = Math.PI / 4;
+            room1.add(web);
+        }
+    }
+    
+    // ========================================
+    // STEEL GRATING CATWALKS (Multi-Level)
+    // ========================================
+    
+    this.catwalks = [];
+    
+    // Mezzanine Level 1 (8m high)
+    const mezzanine1Paths = [
+        { start: [-35, 8, -25], end: [-35, 8, 25] },
+        { start: [35, 8, -25], end: [35, 8, 25] },
+        { start: [-35, 8, -25], end: [35, 8, -25] },
+        { start: [-35, 8, 25], end: [35, 8, 25] }
+    ];
+    
+    mezzanine1Paths.forEach(path => {
+        const length = Math.sqrt(
+            Math.pow(path.end[0] - path.start[0], 2) +
+            Math.pow(path.end[2] - path.start[2], 2)
+        );
+        
+        const catwalk = new THREE.Mesh(
+            new THREE.BoxGeometry(2.0, 0.1, length),
+            gratingMaterial
+        );
+        
+        const midX = (path.start[0] + path.end[0]) / 2;
+        const midZ = (path.start[2] + path.end[2]) / 2;
+        
+        catwalk.position.set(midX, 8, midZ);
+        
+        if (path.start[0] !== path.end[0]) {
+            catwalk.rotation.y = 0;
+        } else {
+            catwalk.rotation.y = Math.PI / 2;
+        }
+        
+        catwalk.receiveShadow = true;
+        catwalk.castShadow = true;
+        room1.add(catwalk);
+        this.catwalks.push(catwalk);
+        
+        // Safety railings (chain-link)
+        const railing1 = new THREE.Mesh(
+            new THREE.BoxGeometry(0.05, 1.2, length),
+            chromeMaterial
+        );
+        railing1.position.set(midX + (catwalk.rotation.y === 0 ? 0 : 1.0), 8.6, midZ + (catwalk.rotation.y === 0 ? 1.0 : 0));
+        room1.add(railing1);
+        
+        const railing2 = new THREE.Mesh(
+            new THREE.BoxGeometry(0.05, 1.2, length),
+            chromeMaterial
+        );
+        railing2.position.set(midX - (catwalk.rotation.y === 0 ? 0 : 1.0), 8.6, midZ - (catwalk.rotation.y === 0 ? 1.0 : 0));
+        room1.add(railing2);
+    });
+    
+    // Mezzanine Level 2 (15m high)
+    const mezzanine2Positions = [
+        { x: -25, z: -20, size: 8 },
+        { x: 25, z: -20, size: 8 },
+        { x: -25, z: 20, size: 8 },
+        { x: 25, z: 20, size: 8 }
+    ];
+    
+    mezzanine2Positions.forEach(pos => {
+        const platform = new THREE.Mesh(
+            new THREE.BoxGeometry(pos.size, 0.3, pos.size),
+            rawConcreteMaterial
+        );
+        platform.position.set(pos.x, 15, pos.z);
+        platform.castShadow = true;
+        platform.receiveShadow = true;
+        room1.add(platform);
+        
+        // Cantilevered edge beam
+        const edgeBeam = new THREE.Mesh(
+            new THREE.BoxGeometry(pos.size + 0.4, 0.5, 0.3),
+            iBeamMaterial
+        );
+        edgeBeam.position.set(pos.x, 14.85, pos.z + pos.size / 2);
+        edgeBeam.castShadow = true;
+        room1.add(edgeBeam);
+        
+        // Precarious safety cage (chain-link fencing)
+        for (let side = 0; side < 4; side++) {
+            const fence = new THREE.Mesh(
+                new THREE.PlaneGeometry(pos.size, 2.0),
+                new THREE.MeshStandardMaterial({
+                    color: 0x5a5a5a,
+                    transparent: true,
+                    opacity: 0.5,
+                    side: THREE.DoubleSide
+                })
+            );
+            
+            const angle = (side * Math.PI) / 2;
+            fence.position.set(
+                pos.x + Math.cos(angle) * (pos.size / 2),
+                16,
+                pos.z + Math.sin(angle) * (pos.size / 2)
+            );
+            fence.rotation.y = angle;
+            room1.add(fence);
+        }
+    });
+    
+    // Industrial ladder access to mezzanines
+    const ladderPositions = [
+        { x: -35, z: -25 },
+        { x: 35, z: 25 }
+    ];
+    
+    ladderPositions.forEach(pos => {
+        for (let y = 0; y < 8; y += 0.4) {
+            const rung = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8),
+                chromeMaterial
+            );
+            rung.position.set(pos.x, y, pos.z);
+            rung.rotation.z = Math.PI / 2;
+            rung.castShadow = true;
+            room1.add(rung);
+        }
+        
+        // Side rails
+        const rail1 = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.06, 8, 8),
+            chromeMaterial
+        );
+        rail1.position.set(pos.x - 0.4, 4, pos.z);
+        rail1.castShadow = true;
+        room1.add(rail1);
+        
+        const rail2 = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.06, 8, 8),
+            chromeMaterial
+        );
+        rail2.position.set(pos.x + 0.4, 4, pos.z);
+        rail2.castShadow = true;
+        room1.add(rail2);
+    });
+    
+    // ========================================
+    // MASSIVE SKYLIGHTS (Grid Pattern)
+    // ========================================
+    
+    const skylightPositions = [
+        { x: -25, z: -15 }, { x: 0, z: -15 }, { x: 25, z: -15 },
+        { x: -25, z: 0 }, { x: 0, z: 0 }, { x: 25, z: 0 },
+        { x: -25, z: 15 }, { x: 0, z: 15 }, { x: 25, z: 15 }
+    ];
+    
+    skylightPositions.forEach((pos, index) => {
+        // Frosted industrial glass panel
+        const skylight = new THREE.Mesh(
+            new THREE.BoxGeometry(12, 0.2, 8),
+            industrialGlassMaterial
+        );
+        skylight.position.set(pos.x, warehouseHeight - 0.1, pos.z);
+        skylight.receiveShadow = true;
+        room1.add(skylight);
+        
+        // Some skylights are "broken" (missing glass)
+        if (index === 2 || index === 7) {
+            skylight.visible = false;
+            
+            // Broken glass shards on floor below
+            for (let i = 0; i < 8; i++) {
+                const shard = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.3 + Math.random() * 0.5, 0.5 + Math.random() * 0.8),
+                    new THREE.MeshStandardMaterial({
+                        color: 0xffffff,
+                        transparent: true,
+                        opacity: 0.7,
+                        side: THREE.DoubleSide
+                    })
+                );
+                shard.position.set(
+                    pos.x + (Math.random() - 0.5) * 10,
+                    0.05,
+                    pos.z + (Math.random() - 0.5) * 6
+                );
+                shard.rotation.x = -Math.PI / 2;
+                shard.rotation.z = Math.random() * Math.PI;
+                room1.add(shard);
+            }
+        }
+        
+        // Metal frame around skylight
+        const frame = new THREE.Mesh(
+            new THREE.BoxGeometry(12.4, 0.3, 8.4),
+            iBeamMaterial
+        );
+        frame.position.set(pos.x, warehouseHeight - 0.25, pos.z);
+        frame.castShadow = true;
+        room1.add(frame);
+        
+        // God rays coming through (especially broken ones)
+        if (index === 2 || index === 7) {
+            const godRay = new THREE.SpotLight(0xffffee, 4.0, 30, Math.PI / 6, 0.8);
+            godRay.position.set(pos.x, warehouseHeight - 0.5, pos.z);
+            godRay.target.position.set(pos.x, 0, pos.z);
+            godRay.castShadow = true;
+            godRay.shadow.mapSize.width = 1024;
+            godRay.shadow.mapSize.height = 1024;
+            room1.add(godRay);
+            room1.add(godRay.target);
+        }
+    });
+    
+    // ========================================
+    // GIANT FREIGHT ELEVATOR (INTERACTIVE)
+    // ========================================
+    
+    const elevatorGroup = new THREE.Group();
+    
+    // Elevator platform (5m × 5m)
+    const elevatorPlatform = new THREE.Mesh(
+        new THREE.BoxGeometry(5, 0.3, 5),
+        gratingMaterial
+    );
+    elevatorPlatform.position.set(0, 0.15, -28);
+    elevatorPlatform.castShadow = true;
+    elevatorPlatform.receiveShadow = true;
+    elevatorGroup.add(elevatorPlatform);
+    
+    // Safety cage (yellow industrial color)
+    const cageMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffcc00,
+        roughness: 0.6,
+        metalness: 0.8
+    });
+    
+    // Cage frame
+    for (let i = 0; i < 4; i++) {
+        const angle = (i * Math.PI) / 2;
+        const post = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 3.0, 0.1),
+            cageMaterial
+        );
+        post.position.set(
+            Math.cos(angle) * 2.4,
+            1.5,
+            -28 + Math.sin(angle) * 2.4
+        );
+        elevatorGroup.add(post);
+    }
+    
+    // Cage mesh walls
+    for (let side = 0; side < 4; side++) {
+        const wall = new THREE.Mesh(
+            new THREE.PlaneGeometry(5, 3),
+            new THREE.MeshStandardMaterial({
+                color: 0xffcc00,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.DoubleSide
+            })
+        );
+        wall.position.set(
+            side % 2 === 0 ? 0 : (side === 1 ? 2.5 : -2.5),
+            1.5,
+            side % 2 === 1 ? -28 : (side === 0 ? -30.5 : -25.5)
+        );
+        wall.rotation.y = side % 2 === 0 ? 0 : Math.PI / 2;
+        elevatorGroup.add(wall);
+    }
+    
+    // Exposed cables (4 corners)
+    for (let i = 0; i < 4; i++) {
+        const angle = (i * Math.PI) / 2 + Math.PI / 4;
+        const cable = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.04, 0.04, warehouseHeight + 5, 8),
+            new THREE.MeshStandardMaterial({
+                color: 0x3a3a3a,
+                roughness: 0.8,
+                metalness: 0.7
+            })
+        );
+        cable.position.set(
+            Math.cos(angle) * 2.3,
+            warehouseHeight / 2 + 2.5,
+            -28 + Math.sin(angle) * 2.3
+        );
+        room1.add(cable);
+    }
+    
+    // Control panel on wall
+    const controlPanel = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.8, 0.1),
+        new THREE.MeshStandardMaterial({
+            color: 0x2a2a2a,
+            roughness: 0.5,
+            metalness: 0.7
+        })
+    );
+    controlPanel.position.set(-3, 1.6, -30.5);
+    room1.add(controlPanel);
+    
+    // Elevator buttons (3 levels)
+    for (let i = 0; i < 3; i++) {
+        const button = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.08, 0.05, 16),
+            new THREE.MeshStandardMaterial({
+                color: i === 0 ? 0x00ff00 : 0xff0000,
+                emissive: i === 0 ? 0x00ff00 : 0xff0000,
+                emissiveIntensity: 0.5
+            })
+        );
+        button.position.set(-3, 1.8 - i * 0.2, -30.4);
+        button.rotation.x = Math.PI / 2;
+        button.userData.isElevatorButton = true;
+        button.userData.targetLevel = i;
+        room1.add(button);
+        
+        // Label
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 80px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(['G', 'M1', 'M2'][i], 64, 90);
+        
+        const labelTexture = new THREE.CanvasTexture(canvas);
+        const label = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.15, 0.15),
+            new THREE.MeshBasicMaterial({ map: labelTexture })
+        );
+        label.position.set(-2.8, 1.8 - i * 0.2, -30.4);
+        room1.add(label);
+    }
+    
+    // Warning lights (red, flashing when moving)
+    for (let i = 0; i < 2; i++) {
+        const warningLight = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 16, 16),
+            new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 1.5
+            })
+        );
+        warningLight.position.set(i === 0 ? -2 : 2, 3.2, -28);
+        elevatorGroup.add(warningLight);
+        
+        const light = new THREE.PointLight(0xff0000, 2.0, 8);
+        light.position.copy(warningLight.position);
+        elevatorGroup.add(light);
+    }
+    
+    elevatorGroup.position.y = 0;
+    elevatorGroup.userData.currentLevel = 0;
+    elevatorGroup.userData.isElevator = true;
+    room1.add(elevatorGroup);
+    this.freightElevator = elevatorGroup;
+    
+    // ========================================
+    // ABANDONED MACHINERY AS ART
+    // ========================================
+    
+    // Large rusted turbine (3m diameter)
+    const turbineGroup = new THREE.Group();
+    
+    const turbineBody = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.5, 1.5, 2.0, 32),
+        rustedSteelMaterial
+    );
+    turbineBody.rotation.z = Math.PI / 2;
+    turbineBody.castShadow = true;
+    turbineGroup.add(turbineBody);
+    
+    // Turbine blades
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const blade = new THREE.Mesh(
+            new THREE.BoxGeometry(0.2, 1.8, 0.05),
+            rustedSteelMaterial
+        );
+        blade.position.set(Math.cos(angle) * 0.9, Math.sin(angle) * 0.9, 0);
+        blade.rotation.z = angle + Math.PI / 2;
+        blade.castShadow = true;
+        turbineGroup.add(blade);
+    }
+    
+    turbineGroup.position.set(15, 2, 18);
+    turbineGroup.userData.rotationSpeed = 0.002; // Slow ambient rotation
+    room1.add(turbineGroup);
+    this.turbine = turbineGroup;
+    
+    // Old conveyor belt system
+    const conveyorLength = 20;
+    const conveyor = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 0.3, conveyorLength),
+        new THREE.MeshStandardMaterial({
+            color: 0x2a2a2a,
+            roughness: 0.8
+        })
+    );
+    conveyor.position.set(-20, 1.5, 0);
+    conveyor.castShadow = true;
+    room1.add(conveyor);
+    
+    // Conveyor rollers
+    for (let z = -conveyorLength / 2; z < conveyorLength / 2; z += 1) {
+        const roller = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.15, 0.15, 1.5, 12),
+            chromeMaterial
+        );
+        roller.position.set(-20, 1.65, z);
+        roller.rotation.z = Math.PI / 2;
+        roller.castShadow = true;
+        room1.add(roller);
+    }
+    
+    // Support legs
+    for (let z = -8; z <= 8; z += 8) {
+        const leg = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 1.5, 0.1),
+            iBeamMaterial
+        );
+        leg.position.set(-20.6, 0.75, z);
+        leg.castShadow = true;
+        room1.add(leg);
+    }
+    
+    // Vintage control panels with flickering gauges
+    const controlPanelGroup = new THREE.Group();
+    
+    const panelBack = new THREE.Mesh(
+        new THREE.BoxGeometry(2.5, 2.0, 0.2),
+        new THREE.MeshStandardMaterial({
+            color: 0x3a3a3a,
+            roughness: 0.6
+        })
+    );
+    panelBack.castShadow = true;
+    controlPanelGroup.add(panelBack);
+    
+    // Analog gauges (8 circular meters)
+    for (let i = 0; i < 8; i++) {
+        const gauge = new THREE.Mesh(
+            new THREE.CircleGeometry(0.2, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.3
+            })
+        );
+        gauge.position.set(
+            -1.0 + (i % 4) * 0.6,
+            0.5 - Math.floor(i / 4) * 0.8,
+            0.11
+        );
+        controlPanelGroup.add(gauge);
+        
+        // Gauge needle
+        const needle = new THREE.Mesh(
+            new THREE.BoxGeometry(0.02, 0.15, 0.01),
+            new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        );
+        needle.position.copy(gauge.position);
+        needle.position.z += 0.01;
+        needle.rotation.z = (Math.random() - 0.5) * Math.PI;
+        controlPanelGroup.add(needle);
+    }
+    
+    this.lightSwitches = [];
 
+const switchPositions = [
+    { x: -38, y: 1.8, z: 0 },
+    { x: 38, y: 1.8, z: 0 },
+    { x: 0, y: 1.8, z: -28 },
+    { x: 0, y: 1.8, z: 28 }
+];
+
+switchPositions.forEach((pos, index) => {
+    const switchBox = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 0.6, 0.15),
+        new THREE.MeshStandardMaterial({
+            color: 0x3a3a3a,
+            roughness: 0.6,
+            metalness: 0.7
+        })
+    );
+    switchBox.position.set(pos.x, pos.y, pos.z);
+    switchBox.castShadow = true;
+    room1.add(switchBox);
+    
+    // Flip switches (3 per box)
+    for (let i = 0; i < 3; i++) {
+        const sw = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.15, 0.03),
+            new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                roughness: 0.5,
+                metalness: 0.6
+            })
+        );
+        sw.position.set(
+            pos.x + (pos.x > 0 ? -0.08 : 0.08),
+            pos.y + 0.15 - i * 0.15,
+            pos.z + (pos.z > 0 ? -0.08 : 0.08)
+        );
+        sw.rotation.x = Math.random() > 0.5 ? 0.3 : -0.3;
+        sw.userData.isLightSwitch = true;
+        sw.userData.zoneIndex = index;
+        sw.userData.isOn = Math.random() > 0.5;
+        room1.add(sw);
+        
+        this.lightSwitches.push(sw);
+    }
+});
+    // Warning labels
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 512;
+    labelCanvas.height = 256;
+    const labelCtx = labelCanvas.getContext('2d');
+    labelCtx.fillStyle = '#ffcc00';
+    labelCtx.font = 'bold 60px Arial';
+    labelCtx.fillText('DANGER', 20, 80);
+    labelCtx.fillText('HIGH VOLTAGE', 20, 160);
+    const labelTexture = new THREE.CanvasTexture(labelCanvas);
+    
+    const warning = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.5, 0.8),
+        new THREE.MeshBasicMaterial({ map: labelTexture })
+    );
+    warning.position.set(0, -0.8, 0.11);
+    controlPanelGroup.add(warning);
+    
+    controlPanelGroup.position.set(-15, 3, -28);
+    controlPanelGroup.rotation.y = Math.PI;
+    room1.add(controlPanelGroup);
+    
+    // Steam pipes with occasional "steam" vents
+    this.steamVents = [];
+    
+    const pipeConfigs = [
+        { start: [-35, 10, -25], end: [-35, 10, 25], diameter: 0.4 },
+        { start: [35, 12, -25], end: [35, 12, 25], diameter: 0.3 },
+        { start: [-30, warehouseHeight - 3, -25], end: [30, warehouseHeight - 3, -25], diameter: 0.5 }
+    ];
+    
+    pipeConfigs.forEach((config, pipeIndex) => {
+        const length = Math.sqrt(
+            Math.pow(config.end[0] - config.start[0], 2) +
+            Math.pow(config.end[1] - config.start[1], 2) +
+            Math.pow(config.end[2] - config.start[2], 2)
+        );
+        
+        const pipe = new THREE.Mesh(
+            new THREE.CylinderGeometry(config.diameter, config.diameter, length, 16),
+            chromeMaterial
+        );
+        
+        const midX = (config.start[0] + config.end[0]) / 2;
+        const midY = (config.start[1] + config.end[1]) / 2;
+        const midZ = (config.start[2] + config.end[2]) / 2;
+        
+        pipe.position.set(midX, midY, midZ);
+        
+        // Rotate pipe to align with endpoints
+        if (config.start[2] !== config.end[2]) {
+            pipe.rotation.x = Math.PI / 2;
+        } else if (config.start[0] !== config.end[0]) {
+            pipe.rotation.z = Math.PI / 2;
+        }
+        
+        pipe.castShadow = true;
+        room1.add(pipe);
+        
+        // Pipe joints every 10m
+        const numJoints = Math.floor(length / 10);
+        for (let j = 0; j < numJoints; j++) {
+            const t = (j + 1) / (numJoints + 1);
+            const joint = new THREE.Mesh(
+                new THREE.SphereGeometry(config.diameter * 1.3, 16, 16),
+                rustedSteelMaterial
+            );
+            joint.position.set(
+                config.start[0] + (config.end[0] - config.start[0]) * t,
+                config.start[1] + (config.end[1] - config.start[1]) * t,
+                config.start[2] + (config.end[2] - config.start[2]) * t
+            );
+            joint.castShadow = true;
+            room1.add(joint);
+        }
+        
+        // Steam vent (randomly positioned along pipe)
+        const ventPos = new THREE.Vector3(
+            config.start[0] + (config.end[0] - config.start[0]) * 0.3,
+            config.start[1] + (config.end[1] - config.start[1]) * 0.3,
+            config.start[2] + (config.end[2] - config.start[2]) * 0.3
+        );
+        
+        this.steamVents.push({
+            position: ventPos,
+            lastPuff: 0,
+            interval: 3000 + Math.random() * 5000
+        });
+    });
+    
+    // ========================================
+    // SHIPPING CONTAINER GALLERIES (6 Total)
+    // ========================================
+  
+    // ========================================
+    // MOVABLE WALL PANELS ON TRACKS
+    // ========================================
+    
+    
+    // ========================================
+    // SUSPENDED WIRE ARTWORK SYSTEM
+    // ========================================
+    
+    this.suspendedArtworks = [];
+    
+    const suspendedPositions = [
+        { x: -15, y: 6, z: -10 },
+        { x: 0, y: 5, z: -15 },
+        { x: 15, y: 7, z: -8 },
+        { x: -10, y: 8, z: 10 },
+        { x: 10, y: 6, z: 12 }
+    ];
+    
+    suspendedPositions.forEach(pos => {
+        // Steel cable from ceiling
+        const cable = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.02, 0.02, warehouseHeight - pos.y, 8),
+            new THREE.MeshStandardMaterial({
+                color: 0x5a5a5a,
+                roughness: 0.7,
+                metalness: 0.8
+            })
+        );
+        cable.position.set(pos.x, (warehouseHeight + pos.y) / 2, pos.z);
+        cable.castShadow = true;
+        room1.add(cable);
+        
+        // Pulley mechanism at ceiling
+        const pulley = new THREE.Mesh(
+            new THREE.TorusGeometry(0.15, 0.05, 16, 32),
+            chromeMaterial
+        );
+        pulley.position.set(pos.x, warehouseHeight - 0.5, pos.z);
+        pulley.rotation.x = Math.PI / 2;
+        room1.add(pulley);
+        
+        // Suspended artwork frame (empty frame for now, artwork added later)
+        const frame = new THREE.Mesh(
+            new THREE.BoxGeometry(2.5, 3.5, 0.15),
+            new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.6,
+                metalness: 0.7
+            })
+        );
+        frame.position.set(pos.x, pos.y, pos.z);
+        frame.castShadow = true;
+        frame.receiveShadow = true;
+        frame.userData.rotationSpeed = 0.001 + Math.random() * 0.002;
+        frame.userData.swayAmount = 0.05 + Math.random() * 0.1;
+        room1.add(frame);
+        
+        this.suspendedArtworks.push(frame);
+        
+        // Clip/hook at top of frame
+        const hook = new THREE.Mesh(
+            new THREE.TorusGeometry(0.08, 0.03, 8, 16),
+            chromeMaterial
+        );
+        hook.position.set(pos.x, pos.y + 1.8, pos.z);
+        room1.add(hook);
+    });
+    
+    // ========================================
+    // MASSIVE OVERHEAD TRACK LIGHTING GANTRY
+    // ========================================
+    
+    this.trackSpotlights = [];
+    
+    // Main lighting gantry (motorized track system)
+    const gantryTracks = [
+        { x: -25, z: 0, length: warehouseDepth },
+        { x: -12, z: 0, length: warehouseDepth },
+        { x: 0, z: 0, length: warehouseDepth },
+        { x: 12, z: 0, length: warehouseDepth },
+        { x: 25, z: 0, length: warehouseDepth }
+    ];
+    
+    gantryTracks.forEach((track, trackIndex) => {
+        // Aluminum track rail
+        const rail = new THREE.Mesh(
+            new THREE.BoxGeometry(0.15, 0.15, track.length),
+            new THREE.MeshStandardMaterial({
+                color: 0xa8a8a8,
+                roughness: 0.25,
+                metalness: 0.9
+            })
+        );
+        rail.position.set(track.x, warehouseHeight - 1.5, 0);
+        rail.castShadow = true;
+        room1.add(rail);
+        
+        // Power cables draped along track
+        const cable = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.03, 0.03, track.length, 8),
+            new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.8
+            })
+        );
+        cable.position.set(track.x + 0.1, warehouseHeight - 1.7, 0);
+        cable.rotation.x = Math.PI / 2;
+        room1.add(cable);
+        
+        // Theater-style spotlights (8-12 per track)
+        const numLights = 10;
+        for (let i = 0; i < numLights; i++) {
+            const lightGroup = new THREE.Group();
+            
+            // Fixture housing (cylinder)
+            const housing = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.12, 0.18, 0.4, 16),
+                new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    roughness: 0.4,
+                    metalness: 0.8
+                })
+            );
+            housing.castShadow = true;
+            lightGroup.add(housing);
+            
+            // Barn doors (4 flaps)
+            for (let b = 0; b < 4; b++) {
+                const angle = (b * Math.PI) / 2;
+                const door = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.25, 0.08, 0.02),
+                    new THREE.MeshStandardMaterial({
+                        color: 0x1a1a1a,
+                        roughness: 0.5,
+                        metalness: 0.7
+                    })
+                );
+                door.position.set(
+                    Math.cos(angle) * 0.15,
+                    -0.25 + Math.sin(angle) * 0.15,
+                    0
+                );
+                door.rotation.z = angle;
+                lightGroup.add(door);
+            }
+            
+            // LED lens with colored gel (random)
+            const gelColors = [0xffffff, 0xff6b6b, 0x6b9dff, 0xffcc66, 0x66ff66];
+            const lens = new THREE.Mesh(
+                new THREE.CircleGeometry(0.1, 16),
+                new THREE.MeshStandardMaterial({
+                    color: gelColors[trackIndex % gelColors.length],
+                    emissive: gelColors[trackIndex % gelColors.length],
+                    emissiveIntensity: 0.8,
+                    transparent: true,
+                    opacity: 0.7
+                })
+            );
+            lens.position.y = -0.21;
+            lightGroup.add(lens);
+            
+            // Actual spotlight
+            const spotlight = new THREE.SpotLight(
+                gelColors[trackIndex % gelColors.length],
+                3.5,
+                30,
+                Math.PI / 7,
+                0.6
+            );
+            spotlight.position.y = -0.3;
+            spotlight.castShadow = (trackIndex === 2 && i === 5); // Only center track, middle light
+            
+            if (spotlight.castShadow) {
+                spotlight.shadow.mapSize.width = 1024;
+                spotlight.shadow.mapSize.height = 1024;
+                spotlight.shadow.bias = -0.0005;
+            }
+            lightGroup.add(spotlight);
+            
+            // Target (points downward with slight random angle)
+            const target = new THREE.Object3D();
+            target.position.set(
+                (Math.random() - 0.5) * 5,
+                0,
+                (Math.random() - 0.5) * 5
+            );
+            lightGroup.add(target);
+            spotlight.target = target;
+            
+            // Position on track
+            const z = -track.length / 2 + (i / (numLights - 1)) * track.length;
+            lightGroup.position.set(track.x, warehouseHeight - 2.0, z);
+            
+            // Random rotation for dramatic angles
+            lightGroup.rotation.x = Math.random() * 0.3 - 0.15;
+            lightGroup.rotation.z = Math.random() * 0.3 - 0.15;
+            
+            room1.add(lightGroup);
+            this.trackSpotlights.push({
+                group: lightGroup,
+                spotlight: spotlight,
+                lens: lens
+            });
+        }
+    });
+    
+    // ========================================
+    // EDISON BULB STRING LIGHTS
+    // ========================================
+    
+    this.edisonBulbs = [];
+    
+    const stringConfigs = [
+        { start: [-35, 18, -25], end: [35, 18, -25] },
+        { start: [-35, 18, 25], end: [35, 18, 25] },
+        { start: [-35, 18, -25], end: [-35, 18, 25] },
+        { start: [35, 18, -25], end: [35, 18, 25] }
+    ];
+    
+    stringConfigs.forEach(config => {
+        const numBulbs = 15;
+        for (let i = 0; i < numBulbs; i++) {
+            const t = i / (numBulbs - 1);
+            const pos = new THREE.Vector3(
+                config.start[0] + (config.end[0] - config.start[0]) * t,
+                config.start[1] + (config.end[1] - config.start[1]) * t - Math.sin(t * Math.PI) * 2,
+                config.start[2] + (config.end[2] - config.start[2]) * t
+            );
+            
+            // Bulb filament (warm glow)
+            const bulb = new THREE.Mesh(
+                new THREE.SphereGeometry(0.08, 16, 16),
+                new THREE.MeshStandardMaterial({
+                    color: 0xffd699,
+                    emissive: 0xffa500,
+                    emissiveIntensity: 1.2,
+                    transparent: true,
+                    opacity: 0.8
+                })
+            );
+            bulb.position.copy(pos);
+            room1.add(bulb);
+            
+            // Warm tungsten light
+            const light = new THREE.PointLight(0xffa500, 1.5, 6);
+            light.position.copy(pos);
+            room1.add(light);
+            
+            this.edisonBulbs.push({ bulb, light });
+            
+            // Power cord segment
+            if (i > 0) {
+                const prevT = (i - 1) / (numBulbs - 1);
+                const prevPos = new THREE.Vector3(
+                    config.start[0] + (config.end[0] - config.start[0]) * prevT,
+                    config.start[1] + (config.end[1] - config.start[1]) * prevT - Math.sin(prevT * Math.PI) * 2,
+                    config.start[2] + (config.end[2] - config.start[2]) * prevT
+                );
+                
+                const cordLength = pos.distanceTo(prevPos);
+                const cord = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.02, 0.02, cordLength, 8),
+                    new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
+                );
+                
+                const midPoint = new THREE.Vector3().addVectors(pos, prevPos).multiplyScalar(0.5);
+                cord.position.copy(midPoint);
+                cord.lookAt(pos);
+                cord.rotation.x += Math.PI / 2;
+                
+                room1.add(cord);
+            }
+        }
+    });
+    
+    // ========================================
+    // DUST PARTICLE SYSTEM (In God-Rays)
+    // ========================================
+   
+    
+    // ========================================
+    // AMBIENT & ACCENT LIGHTING
+    // ========================================
+    
+    // Harsh overhead fluorescents (some flickering)
+    for (let x = -30; x <= 30; x += 15) {
+        for (let z = -20; z <= 20; z += 20) {
+           // ✓ OPTIMIZED: Fewer RectAreaLights (4 instead of 12)
+const fluorescentPositions = [
+    { x: -20, z: -15 },
+    { x: 20, z: -15 },
+    { x: -20, z: 15 },
+    { x: 20, z: 15 }
+];
+
+fluorescentPositions.forEach(pos => {
+    const fluorescentLight = new THREE.RectAreaLight(0xffffee, 3.0, 6, 2); // Larger size
+    fluorescentLight.position.set(pos.x, warehouseHeight - 3, pos.z);
+    fluorescentLight.rotation.x = -Math.PI / 2;
+    room1.add(fluorescentLight);
+    
+    // Visible fixture
+    const fixture = new THREE.Mesh(
+        new THREE.BoxGeometry(6.2, 0.3, 2.2),
+        new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: 0xffffee,
+            emissiveIntensity: 0.5
+        })
+    );
+    fixture.position.set(pos.x, warehouseHeight - 3, pos.z);
+    room1.add(fixture);
+});
+        }
+    }
+    
+    // Emergency exit signs (red glow)
+    const exitPositions = [
+        { x: -38, y: 3, z: -28 },
+        { x: 38, y: 3, z: -28 },
+        { x: 0, y: 3, z: 28 }
+    ];
+    
+    exitPositions.forEach(pos => {
+        const exitSign = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, 0.4, 0.1),
+            new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                emissive: 0xff0000,
+                emissiveIntensity: 2.0
+            })
+        );
+        exitSign.position.set(pos.x, pos.y, pos.z);
+        room1.add(exitSign);
+        
+        const exitLight = new THREE.PointLight(0xff0000, 1.5, 8);
+        exitLight.position.copy(exitSign.position);
+        room1.add(exitLight);
+    });
+    
+    // Ambient warehouse darkness
+    const ambientDark = new THREE.AmbientLight(0x404040, 0.3);
+    room1.add(ambientDark);
+    
+    // Directional "daylight" from broken skylights
+ // ✓ OPTIMIZED: Smaller shadow map
+const daylight = new THREE.DirectionalLight(0xffffee, 1.2);
+daylight.position.set(10, warehouseHeight, 5);
+daylight.castShadow = true;
+daylight.shadow.mapSize.width = 1024; // Reduced from 2048
+daylight.shadow.mapSize.height = 1024; // Reduced from 2048
+daylight.shadow.camera.left = -40; // Adjusted bounds
+daylight.shadow.camera.right = 40;
+daylight.shadow.camera.top = 40;
+daylight.shadow.camera.bottom = -40;
+    room1.add(daylight);
+    
+    // ========================================
+    // ABANDONED OFFICE CONTROL ROOM (Side Area)
+    // ========================================
+    
+    const officeGroup = new THREE.Group();
+    
+    // Glass walls (dirty, cracked)
+    for (let side = 0; side < 4; side++) {
+        const wall = new THREE.Mesh(
+            new THREE.BoxGeometry(side % 2 === 0 ? 8 : 6, 3, 0.1),
+            new THREE.MeshPhysicalMaterial({
+                color: 0x888888,
+                transmission: 0.3,
+                thickness: 0.5,
+                roughness: 0.8,
+                transparent: true,
+                opacity: 0.7
+            })
+        );
+        
+        if (side === 0) wall.position.set(0, 1.5, 3);
+        else if (side === 1) wall.position.set(4, 1.5, 0);
+        else if (side === 2) wall.position.set(0, 1.5, -3);
+        else wall.position.set(-4, 1.5, 0);
+        
+        wall.rotation.y = (side % 2 === 0 ? 0 : Math.PI / 2);
+        officeGroup.add(wall);
+    }
+    
+  
+    
+   
+    // Flickering overhead fluorescent
+    const officeLight = new THREE.RectAreaLight(0xffffee, 2.0, 1.5, 1.5);
+    officeLight.position.set(0, 2.8, 0);
+    officeLight.rotation.x = -Math.PI / 2;
+    officeGroup.add(officeLight);
+    this.officeFlicker = officeLight;
+    
+    officeGroup.position.set(30, 0, 0);
+    room1.add(officeGroup);
+    
+    // ========================================
+    // KINETIC SCULPTURE / ART INSTALLATION
+    // ========================================
+    
+  
+    
+    
+    // ========================================
+    // FINAL SETUP
+    // ========================================
+    
+    room1.position.set(0, 0, 0);
+    this.rooms.push(room1);
+    this.scene.add(room1);
+    
+    console.log("🏭 Brutalist industrial warehouse gallery created!");
+}
+
+toggleLightZone(zoneIndex) {
+    console.log(`💡 Toggling light zone ${zoneIndex}`);
+    
+    // Find all lights in this zone
+    const zoneLights = this.trackSpotlights.filter((_, i) => i % 4 === zoneIndex);
+    
+    zoneLights.forEach(light => {
+        const currentIntensity = light.spotlight.intensity;
+        const targetIntensity = currentIntensity > 1 ? 0 : 3.5;
+        
+        // Animate intensity change
+        const duration = 500;
+        const startTime = Date.now();
+        const startIntensity = currentIntensity;
+        
+        const animateLight = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            light.spotlight.intensity = startIntensity + (targetIntensity - startIntensity) * progress;
+            light.lens.material.emissiveIntensity = light.spotlight.intensity / 3.5 * 0.8;
+            
+            if (progress < 1) {
+                requestAnimationFrame(animateLight);
+            }
+        };
+        
+        animateLight();
+    });
+    
+    // Spark effect
+    if (Math.random() > 0.7) {
+        this.createSparkEffect(this.lightSwitches[zoneIndex].position);
+    }
+}
+
+createSparkEffect(position) {
+    const sparks = new THREE.Group();
+    
+    for (let i = 0; i < 8; i++) {
+        const spark = new THREE.Mesh(
+            new THREE.SphereGeometry(0.02, 4, 4),
+            new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 1.0
+            })
+        );
+        
+        spark.userData.velocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.1,
+            (Math.random() - 0.5) * 0.1,
+            (Math.random() - 0.5) * 0.1
+        );
+        
+        sparks.add(spark);
+    }
+    
+    sparks.position.copy(position);
+    this.scene.add(sparks);
+    
+    // Animate sparks
+    const startTime = Date.now();
+    const duration = 800;
+    
+    const animateSparks = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+        
+        if (progress >= 1) {
+            this.scene.remove(sparks);
+            sparks.children.forEach(child => {
+                child.geometry.dispose();
+                child.material.dispose();
+            });
+            return;
+        }
+        
+        sparks.children.forEach(spark => {
+            spark.position.add(spark.userData.velocity);
+            spark.userData.velocity.y -= 0.005; // Gravity
+            spark.material.opacity = 1 - progress;
+        });
+        
+        requestAnimationFrame(animateSparks);
+    };
+    
+    animateSparks();
+}
+generateBoardFormedConcrete(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base concrete gray
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Horizontal wood grain lines (formwork boards)
+    const boardHeight = 120;
+    for (let y = 0; y < height; y += boardHeight) {
+        // Darker seam line
+        ctx.fillStyle = '#3a3a3a';
+        ctx.fillRect(0, y, width, 3);
+        
+        // Wood grain texture
+        for (let i = 0; i < 50; i++) {
+            const grainY = y + Math.random() * boardHeight;
+            ctx.strokeStyle = `rgba(${60 + Math.random() * 20}, ${60 + Math.random() * 20}, ${60 + Math.random() * 20}, ${0.3 + Math.random() * 0.3})`;
+            ctx.lineWidth = 1 + Math.random() * 2;
+            ctx.beginPath();
+            ctx.moveTo(0, grainY);
+            ctx.lineTo(width, grainY + (Math.random() - 0.5) * 10);
+            ctx.stroke();
+        }
+    }
+    
+    // Random concrete imperfections
+    for (let i = 0; i < 200; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const size = Math.random() * 4 + 1;
+        const shade = Math.random() * 40 + 40;
+        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.5)`;
+        ctx.fillRect(x, y, size, size);
+    }
+    
+    return canvas;
+}
+generateCarraraMarble(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base white marble
+    ctx.fillStyle = '#f8f8f8';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Subtle gray veining (diagonal flow)
+    const numVeins = 40;
+    for (let i = 0; i < numVeins; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        // Mix of gray tones
+        const grayValue = 200 + Math.random() * 40;
+        const color = `rgba(${grayValue}, ${grayValue}, ${grayValue + 5}, ${0.15 + Math.random() * 0.25})`;
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.random() * 2 + 0.5;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        // Diagonal angle for natural marble flow
+        let angle = Math.PI / 4 + (Math.random() - 0.5) * 0.8;
+        
+        for (let j = 0; j < 150; j++) {
+            angle += (Math.random() - 0.5) * 0.3;
+            x += Math.cos(angle) * 8;
+            y += Math.sin(angle) * 8;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Add occasional darker accent veins
+    for (let i = 0; i < 8; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        ctx.strokeStyle = `rgba(150, 150, 155, ${0.2 + Math.random() * 0.2})`;
+        ctx.lineWidth = Math.random() * 3 + 1;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        let angle = Math.PI / 4 + (Math.random() - 0.5) * 1.0;
+        
+        for (let j = 0; j < 100; j++) {
+            angle += (Math.random() - 0.5) * 0.4;
+            x += Math.cos(angle) * 12;
+            y += Math.sin(angle) * 12;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Polished finish with subtle shine
+    const gradient = ctx.createRadialGradient(
+        width / 2, height / 2, 0,
+        width / 2, height / 2, width / 2
+    );
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.03)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    return canvas;
+}
+generateMetalGridPattern(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Dark metallic base
+    ctx.fillStyle = '#1a2332';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Grid lines
+    ctx.strokeStyle = '#2a3f5f';
+    ctx.lineWidth = 3;
+    
+    const gridSize = 128;
+    for (let x = 0; x < width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+    }
+    
+    for (let y = 0; y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+    }
+    
+    // Tech details (random panels)
+    ctx.fillStyle = '#00d4ff';
+    ctx.globalAlpha = 0.3;
+    for (let i = 0; i < 20; i++) {
+        const x = Math.floor(Math.random() * (width / gridSize)) * gridSize;
+        const y = Math.floor(Math.random() * (height / gridSize)) * gridSize;
+        ctx.fillRect(x + 10, y + 10, gridSize - 20, gridSize - 20);
+    }
+    
+    return canvas;
+}
+
+generateEarthTexture(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Ocean base
+    ctx.fillStyle = '#0a3d62';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Continents (simplified)
+    ctx.fillStyle = '#2d5016';
+    
+    // Africa
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.5, width * 0.15, height * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Americas
+    ctx.beginPath();
+    ctx.ellipse(width * 0.2, height * 0.4, width * 0.1, height * 0.25, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.ellipse(width * 0.25, height * 0.6, width * 0.08, height * 0.15, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Asia
+    ctx.beginPath();
+    ctx.ellipse(width * 0.7, height * 0.35, width * 0.18, height * 0.15, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Europe
+    ctx.beginPath();
+    ctx.ellipse(width * 0.52, height * 0.32, width * 0.08, height * 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Australia
+    ctx.beginPath();
+    ctx.ellipse(width * 0.78, height * 0.65, width * 0.09, height * 0.08, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Clouds
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    for (let i = 0; i < 100; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const r = Math.random() * 50 + 20;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Ice caps
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.05, width * 0.2, height * 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.95, width * 0.15, height * 0.06, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    return canvas;
+}
+
+generateBlackMarquina(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Deep black base
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Gold and white veining
+    const numVeins = 30;
+    for (let i = 0; i < numVeins; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        // Mix of gold and white veins
+        const isGold = Math.random() > 0.6;
+        const color = isGold 
+            ? `rgba(218, 165, 32, ${0.4 + Math.random() * 0.3})`  // Gold
+            : `rgba(255, 255, 255, ${0.2 + Math.random() * 0.2})`; // White
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.random() * 3 + 1;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        let angle = Math.random() * Math.PI * 2;
+        
+        for (let j = 0; j < 120; j++) {
+            angle += (Math.random() - 0.5) * 0.4;
+            x += Math.cos(angle) * 10;
+            y += Math.sin(angle) * 10;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Polished finish
+    const gradient = ctx.createRadialGradient(
+        width / 2, height / 2, 0,
+        width / 2, height / 2, width / 2
+    );
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    return canvas;
+}
+
+generateMarbleNormalMap(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base normal map color (neutral normal)
+    ctx.fillStyle = '#8080ff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const imageData = ctx.getImageData(0, 0, width, height);
+    
+    // Generate subtle height variation for normal map
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            
+            // Perlin-like noise for realistic surface
+            const noise = (Math.sin(x * 0.02) * Math.cos(y * 0.02)) * 0.5 + 0.5;
+            const variation = (Math.random() - 0.5) * 30;
+            
+            // Normal map RGB channels (X, Y, Z surface normals)
+            imageData.data[i] = 128 + noise * 25 + variation;     // R (X normal)
+            imageData.data[i + 1] = 128 + noise * 25 + variation; // G (Y normal)
+            imageData.data[i + 2] = 200 + noise * 45;             // B (Z normal - pointing up)
+            imageData.data[i + 3] = 255;                           // Alpha
+        }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+}
     generateModernWallTexture(width, height) {
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -562,95 +2027,95 @@ this.setupMobileControls();
         return canvas;
     }
 
-    createAvatar() {
-        this.avatarGroup = new THREE.Group();
-        const avatarMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.3
-        });
+//   createAvatar() {
+//     this.avatarGroup = new THREE.Group();
+//     const avatarMaterial = new THREE.MeshBasicMaterial({
+//         color: 0xffffff,
+//         transparent: true,
+//         opacity: 0.1 // ✓ FIXED: Much less visible (was 0.3)
+//     });
 
-        const clickablePlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.5, 0.5),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
-        );
-        clickablePlane.position.set(2, 1.7, 2);
-        this.avatarGroup.add(clickablePlane);
+//     const clickablePlane = new THREE.Mesh(
+//         new THREE.PlaneGeometry(0.5, 0.5),
+//         new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
+//     );
+//     clickablePlane.position.set(2, 1.7, 2);
+//     this.avatarGroup.add(clickablePlane);
 
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
-        body.position.set(2, 0.5, 2);
-        this.avatarGroup.add(body);
+//     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
+//     body.position.set(2, 0.5, 2);
+//     this.avatarGroup.add(body);
 
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
-        head.position.set(2, 1.2, 2);
-        this.avatarGroup.add(head);
+//     const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
+//     head.position.set(2, 1.2, 2);
+//     this.avatarGroup.add(head);
 
-        const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-        const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
-        leftArm.position.set(1.7, 0.7, 2);
-        leftArm.rotation.z = Math.PI / 4;
-        this.avatarGroup.add(leftArm);
+//     const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
+//     const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
+//     leftArm.position.set(1.7, 0.7, 2);
+//     leftArm.rotation.z = Math.PI / 4;
+//     this.avatarGroup.add(leftArm);
 
-        const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
-        rightArm.position.set(2.3, 0.7, 2);
-        rightArm.rotation.z = -Math.PI / 4;
-        this.avatarGroup.add(rightArm);
+//     const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
+//     rightArm.position.set(2.3, 0.7, 2);
+//     rightArm.rotation.z = -Math.PI / 4;
+//     this.avatarGroup.add(rightArm);
 
-        const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-        const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-        leftLeg.position.set(1.8, 0.25, 2);
-        this.avatarGroup.add(leftLeg);
+//     const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
+//     const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
+//     leftLeg.position.set(1.8, 0.25, 2);
+//     this.avatarGroup.add(leftLeg);
 
-        const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-        rightLeg.position.set(2.2, 0.25, 2);
-        this.avatarGroup.add(rightLeg);
+//     const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
+//     rightLeg.position.set(2.2, 0.25, 2);
+//     this.avatarGroup.add(rightLeg);
 
-        this.avatarGroup.userData = { isAvatar: true };
-        this.scene.add(this.avatarGroup);
+//     this.avatarGroup.userData = { isAvatar: true };
+//     this.scene.add(this.avatarGroup);
 
-        this.setupAvatarAnimation();
-        this.updateAvatarPosition();
-    }
+//     this.setupAvatarAnimation();
+//     this.updateAvatarPosition();
+// }
 
-    setupAvatarAnimation() {
-        const times = [0, 1, 2];
-        const armValues = [
-            [Math.PI / 4, -Math.PI / 4],
-            [-Math.PI / 4, Math.PI / 4],
-            [Math.PI / 4, -Math.PI / 4]
-        ];
+//     setupAvatarAnimation() {
+//         const times = [0, 1, 2];
+//         const armValues = [
+//             [Math.PI / 4, -Math.PI / 4],
+//             [-Math.PI / 4, Math.PI / 4],
+//             [Math.PI / 4, -Math.PI / 4]
+//         ];
 
-        const leftArmTrack = new THREE.NumberKeyframeTrack(
-            '.children[3].rotation[z]',
-            times,
-            armValues.map(v => v[0])
-        );
-        const rightArmTrack = new THREE.NumberKeyframeTrack(
-            '.children[4].rotation[z]',
-            times,
-            armValues.map(v => v[1])
-        );
+//         const leftArmTrack = new THREE.NumberKeyframeTrack(
+//             '.children[3].rotation[z]',
+//             times,
+//             armValues.map(v => v[0])
+//         );
+//         const rightArmTrack = new THREE.NumberKeyframeTrack(
+//             '.children[4].rotation[z]',
+//             times,
+//             armValues.map(v => v[1])
+//         );
 
-        const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
-        const action = this.animationMixer.clipAction(clip, this.avatarGroup);
-        action.setLoop(THREE.LoopRepeat);
-        action.play();
-    }
+//         const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
+//         const action = this.animationMixer.clipAction(clip, this.avatarGroup);
+//         action.setLoop(THREE.LoopRepeat);
+//         action.play();
+//     }
 
-    updateAvatarPosition() {
-        if (this.isMobile) {
-            const roomCenter = this.rooms[this.currentRoom].position.clone();
-            this.avatarGroup.position.copy(roomCenter);
-            this.avatarGroup.position.y = 0.5;
-        } else {
-            const direction = new THREE.Vector3();
-            this.camera.getWorldDirection(direction);
-            direction.y = 0;
-            direction.normalize().multiplyScalar(3);
-            this.avatarGroup.position.copy(this.camera.position).add(direction);
-            this.avatarGroup.position.y = 0.5;
-        }
-    }
+//     updateAvatarPosition() {
+//         if (this.isMobile) {
+//             const roomCenter = this.rooms[this.currentRoom].position.clone();
+//             this.avatarGroup.position.copy(roomCenter);
+//             this.avatarGroup.position.y = 0.5;
+//         } else {
+//             const direction = new THREE.Vector3();
+//             this.camera.getWorldDirection(direction);
+//             direction.y = 0;
+//             direction.normalize().multiplyScalar(3);
+//             this.avatarGroup.position.copy(this.camera.position).add(direction);
+//             this.avatarGroup.position.y = 0.5;
+//         }
+//     }
 
     async setupAudio() {
             try {
@@ -712,10 +2177,11 @@ this.setupMobileControls();
         this.update();
         this.updateImageEffects();
         this.updateLighting();
+   
         this.renderer.render(this.scene, this.camera);
         this.updateArtworkProgress();
         if (this.isMobile) this.controls.update();
-        this.updateAvatarPosition();
+        // this.updateAvatarPosition();
         
         if (this.isRecording) {
             // Frame capture handled by MediaRecorder
@@ -1016,48 +2482,236 @@ toggleHelpOverlay() {
     }
 
     updateObjectAnimations() {
+            const time = this.time || Date.now() * 0.001;
         if (this.isAnimatingObjects) {
             this.images.forEach(img => {
                 img.mesh.rotation.y += 0.02 * this.animationSpeed;
             });
-            this.wallLights.forEach(light => {
-                light.left.rotation.y += 0.03 * this.animationSpeed;
-                light.right.rotation.y += 0.03 * this.animationSpeed;
+           
+        }
+        if (this.turbine) {
+        this.turbine.rotation.z += this.turbine.userData.rotationSpeed;
+    }
+    
+    // 2. CENTER SCULPTURE ROTATION
+    if (this.centerSculpture) {
+        this.centerSculpture.rotation.y += this.centerSculpture.userData.rotationSpeed;
+    }
+    
+    // 3. SUSPENDED ARTWORKS (rotate + sway)
+    if (this.suspendedArtworks) {
+        this.suspendedArtworks.forEach((artwork, index) => {
+            // Slow rotation
+            artwork.rotation.y += artwork.userData.rotationSpeed;
+            
+            // Swaying motion (like hanging on cables)
+            const sway = Math.sin(time * 0.5 + index) * artwork.userData.swayAmount;
+            artwork.rotation.z = sway;
+        });
+    }
+    
+    // 4. EDISON BULBS (subtle swaying + flicker)
+    if (this.edisonBulbs) {
+        this.edisonBulbs.forEach((bulb, index) => {
+            // Gentle sway
+            const baseY = bulb.bulb.position.y;
+            bulb.bulb.position.y = baseY + Math.sin(time * 0.3 + index * 0.5) * 0.02;
+            bulb.light.position.copy(bulb.bulb.position);
+            
+            // Random flicker
+            if (Math.random() < 0.01) {
+                const flicker = 0.8 + Math.random() * 0.4;
+                bulb.light.intensity = 1.5 * flicker;
+                bulb.bulb.material.emissiveIntensity = 1.2 * flicker;
+            } else {
+                bulb.light.intensity += (1.5 - bulb.light.intensity) * 0.1;
+                bulb.bulb.material.emissiveIntensity += (1.2 - bulb.bulb.material.emissiveIntensity) * 0.1;
+            }
+        });
+    }
+    
+    // 5. TRACK SPOTLIGHTS (subtle movement + flicker)
+    if (this.trackSpotlights) {
+        this.trackSpotlights.forEach((light, index) => {
+            // Subtle rotation (like wind or vibration)
+            light.group.rotation.x += Math.sin(time * 0.2 + index) * 0.0001;
+            light.group.rotation.z += Math.cos(time * 0.3 + index) * 0.0001;
+            
+            // Occasional flicker/spark
+            if (Math.random() < 0.005) {
+                light.spotlight.intensity = 5.0 + Math.random() * 2.0;
+                light.lens.material.emissiveIntensity = 1.5;
+            } else {
+                light.spotlight.intensity += (3.5 - light.spotlight.intensity) * 0.05;
+                light.lens.material.emissiveIntensity += (0.8 - light.lens.material.emissiveIntensity) * 0.05;
+            }
+        });
+    }
+    
+    // 6. OFFICE FLUORESCENT FLICKER
+    if (this.officeFlicker && Math.random() < 0.02) {
+        this.officeFlicker.intensity = Math.random() < 0.5 ? 0.5 : 2.0;
+        setTimeout(() => {
+            if (this.officeFlicker) this.officeFlicker.intensity = 2.0;
+        }, 50 + Math.random() * 100);
+    }
+    
+    // 7. STEAM VENTS (periodic puffs)
+    if (this.steamVents) {
+        this.steamVents.forEach(vent => {
+            const currentTime = Date.now();
+            if (currentTime - vent.lastPuff > vent.interval) {
+                this.createSteamPuff(vent.position);
+                vent.lastPuff = currentTime;
+                vent.interval = 3000 + Math.random() * 5000;
+            }
+        });
+    }
+    
+   
+    
+    // 9. CATWALK RATTLING (if player nearby)
+    if (this.catwalks && this.camera) {
+        this.catwalks.forEach(catwalk => {
+            const distance = this.camera.position.distanceTo(catwalk.position);
+            if (distance < 5) {
+                // Shake when player is nearby
+                catwalk.position.y += Math.sin(time * 10) * 0.002;
+            }
+        });
+    }
+    
+    // 10. FREIGHT ELEVATOR ANIMATION (if moving)
+    if (this.freightElevator && this.freightElevator.userData.isMoving) {
+        const elevator = this.freightElevator;
+        const targetY = elevator.userData.targetY || 0;
+        const currentY = elevator.position.y;
+        const speed = 0.05;
+        
+        if (Math.abs(targetY - currentY) > 0.1) {
+            // Move elevator
+            elevator.position.y += (targetY - currentY) * speed;
+            
+            // Warning lights flash
+            elevator.traverse(child => {
+                if (child.material && child.material.emissive && child.material.emissive.getHex() === 0xff0000) {
+                    child.material.emissiveIntensity = 1.5 + Math.sin(time * 10) * 0.5;
+                }
             });
-            this.glassSpotlights.forEach(light => {
-                light.mesh.rotation.y += 0.01 * this.animationSpeed;
+            
+            // Mechanical sound effect (visual cue)
+            if (Math.floor(time * 10) % 2 === 0) {
+                elevator.rotation.z = 0.002;
+            } else {
+                elevator.rotation.z = -0.002;
+            }
+        } else {
+            // Arrived at destination
+            elevator.position.y = targetY;
+            elevator.userData.isMoving = false;
+            elevator.rotation.z = 0;
+            
+            // Turn off warning lights
+            elevator.traverse(child => {
+                if (child.material && child.material.emissive && child.material.emissive.getHex() === 0xff0000) {
+                    child.material.emissiveIntensity = 1.5;
+                }
             });
+            
+            console.log("🛗 Elevator arrived at level", elevator.userData.currentLevel);
         }
     }
-
-    updateLighting() {
-        const time = this.time || 0;
-
-        const hue = (Math.sin(time * 0.5) + 1) / 2;
-        const color = new THREE.Color().setHSL(hue, 0.5, 0.7);
-        this.ledMaterial.emissive.copy(color);
-        this.ledMaterial.color.copy(color);
-
-        this.wallLights.forEach(light => {
-            const distance = this.camera.position.distanceTo(light.position);
-            const intensity = Math.max(0.8, Math.min(1.5, 2 - distance / 10));
-            light.left.material.emissiveIntensity = intensity;
-            light.right.material.emissiveIntensity = intensity;
-        });
-
-        this.glassSpotlights.forEach(light => {
-            const distance = this.camera.position.distanceTo(light.position);
-            const intensity = Math.max(0.8, Math.min(2.0, 3 - distance / 6));
-            light.spot.intensity = intensity;
-            light.mesh.material.emissiveIntensity = intensity * 0.8;
-        });
-
-        const pulse = 1.5 + Math.sin(time * 2) * 0.3;
-        this.ceilingLights.forEach(light => {
-            light.spot.intensity = pulse;
-            light.mesh.material.emissiveIntensity = pulse * 0.8;
-        });
     }
+
+    createSteamPuff(position) {
+    const steamGroup = new THREE.Group();
+    
+    // Create multiple steam particles
+    for (let i = 0; i < 10; i++) {
+        const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 8, 8),
+            new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.6
+            })
+        );
+        
+        particle.position.set(
+            (Math.random() - 0.5) * 0.5,
+            (Math.random() - 0.5) * 0.5,
+            (Math.random() - 0.5) * 0.5
+        );
+        
+        steamGroup.add(particle);
+    }
+    
+    steamGroup.position.copy(position);
+    this.scene.add(steamGroup);
+    
+    // Animate steam rising and dissipating
+    const startTime = Date.now();
+    const duration = 2000;
+    
+    const animateSteam = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+        
+        if (progress >= 1) {
+            this.scene.remove(steamGroup);
+            steamGroup.children.forEach(child => {
+                child.geometry.dispose();
+                child.material.dispose();
+            });
+            return;
+        }
+        
+        // Rise and expand
+        steamGroup.position.y += 0.03;
+        steamGroup.scale.setScalar(1 + progress * 2);
+        
+        // Fade out
+        steamGroup.children.forEach(child => {
+            child.material.opacity = 0.6 * (1 - progress);
+        });
+        
+        requestAnimationFrame(animateSteam);
+    };
+    
+    animateSteam();
+}
+
+updateLighting() {
+    const time = this.time || 0;
+    
+    // Dynamic track spotlights
+    this.glassSpotlights.forEach((light, index) => {
+        const distance = this.camera.position.distanceTo(light.position);
+        const baseIntensity = Math.max(2.5, Math.min(4.5, 6 - distance / 4));
+        
+        // Subtle flicker
+        const flicker = Math.sin(time * 4 + index * 1.2) * 0.2;
+        light.spot.intensity = baseIntensity + flicker;
+        
+        // Pulsing lens glow
+        if (light.lens) {
+            light.lens.material.emissiveIntensity = 0.8 + Math.sin(time * 2 + index) * 0.3;
+        }
+        
+        // Warm up when close
+        const proximity = Math.max(0, 1 - distance / 20);
+        light.spot.color.setRGB(1.0, 0.96 + proximity * 0.04, 0.90 + proximity * 0.05);
+    });
+    
+    // Update artwork shaders
+    this.images.forEach((img, index) => {
+        if (img.mesh.material.uniforms) {
+            img.mesh.material.uniforms.time.value = time + index;
+        }
+    });
+}
+
+
 
     updateImageEffects() {
         this.images.forEach((img, index) => {
@@ -1731,19 +3385,19 @@ toggleHelpOverlay() {
     this.isFocused = false;
 }
     checkCollisions() {
-        if (!this.isMobile) {
-            this.camera.position.y = 1.6;
-            const roomBounds = this.rooms[this.currentRoom].position;
-            const minX = roomBounds.x - 15;
-            const maxX = roomBounds.x + 15;
-            const minZ = roomBounds.z - 15;
-            const maxZ = roomBounds.z + 15;
+    if (!this.isMobile) {
+        this.camera.position.y = 1.6;
+        const roomBounds = this.rooms[this.currentRoom].position;
+        const minX = -38;
+        const maxX = 38;
+        const minZ = -28;
+        const maxZ = 28;
 
-            this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
-            this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
-            this.controls.getObject().position.copy(this.camera.position);
-        }
+        this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
+        this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
+        this.controls.getObject().position.copy(this.camera.position);
     }
+}
 
     async computeImageHash(texture) {
         return new Promise((resolve) => {
@@ -2086,10 +3740,189 @@ toggleHelpOverlay() {
                     this.openSlider(obj);
                 }
             }
+            else {
+            // ========================================
+            // NEW: ELEVATOR BUTTON INTERACTION
+            // ========================================
+            
+            // Get all clickable objects in scene
+            const clickableObjects = [];
+            this.scene.traverse(child => {
+                if (child.userData.isElevatorButton || 
+                    child.userData.canMove || 
+                    child.userData.isLightSwitch) {
+                    clickableObjects.push(child);
+                }
+            });
+            
+            const clickIntersects = this.raycaster.intersectObjects(clickableObjects, true);
+            
+            if (clickIntersects.length > 0) {
+                const clicked = clickIntersects[0].object;
+                
+                // ELEVATOR BUTTON CLICKED
+                if (clicked.userData.isElevatorButton) {
+                    this.callElevator(clicked.userData.targetLevel);
+                    if (!this.clickSound.isPlaying) this.clickSound.play();
+                }
+                
+                // MOVABLE WALL CLICKED
+                else if (clicked.parent && clicked.parent.userData.canMove) {
+                    this.moveWall(clicked.parent);
+                    if (!this.clickSound.isPlaying) this.clickSound.play();
+                }
+            }
+        }
         }
         this.lastClickTime = currentTime;
     }
 
+
+callElevator(targetLevel) {
+    if (!this.freightElevator) return;
+    
+    console.log(`🛗 Calling elevator to level ${targetLevel}`);
+    
+    const elevator = this.freightElevator;
+    
+    // Prevent multiple calls while moving
+    if (elevator.userData.isMoving) {
+        console.log("⏳ Elevator is already moving");
+        return;
+    }
+    
+    // Set target height based on level
+    const levels = [0, 8, 15]; // Ground, Mezzanine 1, Mezzanine 2
+    elevator.userData.targetY = levels[targetLevel];
+    elevator.userData.currentLevel = targetLevel;
+    elevator.userData.isMoving = true;
+    
+    // Show elevator UI
+    this.showElevatorUI(targetLevel);
+}
+
+showElevatorUI(level) {
+    const existing = document.getElementById('elevatorUI');
+    if (existing) existing.remove();
+    
+    const ui = document.createElement('div');
+    ui.id = 'elevatorUI';
+    ui.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.9);
+        color: #ffcc00;
+        padding: 15px 30px;
+        border-radius: 8px;
+        z-index: 10000;
+        font-family: 'Courier New', monospace;
+        font-size: 18px;
+        font-weight: bold;
+        border: 2px solid #ffcc00;
+        animation: slideDown 0.3s ease;
+    `;
+    
+    ui.innerHTML = `
+        🛗 FREIGHT ELEVATOR: ${['GROUND FLOOR', 'MEZZANINE 1', 'MEZZANINE 2'][level]}
+        <style>
+            @keyframes slideDown {
+                from { transform: translate(-50%, -100%); opacity: 0; }
+                to { transform: translate(-50%, 0); opacity: 1; }
+            }
+        </style>
+    `;
+    
+    document.body.appendChild(ui);
+    
+    setTimeout(() => {
+        ui.style.animation = 'fadeOut 0.5s ease';
+        setTimeout(() => ui.remove(), 500);
+    }, 3000);
+}
+moveWall(wall) {
+    if (!wall.userData.canMove) return;
+    
+    console.log("🚧 Moving wall panel...");
+    
+    // Animate wall sliding along track
+    const currentX = wall.position.x;
+    const trackStart = wall.userData.trackStart;
+    const trackEnd = wall.userData.trackEnd;
+    
+    // Toggle between start and end positions
+    let targetX;
+    if (Math.abs(currentX - trackStart) < 1) {
+        targetX = trackEnd;
+    } else {
+        targetX = trackStart;
+    }
+    
+    const startX = currentX;
+    const duration = 2000;
+    const startTime = Date.now();
+    
+    const animateWall = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = this.easeInOutCubic(progress);
+        
+        wall.position.x = startX + (targetX - startX) * eased;
+        
+        // Grinding sound effect (visual vibration)
+        if (progress < 1) {
+            wall.rotation.z = Math.sin(elapsed * 0.05) * 0.005;
+            requestAnimationFrame(animateWall);
+        } else {
+            wall.rotation.z = 0;
+            console.log("✅ Wall moved to new position");
+        }
+    };
+    
+    animateWall();
+    
+    // Show notification
+    this.showWallNotification();
+}
+
+showWallNotification() {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(139, 69, 19, 0.95);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        z-index: 10000;
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        animation: slideInRight 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    `;
+    
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 24px;">🚧</span>
+            <span>Wall Panel Repositioning...</span>
+        </div>
+        <style>
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        </style>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.5s ease';
+        setTimeout(() => notification.remove(), 500);
+    }, 2000);
+}
     openSlider(selectedMesh) {
        if (!this.isFocused) {
     this.updateCameraState(); // Only save if not already focused

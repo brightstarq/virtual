@@ -8,19 +8,23 @@
     <meta name="keywords" content="360 image explorer, 3D image viewer, website screenshot capture, interactive 3D viewer, virtual gallery">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://www.virtualgallery.com/imageexplorer">
+    
     <!-- Open Graph Tags -->
     <meta property="og:title" content="360 Image Explorer: 3D Viewer & Website Capture">
     <meta property="og:description" content="Interact with images in a 360-degree 3D environment and capture website screenshots. Try Virtual Gallery's 360 Image Explorer now!">
     <meta property="og:image" content="https://www.virtualgallery.com/images/360-explorer-preview.png">
     <meta property="og:url" content="https://www.virtualgallery.com/imageexplorer">
     <meta property="og:type" content="website">
+    
     <!-- Twitter Card Tags -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="360 Image Explorer: 3D Viewer & Website Capture">
     <meta name="twitter:description" content="Upload images or capture websites in an interactive 3D viewer. Download high-quality scenes with Virtual Gallery.">
     <meta name="twitter:image" content="https://www.virtualgallery.com/images/360-explorer-preview.png">
+    
     <!-- Favicon -->
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    
     <!-- Styles and Scripts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <link rel="stylesheet" href="virtual.css">
@@ -34,6 +38,7 @@
             }
         }
     </script>
+    
     <!-- Schema Markup -->
     <script type="application/ld+json">
     {
@@ -51,112 +56,162 @@
         }
     }
     </script>
-    </head>
-    <body>
-        <div id="ui-overlay">
-            <button id="toggleControlsBtn" class="glow-btn toggle-controls-btn">Hide Controls</button>
+</head>
+<body>
+    <div id="ui-overlay">
+        <button id="toggleControlsBtn" class="glow-btn toggle-controls-btn">Hide Controls</button>
 
-            <div class="control-panel top-panel">
-                <h1 class="title">360 Image Explorer</h1>
-                <div class="button-group">
-                    <div class="action-group">
-                        <button id="toggleViewBtn" class="glow-btn">Toggle View</button>
-                        <span id="toggleViewStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                    </div>
-                    <div class="action-group">
-                        <button id="toggleRotateBtn" class="glow-btn">Rotate</button>
-                        <span id="toggleRotateStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                    </div>
-                    <div class="action-group">
-                        <button id="shuffleBtn" class="glow-btn">Shuffle</button>
-                        <span id="shuffleStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                    </div>
-                    <div class="action-group">
-                        <button id="downloadBtn" class="glow-btn">Download</button>
-                        <span id="downloadStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                    </div>
-                    <div class="action-group">
-                        <a href="."><button id="toggleSphericalMapBtn" class="glow-btn">Home</button></a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Left Sidebar: Upload and Screenshot -->
-            <div class="control-panel sidebar left-sidebar">
-                <form id="uploadForm" class="form-group">
-                    <h3>Upload Images</h3>
-                    <input type="file" id="images" multiple accept="image/*"> 
-                    <div id="previewContainer" class="preview-container"></div>
-                    <div class="action-group">
-                        <button type="submit" class="glow-btn submit-btn">Upload</button>
-                        <span id="uploadStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                    </div>
-                </form>
-                <form id="screenshotForm" class="form-group">
-                    <h3>Capture Screenshot</h3>
-                    <input type="text" id="url" placeholder="Enter URL">
-                    <div class="action-group">
-                        <button type="submit" class="glow-btn submit-btn">Capture</button>
-                        <span id="screenshotStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                    </div>
-                </form> 
-            </div>
-
-            <!-- Right Sidebar: Sliders, Recording, and Environment Map Upload -->
-            <div class="control-panel sidebar right-sidebar">
-                <div class="slider-group">
-                    <label for="zoomSlider">Zoom: <span id="zoomValue">5.0</span></label>
-                    <input type="range" id="zoomSlider" min="0.1" max="10" step="0.1" value="5">
-                </div>
-                <div class="slider-group">
-                    <label for="radiusSlider">Radius: <span id="radiusValue">5.0</span></label>
-                    <input type="range" id="radiusSlider" min="1" max="10" step="0.1" value="5">
-                </div>
-                
-                <div class="env-map-group">
-                    <label for="envMapInput">Upload Environment Map:</label>
-                    <input type="file" id="envMapInput" accept="image/*">
-                </div>
-                <div class="recording-group">
-                    <div class="action-group">
-                        <button id="startRecordingBtn" class="glow-btn">Start Recording</button>
-                        <span id="startRecordingStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                    </div>
-                    <div class="action-group">
-                        <button id="stopRecordingBtn" class="glow-btn">Stop Recording</button>
-                        <span id="stopRecordingStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                    </div>
-                    <span id="recordingIndicator" class="recording-indicator hidden">Recording...</span>
-                </div>
-            </div>
-
-            <!-- Bottom Controls: Navigation and Removal -->
-            <div class="control-panel bottom-panel">
+        <!-- Top Panel -->
+        <div class="control-panel top-panel">
+            <h1 class="title">360 Image Explorer</h1>
+            <div class="button-group">
                 <div class="action-group">
-                    <button id="prevPage" class="glow-btn nav-btn">← Prev</button>
-                    <span id="prevPageStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                    <button id="toggleViewBtn" class="glow-btn">Toggle View</button>
+                    <span id="toggleViewStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
                 </div>
                 <div class="action-group">
-                    <button id="nextPage" class="glow-btn nav-btn">Next →</button>
-                    <span id="nextPageStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                    <button id="toggleRotateBtn" class="glow-btn">Rotate</button>
+                    <span id="toggleRotateStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
                 </div>
                 <div class="action-group">
-                    <button id="toggleRemoveBtn" class="glow-btn">Toggle Remove</button>
-                    <span id="toggleRemoveStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                    <button id="shuffleBtn" class="glow-btn">Shuffle</button>
+                    <span id="shuffleStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
                 </div>
-                <div id="removeControls" class="remove-controls hidden">
-                    <div class="action-group">
-                        <button id="removeBtn" class="glow-btn danger-btn">Remove Selected</button>
-                        <span id="removeSelectedStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                    </div>
-                    <div class="action-group">
-                        <button id="removeAllBtn" class="glow-btn danger-btn">Remove All</button>
-                        <span id="removeAllStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                    </div>
+                <div class="action-group">
+                    <button id="downloadBtn" class="glow-btn">Download</button>
+                    <span id="downloadStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                </div>
+                <div class="action-group">
+                    <a href="."><button id="toggleSphericalMapBtn" class="glow-btn">Home</button></a>
                 </div>
             </div>
         </div>
+<br><br><br><br>
+        <!-- Feature Panel (Theme & Filter Only) -->
+        <div class="control-panel feature-panel">
+            <div class="feature-group">
+                <label for="themeSelector">Theme:</label>
+                <select id="themeSelector" class="feature-select">
+                    <option value="dark" selected>🌙 Dark</option>
+                    <option value="light">☀️ Light</option>
+                    <option value="sunset">🌅 Sunset</option>
+                    <option value="ocean">🌊 Ocean</option>
+                    <option value="forest">🌲 Forest</option>
+                </select>
+                <span id="themeStatus" class="status-indicator hidden"></span>
+            </div>
+            
+            <div class="feature-group">
+                <label for="filterSelector">Filter:</label>
+                <select id="filterSelector" class="feature-select">
+                    <option value="none" selected>✨ None</option>
+                    <option value="grayscale">⚫ Grayscale</option>
+                    <option value="sepia">🟤 Sepia</option>
+                    <option value="vibrant">💥 Vibrant</option>
+                    <option value="cool">🧊 Cool</option>
+                    <option value="warm">🔥 Warm</option>
+                </select>
+                <span id="filterStatus" class="status-indicator hidden"></span>
+            </div>
+        </div>
 
-        <script type="module" src="imageexplorer_secured.js"></script>
-    </body>
+        <!-- Left Sidebar: Upload and Screenshot -->
+        <div class="control-panel sidebar left-sidebar">
+            <form id="uploadForm" class="form-group">
+                <h3>Upload Images</h3>
+                <input type="file" id="images" multiple accept="image/*"> 
+                <div id="previewContainer" class="preview-container"></div>
+                <div class="action-group">
+                    <button type="submit" class="glow-btn submit-btn">Upload</button>
+                    <span id="uploadStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                </div>
+            </form>
+            <form id="screenshotForm" class="form-group">
+                <h3>Capture Screenshot</h3>
+                <input type="text" id="url" placeholder="Enter URL">
+                <div class="action-group">
+                    <button type="submit" class="glow-btn submit-btn">Capture</button>
+                    <span id="screenshotStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                </div>
+            </form> 
+        </div>
+
+        <!-- Right Sidebar: Sliders, Recording, and Environment Map Upload -->
+        <div class="control-panel sidebar right-sidebar">
+            <div class="slider-group">
+                <label for="zoomSlider">Zoom: <span id="zoomValue">5.0</span></label>
+                <input type="range" id="zoomSlider" min="0.1" max="10" step="0.1" value="5">
+            </div>
+            <div class="slider-group">
+                <label for="radiusSlider">Radius: <span id="radiusValue">5.0</span></label>
+                <input type="range" id="radiusSlider" min="1" max="10" step="0.1" value="5">
+            </div>
+            
+            <div class="env-map-group">
+                <label for="envMapInput">Upload Environment Map:</label>
+                <input type="file" id="envMapInput" accept="image/*">
+            </div>
+            
+            <div class="recording-group">
+                <div class="action-group">
+                    <button id="startRecordingBtn" class="glow-btn">Start Recording</button>
+                    <span id="startRecordingStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                </div>
+                <div class="action-group">
+                    <button id="stopRecordingBtn" class="glow-btn">Stop Recording</button>
+                    <span id="stopRecordingStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                </div>
+                <span id="recordingIndicator" class="recording-indicator hidden">Recording...</span>
+            </div>
+
+            <!-- Bookmark Section -->
+          
+        </div>
+
+        <!-- Bottom Controls: Navigation and Removal -->
+        <div class="control-panel bottom-panel">
+            <div class="action-group">
+                <button id="prevPage" class="glow-btn nav-btn">← Prev</button>
+                <span id="prevPageStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+            </div>
+            <div class="action-group">
+                <button id="nextPage" class="glow-btn nav-btn">Next →</button>
+                <span id="nextPageStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+            </div>
+            
+            <div class="action-group">
+                <button id="slideshowBtn" class="glow-btn">
+                    <i class="fas fa-play"></i> Slideshow
+                </button>
+                <span id="slideshowStatus" class="status-indicator hidden"></span>
+            </div>
+            
+            <!-- Share & Export Buttons -->
+            <div class="action-group">
+                <button id="shareBtn" class="glow-btn">🔗 Share</button>
+                <span id="shareStatus" class="status-indicator hidden"></span>
+            </div>
+            
+           
+            
+            <div class="action-group">
+                <button id="toggleRemoveBtn" class="glow-btn">Toggle Remove</button>
+                <span id="toggleRemoveStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+            </div>
+            
+            <div id="removeControls" class="remove-controls hidden">
+                <div class="action-group">
+                    <button id="removeBtn" class="glow-btn danger-btn">Remove Selected</button>
+                    <span id="removeSelectedStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                </div>
+                <div class="action-group">
+                    <button id="removeAllBtn" class="glow-btn danger-btn">Remove All</button>
+                    <span id="removeAllStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="imageexplorer.js"></script>
+</body>
 </html>

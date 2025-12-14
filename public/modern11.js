@@ -157,7 +157,7 @@ class ThreeJSApp {
         this.createGallery();
         this.setupAudio();
         this.setupEventListeners();
-        this.createAvatar();
+        // this.createAvatar();
         this.initializeWebFrameModal(); // Initialize modal system
 
         this.isLoading = true;
@@ -298,345 +298,756 @@ this.setupMobileControls();
     }
 
     
-    createGallery() {
-        const concreteColor = 0x888888;
-        const concreteRoughness = 0.7;
-        const concreteMetalness = 0.1;
+   // ============================================================================
+// 🏯 MODERN JAPANESE ZEN GALLERY
+// Combining traditional Japanese aesthetics with contemporary architecture
+// ============================================================================
+
+createGallery() {
+    const room1 = new THREE.Group();
+    const gallerySize = 50;
+    const galleryHeight = 12;
+
+    // ====== 🎨 PREMIUM SHARED MATERIALS ======
     
-        const floorMaterial = new THREE.MeshStandardMaterial({
-            color: concreteColor,
-            roughness: 0.2,
-            metalness: concreteMetalness
-        });
-        const noiseTexture = new THREE.Texture(this.generateNoiseCanvas(256, 256));
-        noiseTexture.needsUpdate = true;
-        noiseTexture.wrapS = noiseTexture.wrapT = THREE.RepeatWrapping;
-        noiseTexture.repeat.set(4, 4);
-        floorMaterial.map = noiseTexture;
-        floorMaterial.normalMap = noiseTexture;
-        floorMaterial.normalScale.set(0.05, 0.05);
+    // Natural materials
+    const darkWoodMaterial = new THREE.MeshStandardMaterial({
+        color: 0x3d2817,
+        roughness: 0.8,
+        metalness: 0.1
+    });
+
+    const lightWoodMaterial = new THREE.MeshStandardMaterial({
+        color: 0xd4a574,
+        roughness: 0.7,
+        metalness: 0.05
+    });
+
+    const bamboMaterial = new THREE.MeshStandardMaterial({
+        color: 0x7a9b5c,
+        roughness: 0.6,
+        metalness: 0
+    });
+
+    const paperMaterial = new THREE.MeshStandardMaterial({
+        color: 0xfff8dc,
+        roughness: 0.9,
+        metalness: 0,
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide
+    });
+
+    const whiteStoneMaterial = new THREE.MeshStandardMaterial({
+        color: 0xe8e8e8,
+        roughness: 0.7,
+        metalness: 0.1
+    });
+
+    const darkStoneMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4a4a4a,
+        roughness: 0.6,
+        metalness: 0.2
+    });
+
+    const sandMaterial = new THREE.MeshStandardMaterial({
+        color: 0xd4c5a9,
+        roughness: 0.95,
+        metalness: 0
+    });
+
+    const waterMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x88ccdd,
+        metalness: 0.1,
+        roughness: 0.1,
+        transparent: true,
+        opacity: 0.7,
+        transmission: 0.5
+    });
+
+    const glassMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        metalness: 0,
+        roughness: 0.05,
+        transparent: true,
+        opacity: 0.3,
+        transmission: 0.95
+    });
+
+    const lanternGlowMaterial = new THREE.MeshStandardMaterial({
+        color: 0xfff4e0,
+        emissive: 0xffd480,
+        emissiveIntensity: 2.0
+    });
+
+    const cherryBlossomMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffb7c5,
+        emissive: 0xff9fb0,
+        emissiveIntensity: 0.5,
+        roughness: 0.8,
+        side: THREE.DoubleSide
+    });
+
+    // ====== 🏛️ ZEN GARDEN FLOOR (SAND + STONE PATTERNS) ======
     
-        const waveTexture = new THREE.TextureLoader().load('/wave.jpg');
-        waveTexture.wrapS = waveTexture.wrapT = THREE.RepeatWrapping;
-        waveTexture.repeat.set(2, 1);
-        const wallMaterial = new THREE.MeshStandardMaterial({
-            color: 0xf5f5f5,
-            roughness: 0.4,
-            metalness: 0,
-            normalMap: waveTexture,
-            normalScale: new THREE.Vector2(0.1, 0.1)
-        });
-    
-        const ceilingMaterial = new THREE.MeshStandardMaterial({
-            color: 0xaaaaaa,
-            roughness: 0.4,
-            metalness: concreteMetalness,
-            map: noiseTexture
-        });
-        const glassMaterial = new THREE.MeshPhysicalMaterial({ 
-            color: 0xaaaaaa, 
-            transparent: true, 
-            opacity: 0.3, 
-            roughness: 0, 
-            metalness: 0.1, 
-            transmission: 0.9 
-        });
-        const metalMaterial = new THREE.MeshStandardMaterial({
-            color: 0xaaaaaa,
-            roughness: 0.3,
-            metalness: 0.8
-        });
-        const acrylicMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.8,
-            roughness: 0.1,
-            metalness: 0.2,
-            transmission: 0.9
-        });
-        const ledMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    
-        const room = new THREE.Group();
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(this.config.roomSize, this.config.roomSize), floorMaterial);
-        floor.rotation.x = -Math.PI / 2;
-        floor.receiveShadow = true;
-        room.add(floor);
-    
+    // Main sand floor
+    const sandFloor = new THREE.Mesh(
+        new THREE.CircleGeometry(gallerySize * 0.8, 64),
+        sandMaterial
+    );
+    sandFloor.rotation.x = -Math.PI / 2;
+    sandFloor.position.y = 0;
+    sandFloor.receiveShadow = true;
+    room1.add(sandFloor);
+
+    // Zen sand wave patterns (raked lines)
+    for (let i = 0; i < 20; i++) {
+        const waveRadius = 5 + i * 2;
+        const wave = new THREE.Mesh(
+            new THREE.TorusGeometry(waveRadius, 0.02, 8, 32),
+            new THREE.MeshStandardMaterial({
+                color: 0xc4b59a,
+                roughness: 1.0
+            })
+        );
+        wave.rotation.x = -Math.PI / 2;
+        wave.position.y = 0.01;
+        room1.add(wave);
+    }
+
+    // Outer wooden deck border
+    const deckSegments = 12;
+    for (let i = 0; i < deckSegments; i++) {
+        const angle = (i / deckSegments) * Math.PI * 2;
+        const radius = gallerySize * 0.85;
         
-        const ledStripGeometry = new THREE.BoxGeometry(this.config.roomSize, 0.02, 0.1);
-        const ledSpacing = this.config.roomSize / 5;
-        for (let i = -this.config.roomSize / 2 + ledSpacing; i < this.config.roomSize / 2; i += ledSpacing) {
-            const stripX = new THREE.Mesh(ledStripGeometry, ledMaterial);
-            stripX.position.set(0, 0.01, i);
-            stripX.rotation.x = -Math.PI / 2;
-            room.add(stripX);
+        const plank = new THREE.Mesh(
+            new THREE.BoxGeometry(8, 0.3, 2),
+            darkWoodMaterial
+        );
+        plank.position.set(
+            Math.cos(angle) * radius,
+            0.15,
+            Math.sin(angle) * radius
+        );
+        plank.rotation.y = angle + Math.PI / 2;
+        plank.receiveShadow = true;
+        plank.castShadow = true;
+        room1.add(plank);
+    }
+
+    // ====== 🌸 FLOATING EXHIBITION PLATFORMS ======
     
-            const stripZ = new THREE.Mesh(ledStripGeometry, ledMaterial);
-            stripZ.position.set(i, 0.01, 0);
-            stripZ.rotation.x = -Math.PI / 2;
-            stripZ.rotation.z = Math.PI / 2;
-            room.add(stripZ);
-    
-            const ledLight = new THREE.PointLight(0xffffff, 0.5, 2);
-            ledLight.position.set(i, 0.05, i);
-            room.add(ledLight);
-        }
-    
-        // Metal baseboards between wall and floor
-        const baseboardHeight = 0.15;
-        const baseboardDepth = 0.05;
-        const baseboardGeometry = new THREE.BoxGeometry(this.config.roomSize, baseboardHeight, baseboardDepth);
-        const wallEdge = this.config.roomSize / 2;
-    
-        const baseboards = [
-            { position: new THREE.Vector3(0, baseboardHeight / 2, -wallEdge + baseboardDepth / 2), rotation: { x: 0, y: 0, z: 0 } },
-            { position: new THREE.Vector3(0, baseboardHeight / 2, wallEdge - baseboardDepth / 2), rotation: { x: 0, y: Math.PI, z: 0 } },
-            { position: new THREE.Vector3(-wallEdge + baseboardDepth / 2, baseboardHeight / 2, 0), rotation: { x: 0, y: Math.PI / 2, z: 0 } },
-            { position: new THREE.Vector3(wallEdge - baseboardDepth / 2, baseboardHeight / 2, 0), rotation: { x: 0, y: -Math.PI / 2, z: 0 } }
+    const platformPositions = [
+        { x: -18, z: -18, rot: Math.PI / 4 },
+        { x: 18, z: -18, rot: -Math.PI / 4 },
+        { x: -18, z: 18, rot: 3 * Math.PI / 4 },
+        { x: 18, z: 18, rot: -3 * Math.PI / 4 },
+        { x: 0, z: -25, rot: 0 },
+        { x: -25, z: 0, rot: Math.PI / 2 },
+        { x: 25, z: 0, rot: -Math.PI / 2 },
+        { x: 0, z: 25, rot: Math.PI }
+    ];
+
+    platformPositions.forEach((pos, index) => {
+        const platformGroup = new THREE.Group();
+        
+        // Modern floating platform base
+        const platform = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 0.2, 5),
+            lightWoodMaterial
+        );
+        platform.position.y = 1.5;
+        platform.castShadow = true;
+        platform.receiveShadow = true;
+        platformGroup.add(platform);
+
+        // Support beams (minimalist)
+        const beamHeight = 1.5;
+        const beamPositions = [
+            [-1.8, 0, -2.2],
+            [1.8, 0, -2.2],
+            [-1.8, 0, 2.2],
+            [1.8, 0, 2.2]
         ];
-    
-        baseboards.forEach(config => {
-            const baseboard = new THREE.Mesh(baseboardGeometry, metalMaterial);
-            baseboard.position.copy(config.position);
-            baseboard.rotation.set(config.rotation.x, config.rotation.y, config.rotation.z);
-            baseboard.castShadow = true;
-            baseboard.receiveShadow = true;
-            room.add(baseboard);
+
+        beamPositions.forEach(beamPos => {
+            const beam = new THREE.Mesh(
+                new THREE.BoxGeometry(0.15, beamHeight, 0.15),
+                darkWoodMaterial
+            );
+            beam.position.set(beamPos[0], beamHeight / 2, beamPos[2]);
+            beam.castShadow = true;
+            platformGroup.add(beam);
         });
+
+        // Bamboo accent rails
+        const railGeometry = new THREE.CylinderGeometry(0.05, 0.05, 4.5, 12);
+        
+        const leftRail = new THREE.Mesh(railGeometry, bamboMaterial);
+        leftRail.rotation.z = Math.PI / 2;
+        leftRail.position.set(-2, 2.2, 0);
+        leftRail.castShadow = true;
+        platformGroup.add(leftRail);
+
+        const rightRail = new THREE.Mesh(railGeometry, bamboMaterial);
+        rightRail.rotation.z = Math.PI / 2;
+        rightRail.position.set(2, 2.2, 0);
+        rightRail.castShadow = true;
+        platformGroup.add(rightRail);
+
+        // Shoji screen backdrop
+        const shojiFrame = new THREE.Mesh(
+            new THREE.BoxGeometry(3.8, 3.5, 0.1),
+            darkWoodMaterial
+        );
+        shojiFrame.position.set(0, 3.3, -2.45);
+        platformGroup.add(shojiFrame);
+
+        const shojiPaper = new THREE.Mesh(
+            new THREE.PlaneGeometry(3.5, 3.2),
+            paperMaterial
+        );
+        shojiPaper.position.set(0, 3.3, -2.4);
+        platformGroup.add(shojiPaper);
+
+        // Paper lantern above each platform
+        const lanternGroup = new THREE.Group();
+        
+        const lanternBody = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16),
+            lanternGlowMaterial
+        );
+        lanternBody.position.y = 5.5;
+        lanternGroup.add(lanternBody);
+
+        const lanternTop = new THREE.Mesh(
+            new THREE.ConeGeometry(0.35, 0.2, 16),
+            darkWoodMaterial
+        );
+        lanternTop.position.y = 5.85;
+        lanternGroup.add(lanternTop);
+
+        const lanternBottom = new THREE.Mesh(
+            new THREE.ConeGeometry(0.35, 0.2, 16),
+            darkWoodMaterial
+        );
+        lanternBottom.rotation.x = Math.PI;
+        lanternBottom.position.y = 5.15;
+        lanternGroup.add(lanternBottom);
+
+        // Lantern light
+        const lanternLight = new THREE.PointLight(0xffd480, 1.5, 8);
+        lanternLight.position.y = 5.5;
+        lanternLight.castShadow = true;
+        lanternLight.shadow.mapSize.width = 512;
+        lanternLight.shadow.mapSize.height = 512;
+        lanternGroup.add(lanternLight);
+
+        // Hanging cord
+        const cord = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.01, 0.01, 5.5, 8),
+            darkWoodMaterial
+        );
+        cord.position.y = 2.75;
+        lanternGroup.add(cord);
+
+        platformGroup.add(lanternGroup);
+
+        platformGroup.position.set(pos.x, 0, pos.z);
+        platformGroup.rotation.y = pos.rot;
+        room1.add(platformGroup);
+    });
+
+    // ====== 🎋 BAMBOO FOREST PERIMETER ======
     
-        const hexGeometry = new THREE.CircleGeometry(1, 6);
-        const ceilingTileSpacing = this.config.roomSize / 5;
-        for (let i = -2; i <= 2; i++) {
-            for (let j = -2; j <= 2; j++) {
-                if (Math.abs(i) === 2 && Math.abs(j) === 2) continue;
-                const panel = new THREE.Mesh(hexGeometry, ceilingMaterial);
-                const heightOffset = Math.random() * 0.5 + this.config.wallHeight - 0.5;
-                panel.position.set(i * ceilingTileSpacing, heightOffset, j * ceilingTileSpacing);
-                panel.rotation.x = Math.PI / 2;
-                panel.receiveShadow = true;
-                room.add(panel);
+    const bambooCount = 36;
+    for (let i = 0; i < bambooCount; i++) {
+        const angle = (i / bambooCount) * Math.PI * 2;
+        const radius = gallerySize * 0.95 + Math.random() * 2;
+        
+        const bambooGroup = new THREE.Group();
+        
+        // Main bamboo stalk
+        const stalkHeight = 8 + Math.random() * 4;
+        const stalk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.1, stalkHeight, 12),
+            bamboMaterial
+        );
+        stalk.position.y = stalkHeight / 2;
+        stalk.castShadow = true;
+        bambooGroup.add(stalk);
+
+        // Bamboo nodes (segments)
+        const nodeCount = Math.floor(stalkHeight / 1.5);
+        for (let j = 0; j < nodeCount; j++) {
+            const node = new THREE.Mesh(
+                new THREE.TorusGeometry(0.11, 0.02, 8, 12),
+                darkWoodMaterial
+            );
+            node.rotation.x = Math.PI / 2;
+            node.position.y = j * 1.5 + 0.5;
+            bambooGroup.add(node);
+        }
+
+        // Bamboo leaves (simplified)
+        for (let j = 0; j < 5; j++) {
+            const leaf = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.5, 1.5),
+                new THREE.MeshStandardMaterial({
+                    color: 0x5a7a4a,
+                    roughness: 0.8,
+                    side: THREE.DoubleSide
+                })
+            );
+            const leafAngle = (j / 5) * Math.PI * 2;
+            leaf.position.set(
+                Math.cos(leafAngle) * 0.15,
+                stalkHeight - 0.5 - j * 0.3,
+                Math.sin(leafAngle) * 0.15
+            );
+            leaf.rotation.y = leafAngle;
+            leaf.rotation.x = Math.PI / 6;
+            bambooGroup.add(leaf);
+        }
+
+        bambooGroup.position.set(
+            Math.cos(angle) * radius,
+            0,
+            Math.sin(angle) * radius
+        );
+        bambooGroup.rotation.y = Math.random() * Math.PI * 2;
+        bambooGroup.userData.swaySpeed = 0.001 + Math.random() * 0.0005;
+        bambooGroup.userData.swayAmount = 0.05 + Math.random() * 0.05;
+        bambooGroup.userData.baseRotation = bambooGroup.rotation.clone();
+        
+        room1.add(bambooGroup);
+    }
+
+    // ====== 🌸 CHERRY BLOSSOM TREES ======
     
-                const led = new THREE.Mesh(new THREE.CircleGeometry(0.3, 6), ledMaterial);
-                led.position.set(i * ceilingTileSpacing, heightOffset - 0.05, j * ceilingTileSpacing);
-                led.rotation.x = Math.PI / 2;
-                room.add(led);
-    
-                const panelLight = new THREE.PointLight(0xffffff, 1, this.config.roomSize / 3);
-                panelLight.position.set(i * ceilingTileSpacing, heightOffset - 0.1, j * ceilingTileSpacing);
-                room.add(panelLight);
+    const cherryTreePositions = [
+        { x: -30, z: -15 },
+        { x: 30, z: -15 },
+        { x: -30, z: 15 },
+        { x: 30, z: 15 }
+    ];
+
+    cherryTreePositions.forEach(pos => {
+        const treeGroup = new THREE.Group();
+        
+        // Trunk
+        const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.7, 6, 12),
+            darkWoodMaterial
+        );
+        trunk.position.y = 3;
+        trunk.castShadow = true;
+        treeGroup.add(trunk);
+
+        // Main branches
+        for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            const branch = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.25, 3, 8),
+                darkWoodMaterial
+            );
+            branch.position.set(
+                Math.cos(angle) * 0.8,
+                5 + Math.sin(i) * 0.5,
+                Math.sin(angle) * 0.8
+            );
+            branch.rotation.z = Math.PI / 4 + angle;
+            branch.rotation.y = angle;
+            branch.castShadow = true;
+            treeGroup.add(branch);
+
+            // Cherry blossoms on branches
+            for (let j = 0; j < 8; j++) {
+                const blossom = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.15, 8, 8),
+                    cherryBlossomMaterial
+                );
+                blossom.position.set(
+                    Math.cos(angle) * (1.5 + j * 0.3),
+                    5.5 + Math.sin(i + j * 0.5) * 0.3,
+                    Math.sin(angle) * (1.5 + j * 0.3)
+                );
+                treeGroup.add(blossom);
             }
         }
-    
-        const walls = [
-            new THREE.Mesh(new THREE.PlaneGeometry(this.config.roomSize, this.config.wallHeight), wallMaterial),
-            new THREE.Mesh(new THREE.PlaneGeometry(this.config.roomSize, this.config.wallHeight), wallMaterial),
-            new THREE.Mesh(new THREE.PlaneGeometry(this.config.roomSize, this.config.wallHeight), wallMaterial),
-            new THREE.Mesh(new THREE.PlaneGeometry(this.config.roomSize, this.config.wallHeight), wallMaterial)
-        ];
-        const wallCenter = this.config.wallHeight / 2;
-        walls[0].position.set(0, wallCenter, -wallEdge);
-        walls[1].position.set(0, wallCenter, wallEdge);
-        walls[1].rotation.y = Math.PI;
-        walls[2].position.set(-wallEdge, wallCenter, 0);
-        walls[2].rotation.y = Math.PI / 2;
-        walls[3].position.set(wallEdge, wallCenter, 0);
-        walls[3].rotation.y = -Math.PI / 2;
-        walls.forEach(wall => {
-            wall.receiveShadow = true;
-            room.add(wall);
-        });
-    
-        const curvePoints = [];
-        const curveSegments = 20;
-        for (let i = 0; i <= curveSegments; i++) {
-            const angle = (i / curveSegments) * Math.PI;
-            const x = Math.cos(angle) * 2 - wallEdge;
-            const z = Math.sin(angle) * 2 - wallEdge;
-            curvePoints.push(new THREE.Vector3(x, 0, z));
-        }
-        const curve = new THREE.CatmullRomCurve3(curvePoints);
-        const glassGeometry = new THREE.ExtrudeGeometry(
-            new THREE.Shape([
-                new THREE.Vector2(-wallEdge, 0), 
-                new THREE.Vector2(wallEdge, 0), 
-                new THREE.Vector2(wallEdge, this.config.wallHeight), 
-                new THREE.Vector2(-wallEdge, this.config.wallHeight)
-            ]),
-            { depth: 0.1, extrudePath: curve }
+
+        // Canopy blossoms
+        const canopy = new THREE.Mesh(
+            new THREE.SphereGeometry(2.5, 16, 16),
+            cherryBlossomMaterial
         );
-        const curvedWindow = new THREE.Mesh(glassGeometry, glassMaterial);
-        curvedWindow.position.set(0, 0, 0);
-        room.add(curvedWindow);
+        canopy.position.y = 7;
+        canopy.scale.set(1, 0.7, 1);
+        treeGroup.add(canopy);
+
+        treeGroup.position.set(pos.x, 0, pos.z);
+        room1.add(treeGroup);
+    });
+
+    // ====== 💧 KOI POND (CENTERPIECE) ======
     
-        const metalStripGeometry = new THREE.BoxGeometry(0.05, this.config.wallHeight, 0.05);
-        const stripSpacing = this.config.roomSize / 7;
-        for (let i = -wallEdge + stripSpacing; i < wallEdge; i += stripSpacing) {
-            const strip = new THREE.Mesh(metalStripGeometry, metalMaterial);
-            strip.position.set(i, wallCenter, -wallEdge + 0.1);
-            strip.castShadow = true;
-            room.add(strip);
-        }
+    const pondGroup = new THREE.Group();
+
+    // Pond basin
+    const pond = new THREE.Mesh(
+        new THREE.CylinderGeometry(8, 9, 0.5, 32),
+        darkStoneMaterial
+    );
+    pond.position.y = -0.25;
+    pondGroup.add(pond);
+
+    // Water surface
+    const water = new THREE.Mesh(
+        new THREE.CircleGeometry(7.5, 32),
+        waterMaterial
+    );
+    water.rotation.x = -Math.PI / 2;
+    water.position.y = 0.05;
+    water.receiveShadow = true;
+    pondGroup.add(water);
+
+    // Stepping stones across pond
+    const stonePositions = [
+        { x: -4, z: 0 },
+        { x: -2, z: 1.5 },
+        { x: 0, z: 0.5 },
+        { x: 2, z: -1.5 },
+        { x: 4, z: 0 }
+    ];
+
+    stonePositions.forEach(pos => {
+        const stone = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.6, 0.7, 0.3, 8),
+            whiteStoneMaterial
+        );
+        stone.position.set(pos.x, 0.15, pos.z);
+        stone.rotation.y = Math.random() * Math.PI;
+        stone.castShadow = true;
+        stone.receiveShadow = true;
+        pondGroup.add(stone);
+    });
+
+    // Zen rocks around pond
+    for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const rock = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.2, 0),
+            whiteStoneMaterial
+        );
+        rock.position.set(
+            Math.cos(angle) * 8.5,
+            0.15,
+            Math.sin(angle) * 8.5
+        );
+        rock.rotation.set(
+            Math.random() * Math.PI,
+            Math.random() * Math.PI,
+            Math.random() * Math.PI
+        );
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+        pondGroup.add(rock);
+    }
+
+    // Lotus flowers
+    for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const radius = 3 + Math.random() * 3;
+        
+        const lotus = new THREE.Mesh(
+            new THREE.CircleGeometry(0.4, 8),
+            new THREE.MeshStandardMaterial({
+                color: 0xffb7c5,
+                emissive: 0xff9fb0,
+                emissiveIntensity: 0.3,
+                side: THREE.DoubleSide
+            })
+        );
+        lotus.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.2;
+        lotus.position.set(
+            Math.cos(angle) * radius,
+            0.06,
+            Math.sin(angle) * radius
+        );
+        pondGroup.add(lotus);
+    }
+
+    pondGroup.position.y = 0;
+    room1.add(pondGroup);
+
+    // ====== 🌊 TORII GATE ENTRANCE ======
     
-        const benchWidth = this.config.roomSize / 4;
-        const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(benchWidth, 0.3, 1), acrylicMaterial);
-        benchSeat.position.set(0, 0.15, this.config.roomSize / 5);
-        benchSeat.castShadow = true;
-        benchSeat.receiveShadow = true;
-        room.add(benchSeat);
+    const toriiGroup = new THREE.Group();
     
-        const benchFrameGeometry = new THREE.BoxGeometry(benchWidth + 0.1, 0.05, 0.05);
-        const benchFrame1 = new THREE.Mesh(benchFrameGeometry, metalMaterial);
-        benchFrame1.position.set(0, 0.3, this.config.roomSize / 5);
-        benchFrame1.castShadow = true;
-        room.add(benchFrame1);
+    // Main pillars
+    const pillarHeight = 8;
+    const leftPillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 0.45, pillarHeight, 16),
+        new THREE.MeshStandardMaterial({
+            color: 0xcc3333,
+            roughness: 0.6,
+            metalness: 0.1
+        })
+    );
+    leftPillar.position.set(-5, pillarHeight / 2, -gallerySize * 0.75);
+    leftPillar.castShadow = true;
+    toriiGroup.add(leftPillar);
+
+    const rightPillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 0.45, pillarHeight, 16),
+        new THREE.MeshStandardMaterial({
+            color: 0xcc3333,
+            roughness: 0.6,
+            metalness: 0.1
+        })
+    );
+    rightPillar.position.set(5, pillarHeight / 2, -gallerySize * 0.75);
+    rightPillar.castShadow = true;
+    toriiGroup.add(rightPillar);
+
+    // Upper beam (kasagi)
+    const upperBeam = new THREE.Mesh(
+        new THREE.BoxGeometry(12, 0.6, 0.6),
+        new THREE.MeshStandardMaterial({
+            color: 0xcc3333,
+            roughness: 0.6,
+            metalness: 0.1
+        })
+    );
+    upperBeam.position.set(0, pillarHeight + 0.3, -gallerySize * 0.75);
+    upperBeam.castShadow = true;
+    toriiGroup.add(upperBeam);
+
+    // Lower beam (nuki)
+    const lowerBeam = new THREE.Mesh(
+        new THREE.BoxGeometry(10, 0.4, 0.4),
+        new THREE.MeshStandardMaterial({
+            color: 0xaa2222,
+            roughness: 0.7,
+           // ✅ CORRECT
+metalness: 0.1
+        })
+    );
+    lowerBeam.position.set(0, pillarHeight - 1.5, -gallerySize * 0.75);
+    lowerBeam.castShadow = true;
+    toriiGroup.add(lowerBeam);
+
+    room1.add(toriiGroup);
+
+    // ====== 🪨 ROCK GARDEN ISLANDS ======
     
-        const benchFrame2 = new THREE.Mesh(benchFrameGeometry, metalMaterial);
-        benchFrame2.position.set(0, 0, this.config.roomSize / 5);
-        benchFrame2.castShadow = true;
-        room.add(benchFrame2);
-    
-        for (let i = 0; i < 4; i++) {
-            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 16), metalMaterial);
-            leg.position.set(
-                (i % 2 === 0 ? -benchWidth / 2 + 0.1 : benchWidth / 2 - 0.1),
-                0.15,
-                this.config.roomSize / 5 + (i < 2 ? -0.5 : 0.5)
+    const islandPositions = [
+        { x: -12, z: 0 },
+        { x: 12, z: 0 },
+        { x: 0, z: -15 },
+        { x: 0, z: 15 }
+    ];
+
+    islandPositions.forEach(pos => {
+        const islandGroup = new THREE.Group();
+        
+        // Base sand circle
+        const sandBase = new THREE.Mesh(
+            new THREE.CylinderGeometry(2, 2.2, 0.1, 32),
+            sandMaterial
+        );
+        sandBase.position.y = 0.05;
+        islandGroup.add(sandBase);
+
+        // Zen rocks
+        for (let i = 0; i < 3; i++) {
+            const rockSize = 0.5 + Math.random() * 0.5;
+            const rock = new THREE.Mesh(
+                new THREE.DodecahedronGeometry(rockSize, 0),
+                whiteStoneMaterial
             );
-            leg.castShadow = true;
-            leg.receiveShadow = true;
-            room.add(leg);
+            const rockAngle = (i / 3) * Math.PI * 2 + Math.random() * 0.5;
+            rock.position.set(
+                Math.cos(rockAngle) * (0.8 + Math.random() * 0.5),
+                rockSize * 0.7,
+                Math.sin(rockAngle) * (0.8 + Math.random() * 0.5)
+            );
+            rock.rotation.set(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+            );
+            rock.castShadow = true;
+            islandGroup.add(rock);
         }
+
+        // Circular rake pattern around rocks
+        for (let i = 0; i < 8; i++) {
+            const rakeCircle = new THREE.Mesh(
+                new THREE.TorusGeometry(0.5 + i * 0.2, 0.01, 8, 32),
+                new THREE.MeshStandardMaterial({
+                    color: 0xc4b59a,
+                    roughness: 1.0
+                })
+            );
+            rakeCircle.rotation.x = -Math.PI / 2;
+            rakeCircle.position.y = 0.11;
+            islandGroup.add(rakeCircle);
+        }
+
+        islandGroup.position.set(pos.x, 0, pos.z);
+        room1.add(islandGroup);
+    });
+
+    // ====== 💡 MODERN ZEN LIGHTING ======
     
-        // Removed lightWall (dynamic colored rods on back wall)
-        /*
-        this.lightWall = new THREE.Group();
-        this.lightWall.userData = { isInteractive: true, type: 'lightWall' };
-        const rodGeometry = new THREE.CylinderGeometry(0.05, 0.05, this.config.wallHeight - 1, 16);
-        const rodSpacing = this.config.roomSize / 13;
-        for (let i = -wallEdge + rodSpacing; i < wallEdge; i += rodSpacing) {
-            const rod = new THREE.Mesh(rodGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff }));
-            rod.position.set(i, wallCenter, wallEdge - 0.01);
-            rod.userData = { baseColor: 0xffffff, intensity: 1 };
-            this.lightWall.add(rod);
-        }
-        room.add(this.lightWall);
-        */
+    // Soft ambient moonlight
+    const ambientLight = new THREE.AmbientLight(0xc8d8e8, 0.3);
+    room1.add(ambientLight);
+
+    // Main moonlight (from above, like natural light)
+    const moonlight = new THREE.DirectionalLight(0xddeeff, 1.0);
+    moonlight.position.set(10, galleryHeight + 5, 10);
+    moonlight.castShadow = true;
+    moonlight.shadow.mapSize.width = 2048;
+    moonlight.shadow.mapSize.height = 2048;
+    moonlight.shadow.camera.left = -gallerySize;
+    moonlight.shadow.camera.right = gallerySize;
+    moonlight.shadow.camera.top = gallerySize;
+    moonlight.shadow.camera.bottom = -gallerySize;
+    room1.add(moonlight);
+
+    // Warm rim light (sunset glow)
+    const rimLight = new THREE.DirectionalLight(0xffccaa, 0.4);
+    rimLight.position.set(-15, galleryHeight, -15);
+    room1.add(rimLight);
+
+    // Pond reflection light (upward glow)
+    const pondLight = new THREE.PointLight(0x88ccdd, 0.5, 20);
+    pondLight.position.set(0, 0.5, 0);
+    room1.add(pondLight);
+
+    // Atmospheric fog (soft mist)
+    this.scene.fog = new THREE.Fog(0xe8f0f8, 35, 65);
+
+    room1.position.set(0, 0, 0);
+    this.rooms.push(room1);
+    this.rooms.forEach(room => this.scene.add(room));
     
-        room.position.set(0, 0, 0);
-        this.rooms.push(room);
-        this.scene.add(room);
-    }
+    console.log("🏯 Modern Japanese Zen gallery created!");
+}
 
-    generateNoiseCanvas(width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d');
-        const imageData = context.createImageData(width, height);
+    // generateNoiseCanvas(width, height) {
+    //     const canvas = document.createElement('canvas');
+    //     canvas.width = width;
+    //     canvas.height = height;
+    //     const context = canvas.getContext('2d');
+    //     const imageData = context.createImageData(width, height);
 
-        for (let i = 0; i < imageData.data.length; i += 4) {
-            const noise = Math.random() * 0.1 + 0.9;
-            imageData.data[i] = 136 * noise;
-            imageData.data[i + 1] = 136 * noise;
-            imageData.data[i + 2] = 136 * noise;
-            imageData.data[i + 3] = 255;
-        }
+    //     for (let i = 0; i < imageData.data.length; i += 4) {
+    //         const noise = Math.random() * 0.1 + 0.9;
+    //         imageData.data[i] = 136 * noise;
+    //         imageData.data[i + 1] = 136 * noise;
+    //         imageData.data[i + 2] = 136 * noise;
+    //         imageData.data[i + 3] = 255;
+    //     }
 
-        context.putImageData(imageData, 0, 0);
-        return canvas;
-    }
+    //     context.putImageData(imageData, 0, 0);
+    //     return canvas;
+    // }
 
-    createAvatar() {
-        this.avatarGroup = new THREE.Group();
-        const avatarMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.3
-        });
+    // createAvatar() {
+    //     this.avatarGroup = new THREE.Group();
+    //     const avatarMaterial = new THREE.MeshBasicMaterial({
+    //         color: 0xffffff,
+    //         transparent: true,
+    //         opacity: 0.3
+    //     });
 
-        const clickablePlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.5, 0.5),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
-        );
-        clickablePlane.position.set(2, 1.7, 2);
-        this.avatarGroup.add(clickablePlane);
+    //     const clickablePlane = new THREE.Mesh(
+    //         new THREE.PlaneGeometry(0.5, 0.5),
+    //         new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
+    //     );
+    //     clickablePlane.position.set(2, 1.7, 2);
+    //     this.avatarGroup.add(clickablePlane);
 
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
-        body.position.set(2, 0.5, 2);
-        this.avatarGroup.add(body);
+    //     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
+    //     body.position.set(2, 0.5, 2);
+    //     this.avatarGroup.add(body);
 
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
-        head.position.set(2, 1.2, 2);
-        this.avatarGroup.add(head);
+    //     const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
+    //     head.position.set(2, 1.2, 2);
+    //     this.avatarGroup.add(head);
 
-        const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-        const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
-        leftArm.position.set(1.7, 0.7, 2);
-        leftArm.rotation.z = Math.PI / 4;
-        this.avatarGroup.add(leftArm);
+    //     const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
+    //     const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
+    //     leftArm.position.set(1.7, 0.7, 2);
+    //     leftArm.rotation.z = Math.PI / 4;
+    //     this.avatarGroup.add(leftArm);
 
-        const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
-        rightArm.position.set(2.3, 0.7, 2);
-        rightArm.rotation.z = -Math.PI / 4;
-        this.avatarGroup.add(rightArm);
+    //     const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
+    //     rightArm.position.set(2.3, 0.7, 2);
+    //     rightArm.rotation.z = -Math.PI / 4;
+    //     this.avatarGroup.add(rightArm);
 
-        const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-        const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-        leftLeg.position.set(1.8, 0.25, 2);
-        this.avatarGroup.add(leftLeg);
+    //     const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
+    //     const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
+    //     leftLeg.position.set(1.8, 0.25, 2);
+    //     this.avatarGroup.add(leftLeg);
 
-        const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-        rightLeg.position.set(2.2, 0.25, 2);
-        this.avatarGroup.add(rightLeg);
+    //     const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
+    //     rightLeg.position.set(2.2, 0.25, 2);
+    //     this.avatarGroup.add(rightLeg);
 
-        this.avatarGroup.userData = { isAvatar: true };
-        this.scene.add(this.avatarGroup);
+    //     this.avatarGroup.userData = { isAvatar: true };
+    //     this.scene.add(this.avatarGroup);
 
-        // Add keyframe animation for avatar
-        this.setupAvatarAnimation();
+    //     // Add keyframe animation for avatar
+    //     this.setupAvatarAnimation();
 
-        this.updateAvatarPosition();
-    }
+    //     this.updateAvatarPosition();
+    // }
 
-    setupAvatarAnimation() {
-        const times = [0, 1, 2];
-        const armValues = [
-            [Math.PI / 4, -Math.PI / 4],   // Start
-            [-Math.PI / 4, Math.PI / 4],   // Mid
-            [Math.PI / 4, -Math.PI / 4]    // End
-        ];
+    // setupAvatarAnimation() {
+    //     const times = [0, 1, 2];
+    //     const armValues = [
+    //         [Math.PI / 4, -Math.PI / 4],   // Start
+    //         [-Math.PI / 4, Math.PI / 4],   // Mid
+    //         [Math.PI / 4, -Math.PI / 4]    // End
+    //     ];
 
-        const leftArmTrack = new THREE.NumberKeyframeTrack(
-            '.children[3].rotation[z]',
-            times,
-            armValues.map(v => v[0])
-        );
-        const rightArmTrack = new THREE.NumberKeyframeTrack(
-            '.children[4].rotation[z]',
-            times,
-            armValues.map(v => v[1])
-        );
+    //     const leftArmTrack = new THREE.NumberKeyframeTrack(
+    //         '.children[3].rotation[z]',
+    //         times,
+    //         armValues.map(v => v[0])
+    //     );
+    //     const rightArmTrack = new THREE.NumberKeyframeTrack(
+    //         '.children[4].rotation[z]',
+    //         times,
+    //         armValues.map(v => v[1])
+    //     );
 
-        const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
-        const action = this.animationMixer.clipAction(clip, this.avatarGroup);
-        action.setLoop(THREE.LoopRepeat);
-        action.play();
-    }
+    //     const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
+    //     const action = this.animationMixer.clipAction(clip, this.avatarGroup);
+    //     action.setLoop(THREE.LoopRepeat);
+    //     action.play();
+    // }
 
-    updateAvatarPosition() {
-        if (this.isMobile) {
-            const roomCenter = this.rooms[0].position.clone();
-            this.avatarGroup.position.copy(roomCenter);
-            this.avatarGroup.position.y = 0.5;
-        } else {
-            const direction = new THREE.Vector3();
-            this.camera.getWorldDirection(direction);
-            direction.y = 0;
-            direction.normalize().multiplyScalar(2);
-            this.avatarGroup.position.copy(this.camera.position).add(direction);
-            this.avatarGroup.position.y = 0.5;
-        }
-    }
+    // updateAvatarPosition() {
+    //     if (this.isMobile) {
+    //         const roomCenter = this.rooms[0].position.clone();
+    //         this.avatarGroup.position.copy(roomCenter);
+    //         this.avatarGroup.position.y = 0.5;
+    //     } else {
+    //         const direction = new THREE.Vector3();
+    //         this.camera.getWorldDirection(direction);
+    //         direction.y = 0;
+    //         direction.normalize().multiplyScalar(2);
+    //         this.avatarGroup.position.copy(this.camera.position).add(direction);
+    //         this.avatarGroup.position.y = 0.5;
+    //     }
+    // }
 
     async setupAudio() {
         try {
@@ -697,7 +1108,7 @@ this.setupMobileControls();
             // ADD THIS LINE inside the animate() method, after renderer.render():
 this.updateArtworkProgress();
             if (this.isMobile) this.controls.update();
-            this.updateAvatarPosition();
+            // this.updateAvatarPosition();
             
             if (this.isRecording) {
                 // Frame capture handled by MediaRecorder
