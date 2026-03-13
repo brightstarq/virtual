@@ -59,7 +59,6 @@
         ]
     }
     </script>
-    
     <style>
         #metadataModal, #shareModal {
             position: fixed;
@@ -103,41 +102,37 @@
     <div id="ui-overlay">
         <button id="toggleControlsBtn" class="glow-btn toggle-controls-btn">Hide</button>
         <div class="control-panel top-panel">
-            <h1 class="title">3D Submarine Art Gallery</h1>
-            <div class="button-group">
-                  <div class="action-group">
-                    <a href="/"><button class="glow-btn">Home</button></a> <!-- Changed to absolute path -->
-                </div>
-                <div class="action-group">
-                    <button id="downloadBtn" class="glow-btn">Download</button>
-                    <span id="downloadStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                </div>
-                <div class="action-group">
-                    <button id="recordBtn" class="glow-btn">Record</button>
-                    <span id="recordStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                </div>
-                <div class="action-group">
-                    <button id="autoRotateBtn" class="glow-btn">360</button>
-                </div>
-              
-                <div class="action-group">
-                    <button id="shareBtn" class="glow-btn">Share</button>
-                    <span id="shareStatus" class="status-indicator hidden"><i class="fas fa-spinner fa-spin"></i></span>
-                </div>
-              
-                  <div class="action-group">
-                   <!-- Add this near your other control buttons -->
-<button id="submarineDiveBtn" class="glow-btn">
-    <i class="fas fa-anchor"></i> Submarine Dive
-</button><!-- Changed to absolute path -->
-                </div>
-<div class="action-group">
-                   <button id="feedFishBtn" class="glow-btn">
-    <i class="fas fa-fish"></i> Feed Fish
-</button> <!-- Changed to absolute path -->
-                </div>
-                
-            </div>
+            <h1 class="title">3D Pavilion Art Gallery</h1>
+           <!-- In the top-panel button-group, add this button -->
+<div class="button-group">
+    <div class="action-group">
+        <button id="downloadBtn" class="glow-btn">Download</button>
+        <span id="downloadStatus" class="status-indicator hidden"></span>
+    </div>
+    <div class="action-group">
+        <button id="recordBtn" class="glow-btn">Record</button>
+        <span id="recordStatus" class="status-indicator hidden"></span>
+    </div>
+    <div class="action-group">
+        <button id="autoRotateBtn" class="glow-btn">360</button>
+    </div>
+    <div class="action-group">
+        <button id="animateObjectsBtn" class="glow-btn">Animate</button>
+    </div>
+    
+    <!-- ✅ NEW: Toggle Game UI Button -->
+    <div class="action-group">
+        <button id="toggleGameUIBtn" class="glow-btn">🎮 Hide Game</button>
+    </div>
+    
+    <div class="action-group">
+        <button id="shareBtn" class="glow-btn">Share</button>
+        <span id="shareStatus" class="status-indicator hidden"></span>
+    </div>
+    <div class="action-group">
+        <a href="/"><button class="glow-btn">Home</button></a>
+    </div>
+</div>
         </div>
         <div class="control-panel sidebar left-sidebar">
             <form id="uploadForm" class="form-group">
@@ -157,21 +152,21 @@
                 </div>
             </form>
         </div>
-        <div class="control-panel sidebar right-sidebar">
-            <div class="slider-group">
-                <label for="zoomSlider">Zoom: <span id="zoomValue">5.0</span></label>
-                <input type="range" id="zoomSlider" min="0.5" max="10" step="0.1" value="5">
-            </div>
-            <div class="slider-group">
-                <label for="sensitivitySlider">Sensitivity: <span id="sensitivityValue">0.001</span></label>
-                <input type="range" id="sensitivitySlider" min="0.001" max="0.01" step="0.001" value="0.001">
-            </div>
-            <div class="slider-group">
-                <label for="animationSpeedSlider">Animation Speed: <span id="animationSpeedValue">1.0</span></label>
-                <input type="range" id="animationSpeedSlider" min="0.1" max="2.0" step="0.1" value="1.0">
-            </div>
-
-             <div class="slider-group">
+       <div class="control-panel sidebar right-sidebar">
+    <div class="slider-group">
+        <label for="zoomSlider">Zoom: <span id="zoomValue">5.0</span></label>
+        <input type="range" id="zoomSlider" min="0.5" max="10" step="0.1" value="5">
+    </div>
+    <div class="slider-group">
+        <label for="sensitivitySlider">Sensitivity: <span id="sensitivityValue">0.001</span></label>
+        <input type="range" id="sensitivitySlider" min="0.001" max="0.01" step="0.001" value="0.001">
+    </div>
+    <div class="slider-group">
+        <label for="animationSpeedSlider">Animation Speed: <span id="animationSpeedValue">1.0</span></label>
+        <input type="range" id="animationSpeedSlider" min="0.1" max="2.0" step="0.1" value="1.0">
+    </div>
+    <!-- ✓ ADD THIS NEW SLIDER -->
+    <div class="slider-group">
         <label for="cameraHeightSlider">Camera Height: <span id="cameraHeightValue">1.6</span></label>
         
         <input 
@@ -184,7 +179,7 @@
     class="slider"
 >
     </div>
-        </div>
+</div>
         <div id="imageSliderContainer" class="image-slider hidden">
             <div class="slider-content">
                 <img id="sliderImage" src="" alt="Selected Artwork">
@@ -205,6 +200,6 @@
     </div>
     <div id="shareModal"></div> <!-- Added here -->
     
-    <script type="module" src="/modern14.js"></script> <!-- Changed to absolute path -->
+    <script type="module" src="/modern10.js"></script> <!-- Changed to absolute path -->
 </body>
 </html>

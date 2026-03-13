@@ -54,8 +54,8 @@ class ThreeJSApp {
     
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
-   this.roomCameraSettings = [
-    { position: new THREE.Vector3(-25, 0, 5), lookAt: new THREE.Vector3(0, 0, -5) }
+this.roomCameraSettings = [
+    { position: new THREE.Vector3(0, 1.6, 35), lookAt: new THREE.Vector3(0, 1.6, 0) }
 ];
 
     const initialSettings = this.roomCameraSettings[0];
@@ -69,7 +69,7 @@ class ThreeJSApp {
         powerPreference: "high-performance" // ✓ ADDED
     });
     this.renderer.setClearColor(0x1a1a1a, 1); // ✓ FIXED: Darker background
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // ✓ FIXED: Cap pixel ratio
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -98,8 +98,7 @@ class ThreeJSApp {
             this.controls = new CustomPointerLockControls(this.camera, this.renderer.domElement);
             this.controls.getObject().position.copy(initialSettings.position);
         }
-    document.getElementById("feedFishBtn")?.addEventListener("click", () => this.feedFish());
-    document.getElementById("submarineDiveBtn")?.addEventListener("click", () => this.startSubmarineDive());
+
         this.images = [];
         this.sessionId = localStorage.getItem('sessionId');
         this.textureLoader = new THREE.TextureLoader();
@@ -152,7 +151,7 @@ class ThreeJSApp {
         this.createGallery();
         this.setupAudio();
         this.setupEventListeners();
-        // this.createAvatar();
+        this.createAvatar();
 
         this.isLoading = true;
         this.showPreloader();
@@ -277,9 +276,14 @@ this.setupMobileControls();
     }
   addLighting() {
     // ✓ FIXED: Reduced ambient for more dramatic lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); // was 0.3
+    this.scene.fog = new THREE.FogExp2(0x1a1a1a, 0.008); // Dark fog
+    
+    // Reduced ambient (dramatic shadows)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
     this.scene.add(ambientLight);
+   
 
+    
     // ✓ FIXED: Main directional light (softer, more realistic)
     const mainLight = new THREE.DirectionalLight(0xffffff, 0.8); // was 1.2
     mainLight.position.set(10, 20, 10);
@@ -299,803 +303,1262 @@ this.setupMobileControls();
     const fillLight = new THREE.DirectionalLight(0xfff5e6, 0.3); // was 0xffffff, 0.4
     fillLight.position.set(-15, 15, -10);
     this.scene.add(fillLight);
-    // Underwater haze
-this.scene.fog = new THREE.FogExp2(0x1a4d7a, 0.015); // Blue-green fog
 }
+
 
 
 createGallery() {
     const room1 = new THREE.Group();
     
     // ========================================
-    // MATERIALS LIBRARY
+    // MATERIALS LIBRARY - ANCIENT SCHOLARLY
     // ========================================
     
-    // Thick acrylic glass tunnel material
-    const acrylicGlassMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        transmission: 0.98,
-        thickness: 0.8,
-        roughness: 0.05,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
-        ior: 1.49, // Acrylic IOR
-        envMapIntensity: 1.2,
-        transparent: true,
-        opacity: 0.95,
-        side: THREE.DoubleSide
+    // 1. Aged papyrus/parchment
+    const papyrusMaterial = new THREE.MeshStandardMaterial({
+        color: 0xf4e4c1,
+        roughness: 0.9,
+        metalness: 0.0,
+        emissive: 0x3a2a1a,
+        emissiveIntensity: 0.1
     });
     
-    // Brass submarine metal
-    const brassMaterial = new THREE.MeshStandardMaterial({
-        color: 0xb87333,
-        roughness: 0.4,
-        metalness: 0.9,
-        envMapIntensity: 1.5
+    // 2. Polished marble (Greco-Roman style)
+    const marbleMaterial = new THREE.MeshStandardMaterial({
+        color: 0xf5f5dc,
+        roughness: 0.3,
+        metalness: 0.1,
+        envMapIntensity: 0.5
     });
     
-    // Dark ocean floor sand
-    const sandFloorMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2c2416,
-        roughness: 0.95,
-        metalness: 0.0
-    });
+    const marbleTexture = this.generateCarraraMarble(2048, 2048);
+    const marbleTextureObj = new THREE.Texture(marbleTexture);
+    marbleTextureObj.needsUpdate = true;
+    marbleTextureObj.wrapS = marbleTextureObj.wrapT = THREE.RepeatWrapping;
+    marbleTextureObj.repeat.set(4, 4);
+    marbleMaterial.map = marbleTextureObj;
     
-    // Bioluminescent glow material
-    const biolumMaterial = new THREE.MeshStandardMaterial({
-        color: 0x00ffff,
-        emissive: 0x00ffff,
-        emissiveIntensity: 2.0,
-        transparent: true,
-        opacity: 0.6
-    });
-    
-    // Coral material
-    const coralMaterial = new THREE.MeshStandardMaterial({
-        color: 0xff6b9d,
+    // 3. Dark aged wood (bookshelves)
+    const darkWoodMaterial = new THREE.MeshStandardMaterial({
+        color: 0x3d2817,
         roughness: 0.8,
         metalness: 0.0
     });
     
-    // Weathered metal hull
-    const hullMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4a5f6b,
-        roughness: 0.7,
-        metalness: 0.8
+    const woodTexture = this.generateWoodTexture(1024, 1024);
+    const woodTextureObj = new THREE.Texture(woodTexture);
+    woodTextureObj.needsUpdate = true;
+    woodTextureObj.wrapS = woodTextureObj.wrapT = THREE.RepeatWrapping;
+    woodTextureObj.repeat.set(2, 2);
+    darkWoodMaterial.map = woodTextureObj;
+    
+    // 4. Bronze/brass fixtures
+    const bronzeMaterial = new THREE.MeshStandardMaterial({
+        color: 0xcd7f32,
+        roughness: 0.4,
+        metalness: 0.8,
+        envMapIntensity: 1.0
+    });
+    
+    // 5. Aged leather book bindings
+    const leatherMaterial = new THREE.MeshStandardMaterial({
+        color: 0x654321,
+        roughness: 0.9,
+        metalness: 0.0
+    });
+    
+    // 6. Gold leaf accents
+    const goldLeafMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffd700,
+        roughness: 0.3,
+        metalness: 0.9,
+        emissive: 0xffd700,
+        emissiveIntensity: 0.2
     });
     
     // ========================================
-    // MAIN CURVED TUNNEL STRUCTURE
+    // LIBRARY STRUCTURE
     // ========================================
     
-    // Create curved path for tunnel
-    const tunnelCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-25, 0, 0),
-        new THREE.Vector3(-15, 0, -8),
-        new THREE.Vector3(0, 0, -10),
-        new THREE.Vector3(15, 0, -8),
-        new THREE.Vector3(25, 0, 0)
-    ]);
+    const libraryWidth = 80;
+    const libraryDepth = 60;
+    const libraryHeight = 25;
     
-    // Tunnel tube geometry
-    const tunnelGeometry = new THREE.TubeGeometry(
-        tunnelCurve,
-        100, // path segments
-        3.5, // radius
-        16, // radial segments
-        false // closed
+    // Polished marble floor with geometric inlay patterns
+    const mainFloor = new THREE.Mesh(
+        new THREE.PlaneGeometry(libraryWidth, libraryDepth),
+        marbleMaterial
     );
+    mainFloor.rotation.x = -Math.PI / 2;
+    mainFloor.receiveShadow = true;
+    room1.add(mainFloor);
     
-    const tunnel = new THREE.Mesh(tunnelGeometry, acrylicGlassMaterial);
-    tunnel.receiveShadow = true;
-    room1.add(tunnel);
-    
-    // Chrome support rings every 5m
-    for (let i = 0; i <= 10; i++) {
-        const t = i / 10;
-        const pos = tunnelCurve.getPoint(t);
-        const tangent = tunnelCurve.getTangent(t);
-        
-        const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(3.6, 0.15, 16, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0xc0c0c0,
-                roughness: 0.2,
-                metalness: 1.0,
-                envMapIntensity: 2.0
-            })
-        );
-        
-        ring.position.copy(pos);
-        ring.lookAt(pos.clone().add(tangent));
-        ring.castShadow = true;
-        room1.add(ring);
-        
-        // Rivets on rings
-        for (let j = 0; j < 24; j++) {
-            const angle = (j / 24) * Math.PI * 2;
-            const rivet = new THREE.Mesh(
-                new THREE.SphereGeometry(0.08, 8, 8),
-                brassMaterial
-            );
-            rivet.position.copy(pos);
-            rivet.position.x += Math.cos(angle) * 3.6;
-            rivet.position.y += Math.sin(angle) * 3.6;
-            room1.add(rivet);
-        }
-    }
-    
-    // ========================================
-    // FLOOR SYSTEM
-    // ========================================
-    
-    // Main walkway floor (metal grating)
-    const walkwayPath = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-25, -2.5, 0),
-        new THREE.Vector3(-15, -2.5, -8),
-        new THREE.Vector3(0, -2.5, -10),
-        new THREE.Vector3(15, -2.5, -8),
-        new THREE.Vector3(25, -2.5, 0)
-    ]);
-    
-    const walkwayGeometry = new THREE.TubeGeometry(
-        walkwayPath,
-        100,
-        2.0, // narrower floor
-        8,
-        false
-    );
-    
-    const walkway = new THREE.Mesh(
-        walkwayGeometry,
-        new THREE.MeshStandardMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.8,
-            metalness: 0.9,
-            transparent: true,
-            opacity: 0.8
-        })
-    );
-    walkway.receiveShadow = true;
-    room1.add(walkway);
-    
-    // Glass floor sections (see fish below)
-    for (let i = 1; i < 10; i += 2) {
-        const t = i / 10;
-        const pos = walkwayPath.getPoint(t);
-        
-        const glassFloor = new THREE.Mesh(
-            new THREE.CircleGeometry(1.5, 32),
-            acrylicGlassMaterial
-        );
-        glassFloor.position.copy(pos);
-        glassFloor.position.y += 0.05;
-        glassFloor.rotation.x = -Math.PI / 2;
-        glassFloor.receiveShadow = true;
-        room1.add(glassFloor);
-    }
-    
-    // ========================================
-    // VIEWING PODS (6 Spherical Domes)
-    // ========================================
-    
-    const podPositions = [
-        { x: -20, y: 0, z: 5 },
-        { x: -10, y: 0, z: -12 },
-        { x: 0, y: 0, z: -15 },
-        { x: 10, y: 0, z: -12 },
-        { x: 20, y: 0, z: 5 },
-        { x: 0, y: 5, z: -10 } // Elevated pod
+    // Geometric mosaic inlay (Greek key pattern)
+    const mosaicPositions = [
+        { x: 0, z: 0, size: 15 },
+        { x: -25, z: -20, size: 8 },
+        { x: 25, z: -20, size: 8 },
+        { x: -25, z: 20, size: 8 },
+        { x: 25, z: 20, size: 8 }
     ];
     
-    podPositions.forEach((podPos, index) => {
-        // Glass dome (hemisphere)
-        const dome = new THREE.Mesh(
-            new THREE.SphereGeometry(4, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
-            acrylicGlassMaterial
-        );
-        dome.position.set(podPos.x, podPos.y, podPos.z);
-        dome.receiveShadow = true;
-        dome.castShadow = true;
-        room1.add(dome);
-        
-        // Metal base ring
-        const baseRing = new THREE.Mesh(
-            new THREE.CylinderGeometry(4.1, 4.1, 0.3, 32),
-            hullMaterial
-        );
-        baseRing.position.set(podPos.x, podPos.y - 0.15, podPos.z);
-        baseRing.castShadow = true;
-        room1.add(baseRing);
-        
-        // Interior floor platform
-        const platform = new THREE.Mesh(
-            new THREE.CircleGeometry(3.5, 32),
+    mosaicPositions.forEach(pos => {
+        const mosaic = new THREE.Mesh(
+            new THREE.CircleGeometry(pos.size, 64),
             new THREE.MeshStandardMaterial({
-                color: 0x3a3a3a,
-                roughness: 0.6,
-                metalness: 0.8
+                color: 0x8b4513,
+                roughness: 0.5,
+                metalness: 0.1
             })
         );
-        platform.position.set(podPos.x, podPos.y - 2, podPos.z);
-        platform.rotation.x = -Math.PI / 2;
-        platform.receiveShadow = true;
-        room1.add(platform);
+        mosaic.position.set(pos.x, 0.01, pos.z);
+        mosaic.rotation.x = -Math.PI / 2;
+        mosaic.receiveShadow = true;
+        room1.add(mosaic);
         
-        // Brass observation seat
-        const seat = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.4, 0.5, 0.8, 16),
-            brassMaterial
+        // Greek key pattern border
+        const border = new THREE.Mesh(
+            new THREE.RingGeometry(pos.size, pos.size + 0.3, 64),
+            goldLeafMaterial
         );
-        seat.position.set(podPos.x, podPos.y - 1.6, podPos.z);
-        seat.castShadow = true;
-        room1.add(seat);
-        
-        // Ambient pod lighting (blue-green)
-        const podLight = new THREE.PointLight(0x00ccff, 2.0, 10);
-        podLight.position.set(podPos.x, podPos.y + 3, podPos.z);
-        room1.add(podLight);
+        border.position.set(pos.x, 0.02, pos.z);
+        border.rotation.x = -Math.PI / 2;
+        room1.add(border);
     });
     
     // ========================================
-    // PORTHOLE WINDOWS (Along Tunnel)
+    // MASSIVE MARBLE COLUMNS (Corinthian Style)
     // ========================================
     
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const t = (i / 8);
-        const pos = tunnelCurve.getPoint(t);
+    const columnPositions = [
+        { x: -30, z: -20 }, { x: -30, z: 0 }, { x: -30, z: 20 },
+        { x: 0, z: -25 }, { x: 0, z: 25 },
+        { x: 30, z: -20 }, { x: 30, z: 0 }, { x: 30, z: 20 }
+    ];
+    
+    columnPositions.forEach(pos => {
+        // Column shaft (slightly tapered)
+        const column = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.8, 1.0, libraryHeight - 4, 32),
+            marbleMaterial
+        );
+        column.position.set(pos.x, (libraryHeight - 4) / 2, pos.z);
+        column.castShadow = true;
+        column.receiveShadow = true;
+        room1.add(column);
         
-        // Brass porthole frame
+        // Fluted grooves (20 flutes typical of Corinthian)
+        for (let i = 0; i < 20; i++) {
+            const angle = (i / 20) * Math.PI * 2;
+            const flute = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.05, libraryHeight - 4, 8),
+                new THREE.MeshStandardMaterial({
+                    color: 0xe8e8d0,
+                    roughness: 0.4
+                })
+            );
+            flute.position.set(
+                pos.x + Math.cos(angle) * 0.85,
+                (libraryHeight - 4) / 2,
+                pos.z + Math.sin(angle) * 0.85
+            );
+            room1.add(flute);
+        }
+        
+        // Corinthian capital (ornate acanthus leaves)
+        const capital = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.3, 0.8, 2.0, 32),
+            marbleMaterial
+        );
+        capital.position.set(pos.x, libraryHeight - 3, pos.z);
+        capital.castShadow = true;
+        room1.add(capital);
+        
+        // Gold leaf decoration on capital
+        const goldBand = new THREE.Mesh(
+            new THREE.TorusGeometry(1.1, 0.08, 16, 32),
+            goldLeafMaterial
+        );
+        goldBand.position.set(pos.x, libraryHeight - 2.5, pos.z);
+        goldBand.rotation.x = Math.PI / 2;
+        room1.add(goldBand);
+        
+        // Column base (plinth)
+        const base = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.2, 1.4, 0.8, 32),
+            marbleMaterial
+        );
+        base.position.set(pos.x, 0.4, pos.z);
+        base.castShadow = true;
+        base.receiveShadow = true;
+        room1.add(base);
+    });
+    
+    // ========================================
+    // TOWERING BOOKSHELVES (4-Story High)
+    // ========================================
+    
+    this.bookshelves = [];
+    
+    const shelfConfigs = [
+        { x: -35, z: 0, rotation: Math.PI / 2, length: 50 },
+        { x: 35, z: 0, rotation: -Math.PI / 2, length: 50 },
+        { x: 0, z: -28, rotation: 0, length: 60 },
+        { x: 0, z: 28, rotation: Math.PI, length: 60 }
+    ];
+    
+    shelfConfigs.forEach((config, wallIndex) => {
+        const shelfGroup = new THREE.Group();
+        
+        // Main bookshelf frame (reaching to ceiling)
         const frame = new THREE.Mesh(
-            new THREE.TorusGeometry(0.8, 0.1, 16, 32),
-            brassMaterial
+            new THREE.BoxGeometry(
+                config.rotation === 0 || config.rotation === Math.PI ? config.length : 3,
+                libraryHeight - 2,
+                config.rotation === 0 || config.rotation === Math.PI ? 3 : config.length
+            ),
+            darkWoodMaterial
         );
-        frame.position.set(
-            pos.x + Math.cos(angle) * 3.3,
-            pos.y + Math.sin(angle) * 3.3,
-            pos.z
-        );
-        frame.lookAt(pos);
+        frame.position.y = (libraryHeight - 2) / 2;
         frame.castShadow = true;
-        room1.add(frame);
+        frame.receiveShadow = true;
+        shelfGroup.add(frame);
         
-        // Glass porthole
-        const glass = new THREE.Mesh(
-            new THREE.CircleGeometry(0.75, 32),
-            acrylicGlassMaterial
-        );
-        glass.position.copy(frame.position);
-        glass.lookAt(pos);
-        room1.add(glass);
-        
-        // Locking wheel mechanism
-        for (let j = 0; j < 6; j++) {
-            const spokeAngle = (j / 6) * Math.PI * 2;
-            const spoke = new THREE.Mesh(
-                new THREE.BoxGeometry(0.08, 0.08, 0.4),
-                brassMaterial
-            );
-            spoke.position.copy(frame.position);
-            spoke.position.x += Math.cos(spokeAngle) * 0.5 + Math.cos(angle) * 0.1;
-            spoke.position.y += Math.sin(spokeAngle) * 0.5 + Math.sin(angle) * 0.1;
-            spoke.rotation.z = spokeAngle;
-            room1.add(spoke);
-        }
-    }
-    
-    // ========================================
-    // SUBMARINE ENTRANCE AIRLOCK
-    // ========================================
-    
-    const airlockGroup = new THREE.Group();
-    
-    // Circular door
-    const door = new THREE.Mesh(
-        new THREE.CylinderGeometry(2.5, 2.5, 0.5, 32),
-        hullMaterial
-    );
-    door.rotation.z = Math.PI / 2;
-    door.position.set(-28, 0, 0);
-    door.castShadow = true;
-    airlockGroup.add(door);
-    
-    // Spinning wheel handle
-    const wheel = new THREE.Mesh(
-        new THREE.TorusGeometry(0.8, 0.08, 16, 32),
-        brassMaterial
-    );
-    wheel.position.set(-27.5, 0, 0);
-    wheel.rotation.y = Math.PI / 2;
-    airlockGroup.add(wheel);
-    
-    // Wheel spokes
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const spoke = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, 0.08, 1.4),
-            brassMaterial
-        );
-        spoke.position.copy(wheel.position);
-        spoke.rotation.copy(wheel.rotation);
-        spoke.rotation.z = angle;
-        airlockGroup.add(spoke);
-    }
-    
-  
-    
-    room1.add(airlockGroup);
-    this.airlockWheel = wheel; // Store for animation
-    
-    // ========================================
-    // MARINE LIFE - SWIMMING FISH
-    // ========================================
-    
-    this.fishSchools = [];
-    
-    // Tropical fish (small, colorful)
-    for (let i = 0; i < 30; i++) {
-        const fish = new THREE.Mesh(
-            new THREE.ConeGeometry(0.1, 0.3, 8),
-            new THREE.MeshStandardMaterial({
-                color: [0xff6b35, 0xf7931e, 0xfdc82f, 0x00a8e8][Math.floor(Math.random() * 4)],
-                roughness: 0.4,
-                metalness: 0.3
-            })
-        );
-        
-        fish.rotation.x = Math.PI / 2;
-        fish.position.set(
-            (Math.random() - 0.5) * 50,
-            Math.random() * 8 - 2,
-            (Math.random() - 0.5) * 30
-        );
-        
-        // Add tail fin
-        const tail = new THREE.Mesh(
-            new THREE.ConeGeometry(0.08, 0.15, 3),
-            fish.material
-        );
-        tail.position.z = -0.15;
-        fish.add(tail);
-        
-        fish.userData = {
-            speed: 0.02 + Math.random() * 0.03,
-            amplitude: 0.5 + Math.random() * 1.0,
-            phase: Math.random() * Math.PI * 2,
-            orbitRadius: 10 + Math.random() * 15,
-            orbitSpeed: 0.001 + Math.random() * 0.002,
-            orbitAngle: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(fish);
-        this.fishSchools.push(fish);
-    }
-    
-    // Large rays (gliding)
-    for (let i = 0; i < 5; i++) {
-        const ray = new THREE.Mesh(
-            new THREE.SphereGeometry(1.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-            new THREE.MeshStandardMaterial({
-                color: 0x5a7d9a,
-                roughness: 0.6,
-                metalness: 0.2
-            })
-        );
-        
-        ray.scale.set(2, 0.2, 1);
-        ray.position.set(
-            (Math.random() - 0.5) * 40,
-            Math.random() * 6,
-            (Math.random() - 0.5) * 25
-        );
-        
-        ray.userData = {
-            speed: 0.01,
-            amplitude: 2.0,
-            phase: Math.random() * Math.PI * 2,
-            orbitRadius: 20,
-            orbitSpeed: 0.0008,
-            orbitAngle: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(ray);
-        this.fishSchools.push(ray);
-    }
-    
-    // ========================================
-    // BIOLUMINESCENT JELLYFISH
-    // ========================================
-    
-    this.jellyfish = [];
-    
-    for (let i = 0; i < 15; i++) {
-        const jellyfishGroup = new THREE.Group();
-        
-        // Bell (dome)
-        const bell = new THREE.Mesh(
-            new THREE.SphereGeometry(0.4, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-            new THREE.MeshStandardMaterial({
-                color: 0x00ffff,
-                emissive: 0x00ffff,
-                emissiveIntensity: 0.8,
-                transparent: true,
-                opacity: 0.6,
-                roughness: 0.3
-            })
-        );
-        bell.rotation.x = Math.PI;
-        jellyfishGroup.add(bell);
-        
-        // Tentacles (6-8 per jellyfish)
-        const numTentacles = 6 + Math.floor(Math.random() * 3);
-        for (let j = 0; j < numTentacles; j++) {
-            const angle = (j / numTentacles) * Math.PI * 2;
-            const tentacle = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.02, 0.01, 1.5, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x00ccff,
-                    emissive: 0x0088cc,
-                    emissiveIntensity: 0.5,
-                    transparent: true,
-                    opacity: 0.4
-                })
-            );
-            tentacle.position.set(
-                Math.cos(angle) * 0.3,
-                -0.75,
-                Math.sin(angle) * 0.3
-            );
-            jellyfishGroup.add(tentacle);
-        }
-        
-        // Glow light
-        const glowLight = new THREE.PointLight(0x00ffff, 2.0, 5);
-        glowLight.position.set(0, 0, 0);
-        jellyfishGroup.add(glowLight);
-        
-        jellyfishGroup.position.set(
-            (Math.random() - 0.5) * 45,
-            Math.random() * 8 + 2,
-            (Math.random() - 0.5) * 28
-        );
-        
-        jellyfishGroup.userData = {
-            floatSpeed: 0.0005 + Math.random() * 0.001,
-            floatAmplitude: 1.5 + Math.random() * 1.0,
-            floatPhase: Math.random() * Math.PI * 2,
-            pulseSpeed: 1.0 + Math.random() * 2.0
-        };
-        
-        room1.add(jellyfishGroup);
-        this.jellyfish.push(jellyfishGroup);
-    }
-    
-    // ========================================
-    // CORAL REEF STRUCTURES
-    // ========================================
-    
-    const coralPositions = [
-        { x: -18, z: 8 }, { x: -12, z: -14 }, { x: 0, z: -18 },
-        { x: 12, z: -14 }, { x: 18, z: 8 }, { x: -8, z: 0 },
-        { x: 8, z: -5 }, { x: 0, z: 10 }
-    ];
-    
-    coralPositions.forEach(pos => {
-        const coralGroup = new THREE.Group();
-        
-        // Brain coral
-        const brainCoral = new THREE.Mesh(
-            new THREE.SphereGeometry(0.8, 16, 16),
-            new THREE.MeshStandardMaterial({
-                color: 0xff6b9d,
-                roughness: 0.9,
-                metalness: 0.0
-            })
-        );
-        brainCoral.scale.set(1, 0.6, 1);
-        brainCoral.position.y = -2.5;
-        coralGroup.add(brainCoral);
-        
-        // Branch coral (random height)
-        for (let i = 0; i < 5 + Math.floor(Math.random() * 5); i++) {
-            const branch = new THREE.Mesh(
-                new THREE.CylinderGeometry(
-                    0.05 + Math.random() * 0.05,
-                    0.08 + Math.random() * 0.07,
-                    0.5 + Math.random() * 1.0,
-                    8
+        // Individual shelves (12 levels)
+        const numShelves = 12;
+        for (let i = 0; i < numShelves; i++) {
+            const shelfY = 1.5 + i * ((libraryHeight - 4) / numShelves);
+            const shelf = new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    config.rotation === 0 || config.rotation === Math.PI ? config.length - 0.5 : 2.8,
+                    0.1,
+                    config.rotation === 0 || config.rotation === Math.PI ? 2.8 : config.length - 0.5
                 ),
-                new THREE.MeshStandardMaterial({
-                    color: [0xff6b9d, 0xffa07a, 0xee82ee, 0xdda0dd][Math.floor(Math.random() * 4)],
-                    roughness: 0.85
-                })
+                darkWoodMaterial
             );
-            branch.position.set(
-                (Math.random() - 0.5) * 1.5,
-                -2.5 + Math.random() * 0.8,
-                (Math.random() - 0.5) * 1.5
-            );
-            branch.rotation.set(
-                (Math.random() - 0.5) * 0.4,
-                Math.random() * Math.PI * 2,
-                (Math.random() - 0.5) * 0.4
-            );
-            coralGroup.add(branch);
-        }
-        
-        // Sea anemone (swaying)
-        const anemone = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.2, 0.6, 12),
-            new THREE.MeshStandardMaterial({
-                color: 0xee82ee,
-                roughness: 0.7
-            })
-        );
-        anemone.position.set(
-            (Math.random() - 0.5) * 2,
-            -2.2,
-            (Math.random() - 0.5) * 2
-        );
-        coralGroup.add(anemone);
-        
-        coralGroup.position.set(pos.x, 0, pos.z);
-        room1.add(coralGroup);
-    });
-    
-    // ========================================
-    // KELP FOREST (Swaying Seaweed)
-    // ========================================
-    
-    this.kelpStrands = [];
-    
-    for (let i = 0; i < 20; i++) {
-        const kelpGroup = new THREE.Group();
-        
-        const segments = 8;
-        for (let j = 0; j < segments; j++) {
-            const segment = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.08, 0.1, 0.8, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x2d5016,
-                    roughness: 0.8
-                })
-            );
-            segment.position.y = j * 0.75;
-            kelpGroup.add(segment);
+            shelf.position.y = shelfY;
+            shelf.castShadow = true;
+            shelf.receiveShadow = true;
+            shelfGroup.add(shelf);
             
-            // Leaves
-            if (j % 2 === 0) {
-                const leaf = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.3, 0.6),
+            // Books on each shelf
+            const numBooks = 40;
+            for (let j = 0; j < numBooks; j++) {
+                const bookWidth = 0.05 + Math.random() * 0.1;
+                const bookHeight = 0.25 + Math.random() * 0.15;
+                const bookDepth = 0.2 + Math.random() * 0.1;
+                
+                // Random book colors (aged leather)
+                const bookColors = [0x654321, 0x8b4513, 0x2f1f0f, 0x4a2511, 0x6b3410];
+                const bookColor = bookColors[Math.floor(Math.random() * bookColors.length)];
+                
+                const book = new THREE.Mesh(
+                    new THREE.BoxGeometry(bookWidth, bookHeight, bookDepth),
                     new THREE.MeshStandardMaterial({
-                        color: 0x3d7c2f,
-                        side: THREE.DoubleSide,
-                        roughness: 0.7
+                        color: bookColor,
+                        roughness: 0.9,
+                        metalness: 0.0
                     })
                 );
-                leaf.position.set(0.15, j * 0.75, 0);
-                kelpGroup.add(leaf);
+                
+                // Position books along shelf
+                const bookOffset = ((config.length - 1) / numBooks) * j - (config.length - 1) / 2;
+                if (config.rotation === 0 || config.rotation === Math.PI) {
+                    book.position.set(bookOffset, shelfY + bookHeight / 2, 1.2);
+                } else {
+                    book.position.set(1.2, shelfY + bookHeight / 2, bookOffset);
+                }
+                
+                // Slight random tilt
+                book.rotation.z = (Math.random() - 0.5) * 0.1;
+                book.castShadow = true;
+                
+                shelfGroup.add(book);
+                
+                // Gold lettering on spine (some books)
+                if (Math.random() > 0.7) {
+                    const spine = new THREE.Mesh(
+                        new THREE.PlaneGeometry(bookWidth * 0.8, 0.02),
+                        goldLeafMaterial
+                    );
+                    spine.position.copy(book.position);
+                    spine.position.z -= bookDepth / 2 + 0.001;
+                    shelfGroup.add(spine);
+                }
             }
         }
         
-        kelpGroup.position.set(
-            (Math.random() - 0.5) * 40,
-            -2.5,
-            (Math.random() - 0.5) * 25
-        );
-        
-        kelpGroup.userData = {
-            swaySpeed: 0.5 + Math.random() * 1.0,
-            swayAmount: 0.1 + Math.random() * 0.15,
-            phaseOffset: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(kelpGroup);
-        this.kelpStrands.push(kelpGroup);
-    }
-    
-    // ========================================
-    // WATER CAUSTICS LIGHTING
-    // ========================================
-    
-    // Main overhead "sunlight" with caustic effect
-    const causticsLight = new THREE.DirectionalLight(0x4da6ff, 1.5);
-    causticsLight.position.set(0, 15, -5);
-    causticsLight.castShadow = true;
-    causticsLight.shadow.mapSize.width = 2048;
-    causticsLight.shadow.mapSize.height = 2048;
-    causticsLight.shadow.camera.left = -30;
-    causticsLight.shadow.camera.right = 30;
-    causticsLight.shadow.camera.top = 30;
-    causticsLight.shadow.camera.bottom = -30;
-    room1.add(causticsLight);
-    
-    this.causticsLight = causticsLight; // Store for animation
-    
-    // Ambient underwater glow
-    const ambientOcean = new THREE.AmbientLight(0x1a4d7a, 0.4);
-    room1.add(ambientOcean);
-    
-    // Interior pod lights (warm research station feel)
-    const podLightPositions = [
-        { x: 0, y: 3, z: -10 },
-        { x: -15, y: 3, z: -8 },
-        { x: 15, y: 3, z: -8 }
-    ];
-    
-    podLightPositions.forEach(pos => {
-        const light = new THREE.SpotLight(0xffffcc, 2.0, 15, Math.PI / 6, 0.5);
-        light.position.set(pos.x, pos.y, pos.z);
-        light.target.position.set(pos.x, pos.y - 5, pos.z);
-        light.castShadow = true;
-        room1.add(light);
-        room1.add(light.target);
+        shelfGroup.position.set(config.x, 0, config.z);
+        shelfGroup.rotation.y = config.rotation;
+        room1.add(shelfGroup);
+        this.bookshelves.push(shelfGroup);
     });
     
-    // Emergency red lights (on ceiling)
-    for (let i = 0; i < 6; i++) {
-        const t = i / 6;
-        const pos = tunnelCurve.getPoint(t);
+    // ========================================
+    // ROLLING LIBRARY LADDERS
+    // ========================================
+    
+    this.ladders = [];
+    
+    shelfConfigs.forEach((config, index) => {
+        const ladderGroup = new THREE.Group();
         
-        const emergencyLight = new THREE.PointLight(0xff0000, 0.5, 8);
-        emergencyLight.position.set(pos.x, pos.y + 3, pos.z);
-        room1.add(emergencyLight);
+        // Ladder rails (vertical)
+        for (let side = 0; side < 2; side++) {
+            const rail = new THREE.Mesh(
+                new THREE.BoxGeometry(0.08, libraryHeight - 3, 0.08),
+                darkWoodMaterial
+            );
+            rail.position.set(side === 0 ? -0.5 : 0.5, (libraryHeight - 3) / 2, 0);
+            rail.castShadow = true;
+            ladderGroup.add(rail);
+        }
         
-        const bulb = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 8, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0xff0000,
-                emissive: 0xff0000,
-                emissiveIntensity: 1.0
-            })
+        // Ladder rungs (horizontal)
+        const numRungs = 15;
+        for (let i = 0; i < numRungs; i++) {
+            const rungY = 1 + i * ((libraryHeight - 5) / numRungs);
+            const rung = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.04, 0.04, 1.0, 8),
+                darkWoodMaterial
+            );
+            rung.position.y = rungY;
+            rung.rotation.z = Math.PI / 2;
+            rung.castShadow = true;
+            ladderGroup.add(rung);
+        }
+        
+        // Wheels at bottom (brass)
+        for (let side = 0; side < 2; side++) {
+            const wheel = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16),
+                bronzeMaterial
+            );
+            wheel.position.set(side === 0 ? -0.5 : 0.5, 0.15, 0);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.castShadow = true;
+            ladderGroup.add(wheel);
+        }
+        
+        // Top hook for sliding rail
+        const hook = new THREE.Mesh(
+            new THREE.TorusGeometry(0.12, 0.04, 8, 16, Math.PI),
+            bronzeMaterial
         );
-        bulb.position.copy(emergencyLight.position);
-        room1.add(bulb);
+        hook.position.y = libraryHeight - 3.5;
+        hook.rotation.x = -Math.PI / 2;
+        ladderGroup.add(hook);
+        
+        // Position ladder along wall
+        const ladderPos = (index % 2 === 0) ? -10 : 10;
+        if (config.rotation === 0 || config.rotation === Math.PI) {
+            ladderGroup.position.set(ladderPos, 0, config.z - 2);
+        } else {
+            ladderGroup.position.set(config.x - 2, 0, ladderPos);
+        }
+        ladderGroup.rotation.y = config.rotation;
+        
+        ladderGroup.userData.canSlide = true;
+        ladderGroup.userData.slideRange = { min: -15, max: 15 };
+        ladderGroup.userData.currentPos = 0;
+        
+        room1.add(ladderGroup);
+        this.ladders.push(ladderGroup);
+    });
+    
+    // Overhead rail system for ladders
+    shelfConfigs.forEach(config => {
+        const rail = new THREE.Mesh(
+            new THREE.BoxGeometry(
+                config.rotation === 0 || config.rotation === Math.PI ? config.length : 0.1,
+                0.1,
+                config.rotation === 0 || config.rotation === Math.PI ? 0.1 : config.length
+            ),
+            bronzeMaterial
+        );
+        rail.position.set(config.x, libraryHeight - 3.5, config.z);
+        rail.castShadow = true;
+        room1.add(rail);
+    });
+    
+    // ========================================
+    // READING ALCOVES (6 Cozy Study Spaces)
+    // ========================================
+    
+    this.readingDesks = [];
+    
+    const alcovePositions = [
+        { x: -20, z: -15, rot: 0 },
+        { x: 0, z: -15, rot: 0 },
+        { x: 20, z: -15, rot: 0 },
+        { x: -20, z: 15, rot: Math.PI },
+        { x: 0, z: 15, rot: Math.PI },
+        { x: 20, z: 15, rot: Math.PI }
+    ];
+    
+    alcovePositions.forEach((alcove, index) => {
+        const alcoveGroup = new THREE.Group();
+        
+        // Arched alcove frame (marble)
+        const arch = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 5, 0.3),
+            marbleMaterial
+        );
+        arch.position.set(0, 2.5, -2);
+        arch.castShadow = true;
+        alcoveGroup.add(arch);
+        
+        // Arch opening (cutout effect with decorative trim)
+        const archTrim = new THREE.Mesh(
+            new THREE.TorusGeometry(1.8, 0.1, 16, 32, Math.PI),
+            goldLeafMaterial
+        );
+        archTrim.position.set(0, 3, -1.85);
+        archTrim.rotation.y = Math.PI / 2;
+        alcoveGroup.add(archTrim);
+        
+        // Reading desk (ornate wooden)
+        const desk = new THREE.Mesh(
+            new THREE.BoxGeometry(3.5, 0.1, 2.0),
+            darkWoodMaterial
+        );
+        desk.position.set(0, 0.8, 0);
+        desk.castShadow = true;
+        desk.receiveShadow = true;
+        alcoveGroup.add(desk);
+        
+        // Desk legs (carved)
+        for (let i = 0; i < 4; i++) {
+            const leg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.1, 0.8, 12),
+                darkWoodMaterial
+            );
+            leg.position.set(
+                (i % 2 === 0 ? -1.6 : 1.6),
+                0.4,
+                (i < 2 ? -0.8 : 0.8)
+            );
+            leg.castShadow = true;
+            alcoveGroup.add(leg);
+        }
+        
+        // Ornate chair (high-backed)
+        const chairBack = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, 2.0, 0.1),
+            darkWoodMaterial
+        );
+        chairBack.position.set(0, 1.5, 1.5);
+        chairBack.castShadow = true;
+        alcoveGroup.add(chairBack);
+        
+        const chairSeat = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, 0.1, 1.0),
+            leatherMaterial
+        );
+        chairSeat.position.set(0, 0.9, 1.2);
+        chairSeat.castShadow = true;
+        chairSeat.receiveShadow = true;
+        alcoveGroup.add(chairSeat);
+        
+        // Chair legs
+        for (let i = 0; i < 4; i++) {
+            const chairLeg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.06, 0.9, 8),
+                darkWoodMaterial
+            );
+            chairLeg.position.set(
+                (i % 2 === 0 ? -0.5 : 0.5),
+                0.45,
+                1.2 + (i < 2 ? -0.4 : 0.4)
+            );
+            chairLeg.castShadow = true;
+            alcoveGroup.add(chairLeg);
+        }
+        
+        // Candelabra on desk (3-branch brass)
+        const candelabraBase = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.15, 0.2, 0.3, 16),
+            bronzeMaterial
+        );
+        candelabraBase.position.set(1.2, 0.95, 0);
+        candelabraBase.castShadow = true;
+        alcoveGroup.add(candelabraBase);
+        
+        // Three candle branches
+        for (let i = 0; i < 3; i++) {
+            const branch = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.03, 0.6, 8),
+                bronzeMaterial
+            );
+            branch.position.set(
+                1.2 + (i - 1) * 0.25,
+                1.4,
+                0
+            );
+            branch.castShadow = true;
+            alcoveGroup.add(branch);
+            
+            // Candle flame (glowing)
+            const flame = new THREE.Mesh(
+                new THREE.SphereGeometry(0.08, 8, 8),
+                new THREE.MeshStandardMaterial({
+                    color: 0xffaa33,
+                    emissive: 0xff6600,
+                    emissiveIntensity: 2.0
+                })
+            );
+            flame.position.set(
+                1.2 + (i - 1) * 0.25,
+                1.75,
+                0
+            );
+            alcoveGroup.add(flame);
+            
+            // Point light for flame
+            const candleLight = new THREE.PointLight(0xff9944, 1.5, 5);
+            candleLight.position.copy(flame.position);
+            candleLight.castShadow = true;
+            candleLight.shadow.mapSize.width = 512;
+            candleLight.shadow.mapSize.height = 512;
+            alcoveGroup.add(candleLight);
+            
+            // Store for animation
+            if (!this.candleFlames) this.candleFlames = [];
+            this.candleFlames.push({ flame, light: candleLight, baseY: flame.position.y });
+        }
+        
+        // Open book on desk
+        const openBook = new THREE.Mesh(
+            new THREE.BoxGeometry(0.8, 0.05, 1.0),
+            papyrusMaterial
+        );
+        openBook.position.set(-0.8, 0.85, 0);
+        openBook.rotation.y = Math.PI / 8;
+        openBook.castShadow = true;
+        openBook.receiveShadow = true;
+        alcoveGroup.add(openBook);
+        
+        // Book pages
+        const pages = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.7, 0.9),
+            papyrusMaterial
+        );
+        pages.position.set(-0.8, 0.88, 0);
+        pages.rotation.x = -Math.PI / 2;
+        pages.rotation.z = Math.PI / 8;
+        alcoveGroup.add(pages);
+        
+        // Quill and inkwell
+        const inkwell = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.1, 0.15, 12),
+            new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3, metalness: 0.6 })
+        );
+        inkwell.position.set(0.3, 0.88, -0.5);
+        inkwell.castShadow = true;
+        alcoveGroup.add(inkwell);
+        
+        const quill = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.01, 0.02, 0.4, 6),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 })
+        );
+        quill.position.set(0.35, 0.95, -0.5);
+        quill.rotation.z = -Math.PI / 6;
+        alcoveGroup.add(quill);
+        
+        // Small stack of books beside desk
+        for (let i = 0; i < 4; i++) {
+            const stackedBook = new THREE.Mesh(
+                new THREE.BoxGeometry(0.3, 0.08, 0.4),
+                leatherMaterial
+            );
+            stackedBook.position.set(
+                -1.5,
+                0.85 + i * 0.08,
+                0.5 + (Math.random() - 0.5) * 0.1
+            );
+            stackedBook.rotation.y = (Math.random() - 0.5) * 0.3;
+            stackedBook.castShadow = true;
+            alcoveGroup.add(stackedBook);
+        }
+        
+        // Alcove back wall (dark wood paneling)
+        const backWall = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 5, 0.2),
+            darkWoodMaterial
+        );
+        backWall.position.set(0, 2.5, -2.1);
+        backWall.receiveShadow = true;
+        alcoveGroup.add(backWall);
+        
+        alcoveGroup.position.set(alcove.x, 0, alcove.z);
+        alcoveGroup.rotation.y = alcove.rot;
+        room1.add(alcoveGroup);
+        this.readingDesks.push(alcoveGroup);
+    });
+    
+    // ========================================
+    // PAPYRUS SCROLLS (Animated Unfurling)
+    // ========================================
+    
+    this.scrolls = [];
+    
+    const scrollPositions = [
+        { x: -15, y: 2, z: -10 },
+        { x: 15, y: 3, z: 10 },
+        { x: -10, y: 4, z: 15 },
+        { x: 10, y: 2.5, z: -12 }
+    ];
+    
+    scrollPositions.forEach((pos, index) => {
+        const scrollGroup = new THREE.Group();
+        
+        // Scroll cylinder (rolled)
+        const scrollRoll = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.05, 0.05, 1.5, 16),
+            new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.8 })
+        );
+        scrollRoll.rotation.z = Math.PI / 2;
+        scrollRoll.castShadow = true;
+        scrollGroup.add(scrollRoll);
+        
+        // Unrolled papyrus section
+        const papyrus = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.8, 1.5),
+            papyrusMaterial
+        );
+        papyrus.position.x = 0.4;
+        papyrus.receiveShadow = true;
+        scrollGroup.add(papyrus);
+        
+        // Ancient text (hieroglyphic-style)
+        const textCanvas = document.createElement('canvas');
+        textCanvas.width = 512;
+        textCanvas.height = 1024;
+        const ctx = textCanvas.getContext('2d');
+        ctx.fillStyle = '#f4e4c1';
+        ctx.fillRect(0, 0, 512, 1024);
+        ctx.fillStyle = '#3a2a1a';
+        ctx.font = '20px "Times New Roman"';
+        const sampleText = [
+            'ΜΟΥΣΕΙΟΝ ΑΛΕΞΑΝΔΡΕΙΑΣ',
+            '',
+            'In the great library of',
+            'Alexandria, knowledge',
+            'from all corners of',
+            'the ancient world was',
+            'gathered and preserved.',
+            '',
+            'Scholars studied',
+            'geometry, astronomy,',
+            'medicine, and the arts.',
+            '',
+            'The flame of wisdom',
+            'burned bright here.'
+        ];
+        sampleText.forEach((line, i) => {
+            ctx.fillText(line, 30, 50 + i * 35);
+        });
+        
+        const textTexture = new THREE.CanvasTexture(textCanvas);
+        const textMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.75, 1.45),
+            new THREE.MeshBasicMaterial({ map: textTexture, transparent: true, opacity: 0.8 })
+        );
+        textMesh.position.set(0.4, 0, 0.001);
+        scrollGroup.add(textMesh);
+        
+        // Wooden end caps
+        for (let side = 0; side < 2; side++) {
+            const endCap = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.08, 0.1, 16),
+                darkWoodMaterial
+            );
+            endCap.position.y = side === 0 ? -0.75 : 0.75;
+            endCap.castShadow = true;
+            scrollGroup.add(endCap);
+        }
+        
+        // Tied ribbon
+        const ribbon = new THREE.Mesh(
+            new THREE.TorusGeometry(0.1, 0.02, 8, 16),
+            new THREE.MeshStandardMaterial({ color: 0x8b0000, roughness: 0.6 })
+        );
+        ribbon.position.y = -0.3;
+        ribbon.rotation.x = Math.PI / 2;
+        scrollGroup.add(ribbon);
+        
+        scrollGroup.position.copy(pos);
+        scrollGroup.rotation.y = Math.random() * Math.PI;
+        scrollGroup.userData.unfurlSpeed = 0.002 + Math.random() * 0.003;
+        scrollGroup.userData.unfurlAmount = 0;
+        scrollGroup.userData.isUnfurling = false;
+        
+        room1.add(scrollGroup);
+        this.scrolls.push(scrollGroup);
+    });
+    
+    // ========================================
+    // CENTRAL READING ROTUNDA
+    // ========================================
+    
+    const rotunda = new THREE.Group();
+    
+    // Circular raised platform
+    const platform = new THREE.Mesh(
+        new THREE.CylinderGeometry(8, 8.5, 0.5, 64),
+        marbleMaterial
+    );
+    platform.position.y = 0.25;
+    platform.castShadow = true;
+    platform.receiveShadow = true;
+    rotunda.add(platform);
+    
+    // Steps leading up (3 levels)
+    for (let i = 0; i < 3; i++) {
+        const step = new THREE.Mesh(
+            new THREE.CylinderGeometry(8.5 + i * 0.5, 9 + i * 0.5, 0.15, 64),
+            marbleMaterial
+        );
+        step.position.y = -0.075 - i * 0.15;
+        step.castShadow = true;
+        step.receiveShadow = true;
+        rotunda.add(step);
     }
     
+    // Central pedestal with important tome
+    const pedestal = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.8, 1.0, 1.5, 32),
+        marbleMaterial
+    );
+    pedestal.position.y = 1.25;
+    pedestal.castShadow = true;
+    rotunda.add(pedestal);
+    
+    // Pedestal top (brass)
+    const pedestalTop = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.85, 0.8, 0.1, 32),
+        bronzeMaterial
+    );
+    pedestalTop.position.y = 2.05;
+    rotunda.add(pedestalTop);
+    
+    // Important tome (large book)
+    const ancientTome = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 0.3, 2.0),
+        leatherMaterial
+    );
+    ancientTome.position.y = 2.25;
+    ancientTome.castShadow = true;
+    ancientTome.receiveShadow = true;
+    rotunda.add(ancientTome);
+    
+    // Gold embossing on tome cover
+    const embossing = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 0.32, 1.7),
+        goldLeafMaterial
+    );
+    embossing.position.copy(ancientTome.position);
+    rotunda.add(embossing);
+    
+    // Reading lecterns around rotunda (8 positions)
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const lecternDist = 6;
+        
+        const lectern = new THREE.Mesh(
+            new THREE.BoxGeometry(1.0, 1.2, 0.8),
+            darkWoodMaterial
+        );
+        lectern.position.set(
+            Math.cos(angle) * lecternDist,
+            0.85,
+            Math.sin(angle) * lecternDist
+        );
+        lectern.rotation.y = angle + Math.PI;
+        lectern.castShadow = true;
+        rotunda.add(lectern);
+        
+        // Angled reading surface
+        const readingSurface = new THREE.Mesh(
+            new THREE.BoxGeometry(0.95, 0.05, 0.7),
+            darkWoodMaterial
+        );
+        readingSurface.position.copy(lectern.position);
+        readingSurface.position.y = 1.3;
+        readingSurface.position.x -= Math.cos(angle) * 0.15;
+        readingSurface.position.z -= Math.sin(angle) * 0.15;
+        readingSurface.rotation.y = angle + Math.PI;
+        readingSurface.rotation.x = -Math.PI / 6;
+        readingSurface.castShadow = true;
+        rotunda.add(readingSurface);
+        
+        // Book on lectern
+        const lecternBook = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 0.08, 0.8),
+            leatherMaterial
+        );
+        lecternBook.position.copy(readingSurface.position);
+        lecternBook.position.y += 0.05;
+        lecternBook.rotation.copy(readingSurface.rotation);
+        lecternBook.castShadow = true;
+        rotunda.add(lecternBook);
+    }
+    
+    rotunda.position.set(0, 0, 0);
+    room1.add(rotunda);
+    
     // ========================================
-    // BUBBLE PARTICLE SYSTEM
+    // CEILING & SKYLIGHT (Dusty Sunbeams)
     // ========================================
     
-    this.bubbles = [];
+    // Coffered ceiling with geometric patterns
+    for (let x = -3; x < 3; x++) {
+        for (let z = -3; z < 3; z++) {
+            // Skip center for skylight
+            if (Math.abs(x) <= 1 && Math.abs(z) <= 1) continue;
+            
+            const coffer = new THREE.Mesh(
+                new THREE.BoxGeometry(8, 0.5, 8),
+                marbleMaterial
+            );
+            coffer.position.set(x * 10, libraryHeight - 0.25, z * 10);
+            coffer.castShadow = true;
+            room1.add(coffer);
+            
+            // Recessed panel
+            const panel = new THREE.Mesh(
+                new THREE.BoxGeometry(7, 0.3, 7),
+                new THREE.MeshStandardMaterial({ color: 0xe8d7b0, roughness: 0.8 })
+            );
+            panel.position.set(x * 10, libraryHeight - 0.6, z * 10);
+            room1.add(panel);
+            
+            // Gold rosette center
+            const rosette = new THREE.Mesh(
+                new THREE.CircleGeometry(0.5, 32),
+                goldLeafMaterial
+            );
+            rosette.position.set(x * 10, libraryHeight - 0.55, z * 10);
+            rosette.rotation.x = -Math.PI / 2;
+            room1.add(rosette);
+        }
+    }
     
-    for (let i = 0; i < 50; i++) {
-        const bubble = new THREE.Mesh(
-            new THREE.SphereGeometry(0.05 + Math.random() * 0.1, 8, 8),
-            new THREE.MeshPhysicalMaterial({
+    // Central octagonal skylight
+    const skylightSize = 18;
+    const skylight = new THREE.Mesh(
+        new THREE.CylinderGeometry(skylightSize / 2, skylightSize / 2, 0.3, 8),
+        new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            transmission: 0.9,
+            thickness: 0.5,
+            roughness: 0.1,
+            transparent: true,
+            opacity: 0.7
+        })
+    );
+    skylight.position.y = libraryHeight - 0.15;
+    skylight.receiveShadow = true;
+    room1.add(skylight);
+    
+    // Brass skylight frame
+    const skylightFrame = new THREE.Mesh(
+        new THREE.TorusGeometry(skylightSize / 2, 0.15, 16, 8),
+        bronzeMaterial
+    );
+    skylightFrame.position.y = libraryHeight - 0.15;
+    skylightFrame.rotation.x = Math.PI / 2;
+    room1.add(skylightFrame);
+    
+    // God rays (volumetric light shafts)
+    this.godRays = [];
+    for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const rayRadius = 1.5;
+        
+        const godRay = new THREE.SpotLight(0xfff8dc, 3.0, 30, Math.PI / 8, 0.9);
+        godRay.position.set(
+            Math.cos(angle) * rayRadius,
+            libraryHeight - 0.5,
+            Math.sin(angle) * rayRadius
+        );
+        godRay.target.position.set(
+            Math.cos(angle) * rayRadius,
+            0,
+            Math.sin(angle) * rayRadius
+        );
+        godRay.castShadow = true;
+        godRay.shadow.mapSize.width = 1024;
+        godRay.shadow.mapSize.height = 1024;
+        room1.add(godRay);
+        room1.add(godRay.target);
+        
+        this.godRays.push(godRay);
+    }
+    
+    // Dust particles floating in light shafts
+    this.dustParticles = [];
+    for (let i = 0; i < 300; i++) {
+        const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.02, 4, 4),
+            new THREE.MeshBasicMaterial({
                 color: 0xffffff,
-                transmission: 0.95,
-                thickness: 0.5,
-                roughness: 0.0,
                 transparent: true,
                 opacity: 0.3
             })
         );
         
-        bubble.position.set(
-            (Math.random() - 0.5) * 50,
-            Math.random() * 10 - 3,
-            (Math.random() - 0.5) * 30
+        const radius = Math.random() * 8;
+        const angle = Math.random() * Math.PI * 2;
+        particle.position.set(
+            Math.cos(angle) * radius,
+            Math.random() * libraryHeight,
+            Math.sin(angle) * radius
         );
         
-        bubble.userData = {
-            riseSpeed: 0.01 + Math.random() * 0.02,
-            wobbleSpeed: 1.0 + Math.random() * 2.0,
-            wobbleAmount: 0.2 + Math.random() * 0.3,
-            phaseOffset: Math.random() * Math.PI * 2
-        };
+      particle.userData = {
+    velocity: new THREE.Vector3(
+        (Math.random() - 0.5) * 0.003,
+        0.008 + Math.random() * 0.015,
+        (Math.random() - 0.5) * 0.003
+    ),
+    center: new THREE.Vector3(0, 0, 0), // ← ADD THIS
+    radius: radius,  // ← ADD THIS
+    baseRadius: radius,
+    angle: angle
+};
         
-        room1.add(bubble);
-        this.bubbles.push(bubble);
+        room1.add(particle);
+        this.dustParticles.push(particle);
     }
     
     // ========================================
-    // DEEP SEA FEATURES
+    // SECRET PASSAGES (Interactive Bookshelves)
     // ========================================
     
-    // Sunken treasure chest (easter egg)
-    const chest = new THREE.Mesh(
-        new THREE.BoxGeometry(1.5, 1.0, 1.0),
-        new THREE.MeshStandardMaterial({
-            color: 0x8b4513,
-            roughness: 0.9,
-            metalness: 0.1
-        })
+  this.secretPassages = [];
+
+const passagePositions = [
+    { x: -35, z: -20, rot: Math.PI / 2 },
+    { x: 35, z: 20, rot: -Math.PI / 2 }
+];
+
+passagePositions.forEach(passage => {
+    // ✓ IMPROVED: Fake bookshelf that looks real
+    const fakeShelfGroup = new THREE.Group();
+    
+    // Bookshelf backing
+    const backing = new THREE.Mesh(
+        new THREE.BoxGeometry(3, 4, 0.3),
+        darkWoodMaterial
     );
-    chest.position.set(12, -2.3, -15);
-    chest.rotation.y = 0.3;
-    chest.castShadow = true;
-    room1.add(chest);
+    fakeShelfGroup.add(backing);
     
-    // Gold glow from chest
-    const chestGlow = new THREE.PointLight(0xffd700, 1.5, 5);
-    chestGlow.position.set(12, -2.0, -15);
-    room1.add(chestGlow);
-    
-    // Ancient ruins (stone pillars)
-    for (let i = 0; i < 4; i++) {
-        const pillar = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.5, 0.6, 3 + Math.random() * 2, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x5a5a5a,
-                roughness: 0.95
-            })
+    // Add 3 shelves with books to make it look real
+    for (let shelf = 0; shelf < 3; shelf++) {
+        const shelfBoard = new THREE.Mesh(
+            new THREE.BoxGeometry(2.8, 0.05, 0.25),
+            darkWoodMaterial
         );
-        pillar.position.set(
-            (Math.random() - 0.5) * 35,
-            -2.5 + pillar.geometry.parameters.height / 2,
-            (Math.random() - 0.5) * 22
-        );
-        pillar.rotation.set(
-            (Math.random() - 0.5) * 0.3,
-            Math.random() * Math.PI,
-            (Math.random() - 0.5) * 0.3
-        );
-        pillar.castShadow = true;
-        room1.add(pillar);
-    }
-    
-    // Bioluminescent floor plants
-    for (let i = 0; i < 30; i++) {
-        const plant = new THREE.Mesh(
-            new THREE.ConeGeometry(0.15, 0.5, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x00ff88,
-                emissive: 0x00ff88,
-                emissiveIntensity: 1.0
-            })
-        );
-        plant.position.set(
-            (Math.random() - 0.5) * 45,
-            -2.5,
-            (Math.random() - 0.5) * 28
-        );
-        room1.add(plant);
+        shelfBoard.position.y = -1.5 + shelf * 1.5;
+        shelfBoard.position.z = 0.1;
+        fakeShelfGroup.add(shelfBoard);
         
-        const plantLight = new THREE.PointLight(0x00ff88, 0.8, 3);
-        plantLight.position.copy(plant.position);
-        plantLight.position.y += 0.25;
-        room1.add(plantLight);
-    }
-    
-    // ========================================
-    // SUBMARINE WINDOW VIEWS
-    // ========================================
-    
-    // Research equipment inside pods
-    podPositions.slice(0, 3).forEach(pos => {
-        // Computer terminal
-        const terminal = new THREE.Mesh(
-            new THREE.BoxGeometry(0.8, 0.6, 0.1),
-            new THREE.MeshStandardMaterial({
-                color: 0x1a1a1a,
-                emissive: 0x00ff00,
-                emissiveIntensity: 0.3
-            })
-        );
-        terminal.position.set(pos.x + 1.5, pos.y - 0.5, pos.z);
-        room1.add(terminal);
-        
-        // Control panel buttons
-        for (let i = 0; i < 6; i++) {
-            const button = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.05, 0.05, 0.05, 16),
+        // Add books on each shelf
+        for (let book = 0; book < 15; book++) {
+            const bookWidth = 0.05 + Math.random() * 0.08;
+            const bookHeight = 0.25 + Math.random() * 0.1;
+            const bookDepth = 0.2;
+            
+            const bookColors = [0x654321, 0x8b4513, 0x2f1f0f, 0x4a2511];
+            const bookColor = bookColors[Math.floor(Math.random() * bookColors.length)];
+            
+            const book = new THREE.Mesh(
+                new THREE.BoxGeometry(bookWidth, bookHeight, bookDepth),
                 new THREE.MeshStandardMaterial({
-                    color: [0xff0000, 0x00ff00, 0xffff00][i % 3],
-                    emissive: [0xff0000, 0x00ff00, 0xffff00][i % 3],
-                    emissiveIntensity: 0.5
+                    color: bookColor,
+                    roughness: 0.9,
+                    metalness: 0.0
                 })
             );
-            button.position.set(
-                pos.x + 1.5 + (i % 3 - 1) * 0.2,
-                pos.y - 0.8,
-                pos.z + Math.floor(i / 3) * 0.2
+            
+            const bookX = -1.3 + (book * 0.18);
+            book.position.set(
+                bookX,
+                -1.5 + shelf * 1.5 + bookHeight / 2,
+                0.2
             );
-            button.rotation.x = Math.PI / 2;
-            room1.add(button);
+            book.rotation.z = (Math.random() - 0.5) * 0.05;
+            fakeShelfGroup.add(book);
         }
+    }
+    
+    // Position the fake bookshelf
+    fakeShelfGroup.position.set(passage.x, 2, passage.z);
+    fakeShelfGroup.rotation.y = passage.rot;
+    fakeShelfGroup.castShadow = true;
+    fakeShelfGroup.receiveShadow = true;
+    fakeShelfGroup.userData.isSecretDoor = true;
+    fakeShelfGroup.userData.isOpen = false;
+    room1.add(fakeShelfGroup);
+    
+    // ✓ IMPROVED: Add subtle visual hint (slight glow on edges)
+    const edgeGlow = new THREE.Mesh(
+        new THREE.BoxGeometry(3.1, 4.1, 0.35),
+        new THREE.MeshStandardMaterial({
+            color: 0x4a3520,
+            emissive: 0x4a3520,
+            emissiveIntensity: 0.15, // Subtle glow
+            transparent: true,
+            opacity: 0.3
+        })
+    );
+    edgeGlow.position.z = -0.05;
+    fakeShelfGroup.add(edgeGlow);
+    
+    // Hidden passage behind (dark corridor)
+    const corridor = new THREE.Mesh(
+        new THREE.BoxGeometry(3, 4, 5),
+        new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 })
+    );
+    corridor.position.set(
+        passage.x + Math.cos(passage.rot) * 2.5,
+        2,
+        passage.z + Math.sin(passage.rot) * 2.5
+    );
+    corridor.rotation.y = passage.rot;
+    corridor.visible = false;
+    room1.add(corridor);
+    
+    // Torch inside passage
+    const torch = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.1, 0.8, 8),
+        darkWoodMaterial
+    );
+    torch.position.set(
+        corridor.position.x,
+        3,
+        corridor.position.z
+    );
+    torch.visible = false;
+    room1.add(torch);
+    
+    const torchFlame = new THREE.PointLight(0xff6600, 2.0, 8);
+    torchFlame.position.copy(torch.position);
+    torchFlame.position.y += 0.5;
+    torchFlame.visible = false;
+    room1.add(torchFlame);
+    
+    this.secretPassages.push({
+        door: fakeShelfGroup,
+        corridor: corridor,
+        torch: torch,
+        flame: torchFlame
     });
+});
+    
+    // ========================================
+    // ARTWORK DISPLAY INTEGRATION
+    // ========================================
+    
+    // Artworks displayed in ornate frames on walls
+    // (This integrates with your existing image loading system)
+    this.artworkSpots = [];
+    
+    const artworkWallPositions = [
+        { x: 0, y: 3, z: -28, rot: 0 },    // Back wall
+        { x: 0, y: 5, z: -28, rot: 0 },
+        { x: 0, y: 7, z: -28, rot: 0 },
+        { x: -35, y: 3, z: 0, rot: Math.PI / 2 },  // Left wall
+        { x: -35, y: 5, z: 8, rot: Math.PI / 2 },
+        { x: -35, y: 7, z: -8, rot: Math.PI / 2 },
+        { x: 35, y: 3, z: 0, rot: -Math.PI / 2 },  // Right wall
+        { x: 35, y: 5, z: 8, rot: -Math.PI / 2 },
+        { x: 35, y: 7, z: -8, rot: -Math.PI / 2 },
+        { x: 0, y: 3, z: 28, rot: Math.PI },   // Front wall
+        { x: 0, y: 5, z: 28, rot: Math.PI },
+        { x: 0, y: 7, z: 28, rot: Math.PI },
+        // Additional spots in alcoves
+        { x: -20, y: 4, z: -17, rot: 0 },
+        { x: 0, y: 4, z: -17, rot: 0 },
+        { x: 20, y: 4, z: -17, rot: 0 },
+        { x: -20, y: 4, z: 17, rot: Math.PI },
+        { x: 0, y: 4, z: 17, rot: Math.PI },
+        { x: 20, y: 4, z: 17, rot: Math.PI }
+    ];
+    
+    this.artworkSpots = artworkWallPositions;
+    
+    // ========================================
+    // LIGHTING SYSTEM
+    // ========================================
+    
+    // Warm ambient (candlelit atmosphere)
+    const ambientWarm = new THREE.AmbientLight(0xffa86b, 0.4);
+    room1.add(ambientWarm);
+    
+    // Main directional (sunlight through skylight)
+    const sunlight = new THREE.DirectionalLight(0xfff8dc, 1.5);
+    sunlight.position.set(0, libraryHeight - 1, 0);
+    sunlight.castShadow = true;
+    sunlight.shadow.mapSize.width = 2048;
+    sunlight.shadow.mapSize.height = 2048;
+    sunlight.shadow.camera.left = -40;
+    sunlight.shadow.camera.right = 40;
+    sunlight.shadow.camera.top = 40;
+    sunlight.shadow.camera.bottom = -40;
+    sunlight.shadow.bias = -0.0005;
+    room1.add(sunlight);
+    
+    // Wall sconces (brass oil lamps)
+    const sconcePositions = [
+        { x: -30, y: 4, z: -25 }, { x: -30, y: 4, z: 25 },
+        { x: 30, y: 4, z: -25 }, { x: 30, y: 4, z: 25 },
+        { x: -15, y: 4, z: -28 }, { x: 15, y: 4, z: -28 },
+        { x: -15, y: 4, z: 28 }, { x: 15, y: 4, z: 28 }
+    ];
+    
+    this.wallSconces = [];
+    
+    sconcePositions.forEach(pos => {
+        // Sconce bracket
+        const bracket = new THREE.Mesh(
+            new THREE.BoxGeometry(0.2, 0.4, 0.3),
+            bronzeMaterial
+        );
+        bracket.position.copy(pos);
+        bracket.castShadow = true;
+        room1.add(bracket);
+        
+        // Oil lamp
+        const lamp = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15, 16, 16),
+            bronzeMaterial
+        );
+        lamp.position.copy(pos);
+        lamp.position.y += 0.3;
+        lamp.castShadow = true;
+        room1.add(lamp);
+        
+        // Flame
+        const flame = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08, 8, 8),
+            new THREE.MeshStandardMaterial({
+                color: 0xffaa33,
+                emissive: 0xff6600,
+                emissiveIntensity: 2.0
+            })
+        );
+        flame.position.copy(lamp.position);
+        flame.position.y += 0.2;
+        room1.add(flame);
+        
+        // Point light
+        const light = new THREE.PointLight(0xff9944, 2.0, 12);
+        light.position.copy(flame.position);
+        light.castShadow = true;
+        light.shadow.mapSize.width = 512;
+        light.shadow.mapSize.height = 512;
+        room1.add(light);
+        
+        this.wallSconces.push({ flame, light, baseY: flame.position.y });
+    });
+    
+    // Hanging bronze chandeliers (3 large ones)
+    const chandelierPositions = [
+        { x: 0, z: -15 },
+        { x: -20, z: 10 },
+        { x: 20, z: 10 }
+    ];
+    
+    this.chandeliers = [];
+    
+    chandelierPositions.forEach(pos => {
+        const chandelierGroup = new THREE.Group();
+        
+        // Chain
+        const chain = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.05, 0.05, 8, 8),
+            bronzeMaterial
+        );
+        chain.position.y = libraryHeight - 4;
+        chain.castShadow = true;
+        chandelierGroup.add(chain);
+        
+        // Main body (ornate bronze)
+        const body = new THREE.Mesh(
+            new THREE.SphereGeometry(0.8, 16, 16),
+            bronzeMaterial
+        );
+        body.position.y = libraryHeight - 8.5;
+        body.castShadow = true;
+        chandelierGroup.add(body);
+        
+        // 8 candle arms radiating outward
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const armLength = 1.2;
+            
+            // Arm
+            const arm = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.04, 0.04, armLength, 8),
+                bronzeMaterial
+            );
+            arm.position.set(
+                Math.cos(angle) * armLength / 2,
+                libraryHeight - 8.5,
+                Math.sin(angle) * armLength / 2
+            );
+            arm.rotation.z = -Math.cos(angle) * Math.PI / 4;
+            arm.rotation.x = -Math.sin(angle) * Math.PI / 4;
+            arm.castShadow = true;
+            chandelierGroup.add(arm);
+            
+            // Candle holder
+            const holder = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.06, 0.2, 8),
+                bronzeMaterial
+            );
+            holder.position.set(
+                Math.cos(angle) * armLength,
+                libraryHeight - 8.5,
+                Math.sin(angle) * armLength
+            );
+            holder.castShadow = true;
+            chandelierGroup.add(holder);
+            
+            // Flame
+            const flame = new THREE.Mesh(
+                new THREE.SphereGeometry(0.08, 8, 8),
+                new THREE.MeshStandardMaterial({
+                    color: 0xffaa33,
+                    emissive: 0xff6600,
+                    emissiveIntensity: 2.0
+                })
+            );
+            flame.position.copy(holder.position);
+            flame.position.y += 0.15;
+            chandelierGroup.add(flame);
+            
+            // Point light
+            const light = new THREE.PointLight(0xff9944, 1.8, 10);
+            light.position.copy(flame.position);
+            light.castShadow = true;
+            light.shadow.mapSize.width = 512;
+            light.shadow.mapSize.height = 512;
+            chandelierGroup.add(light);
+            
+            if (!this.chandelierFlames) this.chandelierFlames = [];
+            this.chandelierFlames.push({ flame, light, baseY: flame.position.y });
+        }
+        
+        chandelierGroup.position.set(pos.x, 0, pos.z);
+        room1.add(chandelierGroup);
+        this.chandeliers.push(chandelierGroup);
+    });
+    
+    // Fog atmosphere (dust and age)
+    room1.fog = new THREE.FogExp2(0x2a2520, 0.008);
     
     // ========================================
     // FINAL SETUP
@@ -1105,106 +1568,748 @@ createGallery() {
     this.rooms.push(room1);
     this.scene.add(room1);
     
-    console.log("🌊 Underwater aquarium gallery created with marine life!");
+    console.log("📚 Ancient Library of Alexandria created!");
 }
 
+// ========================================
+// SUPPORTING TEXTURE GENERATION METHODS
+// ========================================
 
+generateWoodTexture(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base wood color
+    ctx.fillStyle = '#3d2817';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Wood grain (vertical streaks)
+    for (let i = 0; i < 100; i++) {
+        const x = Math.random() * width;
+        const grainWidth = Math.random() * 3 + 1;
+        const shade = Math.random() * 40 + 30;
+        ctx.fillStyle = `rgba(${shade}, ${shade * 0.7}, ${shade * 0.4}, 0.3)`;
+        ctx.fillRect(x, 0, grainWidth, height);
+    }
+    
+    // Growth rings
+    for (let i = 0; i < 15; i++) {
+        const y = Math.random() * height;
+        const amplitude = Math.random() * 20 + 10;
+        ctx.strokeStyle = `rgba(${20 + Math.random() * 20}, 10, 5, ${0.2 + Math.random() * 0.3})`;
+        ctx.lineWidth = 1 + Math.random() * 2;
+        ctx.beginPath();
+        for (let x = 0; x < width; x++) {
+            const yPos = y + Math.sin(x * 0.02 + i) * amplitude;
+            if (x === 0) ctx.moveTo(x, yPos);
+            else ctx.lineTo(x, yPos);
+        }
+        ctx.stroke();
+    }
+    
+    return canvas;
+}
 
+// ========================================
+// ANIMATION UPDATES (Add to your existing animate loop)
+// ========================================
 
+updateLibraryAnimations() {
+    const time = this.time || Date.now() * 0.001;
+    
+    // 1. CANDLE FLAMES FLICKER
+    if (this.candleFlames) {
+        this.candleFlames.forEach((candle, index) => {
+            // Gentle flickering motion
+            candle.flame.position.y = candle.baseY + Math.sin(time * 3 + index) * 0.02;
+            candle.flame.scale.set(
+                1 + Math.sin(time * 4 + index) * 0.1,
+                1 + Math.cos(time * 3.5 + index) * 0.15,
+                1 + Math.sin(time * 4 + index) * 0.1
+            );
+            
+            // Light intensity flicker
+            candle.light.intensity = 1.5 + Math.sin(time * 5 + index) * 0.3;
+        });
+    }
+    
+    // 2. CHANDELIER FLAMES
+    if (this.chandelierFlames) {
+        this.chandelierFlames.forEach((candle, index) => {
+            candle.flame.position.y = candle.baseY + Math.sin(time * 2.8 + index) * 0.03;
+            candle.light.intensity = 1.8 + Math.sin(time * 4.5 + index) * 0.4;
+        });
+    }
+    
+    // 3. WALL SCONCE FLAMES
+    if (this.wallSconces) {
+        this.wallSconces.forEach((sconce, index) => {
+            sconce.flame.position.y = sconce.baseY + Math.sin(time * 3.2 + index) * 0.025;
+            sconce.light.intensity = 2.0 + Math.sin(time * 4 + index) * 0.3;
+        });
+    }
+    
+    // 4. SCROLLS UNFURLING (when triggered)
+    if (this.scrolls) {
+        this.scrolls.forEach(scroll => {
+            if (scroll.userData.isUnfurling && scroll.userData.unfurlAmount < 1) {
+                scroll.userData.unfurlAmount += scroll.userData.unfurlSpeed;
+                
+                // Animate papyrus unrolling
+                scroll.children[1].scale.x = scroll.userData.unfurlAmount;
+                scroll.children[1].position.x = 0.4 * scroll.userData.unfurlAmount;
+                
+                // Show text gradually
+                if (scroll.children[2]) {
+                    scroll.children[2].material.opacity = scroll.userData.unfurlAmount * 0.8;
+                }
+            }
+        });
+    }
+    
+    // 5. DUST PARTICLES FLOATING
+    if (this.dustParticles) {
+        this.dustParticles.forEach(particle => {
+            // Slow upward drift
+            particle.position.add(particle.userData.velocity);
+            
+            // Brownian motion
+            particle.position.x += (Math.random() - 0.5) * 0.01;
+            particle.position.z += (Math.random() - 0.5) * 0.01;
+            
+            // Keep within cylindrical volume under skylight
+            const distFromCenter = Math.sqrt(
+                particle.position.x * particle.position.x +
+                particle.position.z * particle.position.z
+            );
+            
+            if (distFromCenter > 8) {
+                const angle = Math.atan2(particle.position.z, particle.position.x);
+                particle.position.x = Math.cos(angle) * 8;
+                particle.position.z = Math.sin(angle) * 8;
+            }
+            
+            // Reset when reaching ceiling
+            if (particle.position.y > 24) {
+                particle.position.y = 0.5;
+            }
+            
+            // Fade based on distance from light shaft
+            particle.material.opacity = 0.3 * (1 - distFromCenter / 8);
+        });
+    }
+    
+    // 6. GOD RAYS INTENSITY VARIATION (time of day effect)
+    if (this.godRays) {
+        const dayIntensity = 2.5 + Math.sin(time * 0.1) * 0.5;
+        this.godRays.forEach(ray => {
+            ray.intensity = dayIntensity;
+        });
+    }
+    
+    // 7. CHANDELIER SWAYING
+    if (this.chandeliers) {
+        this.chandeliers.forEach((chandelier, index) => {
+            chandelier.rotation.z = Math.sin(time * 0.5 + index) * 0.02;
+        });
+    }
+    
+    // 8. SECRET DOOR ANIMATION
+    if (this.secretPassages) {
+        this.secretPassages.forEach(passage => {
+            if (passage.door.userData.isOpen && passage.door.rotation.y < Math.PI / 2) {
+                passage.door.rotation.y += 0.02;
+                
+                // Reveal hidden elements
+                if (passage.door.rotation.y > Math.PI / 4) {
+                    passage.corridor.visible = true;
+                    passage.torch.visible = true;
+                    passage.flame.visible = true;
+                }
+            } else if (!passage.door.userData.isOpen && passage.door.rotation.y > 0) {
+                passage.door.rotation.y -= 0.02;
+                
+                // Hide hidden elements
+                if (passage.door.rotation.y < Math.PI / 4) {
+                    passage.corridor.visible = false;
+                    passage.torch.visible = false;
+                    passage.flame.visible = false;
+                }
+            }
+        });
+    }
+}
 
+// ========================================
+// INTERACTION HANDLERS
+// ========================================
 
+handleLibraryInteractions(intersectedObject) {
+    if (!intersectedObject) return;
+    
+    // Trigger scroll unfurling
+    if (this.scrolls) {
+        this.scrolls.forEach(scroll => {
+            // Check if clicked object is the scroll or any of its children
+            if (intersectedObject === scroll || 
+                scroll.children.includes(intersectedObject) ||
+                intersectedObject.parent === scroll) {
+                scroll.userData.isUnfurling = true;
+                console.log("📜 Scroll unfurling...");
+                if (!this.clickSound.isPlaying) this.clickSound.play();
+            }
+        });
+    }
+    
+    // Toggle secret passages
+    if (this.secretPassages) {
+        this.secretPassages.forEach(passage => {
+            // Check if clicked on the door itself
+            if (intersectedObject === passage.door || 
+                intersectedObject.parent === passage.door) {
+                passage.door.userData.isOpen = !passage.door.userData.isOpen;
+                console.log(passage.door.userData.isOpen ? "🚪 Secret passage opened!" : "🚪 Secret passage closed");
+                if (!this.clickSound.isPlaying) this.clickSound.play();
+            }
+        });
+    }
+}
+toggleLightZone(zoneIndex) {
+    console.log(`💡 Toggling light zone ${zoneIndex}`);
+    
+    // Find all lights in this zone
+    const zoneLights = this.trackSpotlights.filter((_, i) => i % 4 === zoneIndex);
+    
+    zoneLights.forEach(light => {
+        const currentIntensity = light.spotlight.intensity;
+        const targetIntensity = currentIntensity > 1 ? 0 : 3.5;
+        
+        // Animate intensity change
+        const duration = 500;
+        const startTime = Date.now();
+        const startIntensity = currentIntensity;
+        
+        const animateLight = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            light.spotlight.intensity = startIntensity + (targetIntensity - startIntensity) * progress;
+            light.lens.material.emissiveIntensity = light.spotlight.intensity / 3.5 * 0.8;
+            
+            if (progress < 1) {
+                requestAnimationFrame(animateLight);
+            }
+        };
+        
+        animateLight();
+    });
+    
+    // Spark effect
+    if (Math.random() > 0.7) {
+        this.createSparkEffect(this.lightSwitches[zoneIndex].position);
+    }
+}
 
+createSparkEffect(position) {
+    const sparks = new THREE.Group();
+    
+    for (let i = 0; i < 8; i++) {
+        const spark = new THREE.Mesh(
+            new THREE.SphereGeometry(0.02, 4, 4),
+            new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 1.0
+            })
+        );
+        
+        spark.userData.velocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.1,
+            (Math.random() - 0.5) * 0.1,
+            (Math.random() - 0.5) * 0.1
+        );
+        
+        sparks.add(spark);
+    }
+    
+    sparks.position.copy(position);
+    this.scene.add(sparks);
+    
+    // Animate sparks
+    const startTime = Date.now();
+    const duration = 800;
+    
+    const animateSparks = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+        
+        if (progress >= 1) {
+            this.scene.remove(sparks);
+            sparks.children.forEach(child => {
+                child.geometry.dispose();
+                child.material.dispose();
+            });
+            return;
+        }
+        
+        sparks.children.forEach(spark => {
+            spark.position.add(spark.userData.velocity);
+            spark.userData.velocity.y -= 0.005; // Gravity
+            spark.material.opacity = 1 - progress;
+        });
+        
+        requestAnimationFrame(animateSparks);
+    };
+    
+    animateSparks();
+}
+generateBoardFormedConcrete(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base concrete gray
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Horizontal wood grain lines (formwork boards)
+    const boardHeight = 120;
+    for (let y = 0; y < height; y += boardHeight) {
+        // Darker seam line
+        ctx.fillStyle = '#3a3a3a';
+        ctx.fillRect(0, y, width, 3);
+        
+        // Wood grain texture
+        for (let i = 0; i < 50; i++) {
+            const grainY = y + Math.random() * boardHeight;
+            ctx.strokeStyle = `rgba(${60 + Math.random() * 20}, ${60 + Math.random() * 20}, ${60 + Math.random() * 20}, ${0.3 + Math.random() * 0.3})`;
+            ctx.lineWidth = 1 + Math.random() * 2;
+            ctx.beginPath();
+            ctx.moveTo(0, grainY);
+            ctx.lineTo(width, grainY + (Math.random() - 0.5) * 10);
+            ctx.stroke();
+        }
+    }
+    
+    // Random concrete imperfections
+    for (let i = 0; i < 200; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const size = Math.random() * 4 + 1;
+        const shade = Math.random() * 40 + 40;
+        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.5)`;
+        ctx.fillRect(x, y, size, size);
+    }
+    
+    return canvas;
+}
+generateCarraraMarble(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base white marble
+    ctx.fillStyle = '#f8f8f8';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Subtle gray veining (diagonal flow)
+    const numVeins = 40;
+    for (let i = 0; i < numVeins; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        // Mix of gray tones
+        const grayValue = 200 + Math.random() * 40;
+        const color = `rgba(${grayValue}, ${grayValue}, ${grayValue + 5}, ${0.15 + Math.random() * 0.25})`;
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.random() * 2 + 0.5;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        // Diagonal angle for natural marble flow
+        let angle = Math.PI / 4 + (Math.random() - 0.5) * 0.8;
+        
+        for (let j = 0; j < 150; j++) {
+            angle += (Math.random() - 0.5) * 0.3;
+            x += Math.cos(angle) * 8;
+            y += Math.sin(angle) * 8;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Add occasional darker accent veins
+    for (let i = 0; i < 8; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        ctx.strokeStyle = `rgba(150, 150, 155, ${0.2 + Math.random() * 0.2})`;
+        ctx.lineWidth = Math.random() * 3 + 1;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        let angle = Math.PI / 4 + (Math.random() - 0.5) * 1.0;
+        
+        for (let j = 0; j < 100; j++) {
+            angle += (Math.random() - 0.5) * 0.4;
+            x += Math.cos(angle) * 12;
+            y += Math.sin(angle) * 12;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Polished finish with subtle shine
+    const gradient = ctx.createRadialGradient(
+        width / 2, height / 2, 0,
+        width / 2, height / 2, width / 2
+    );
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.03)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    return canvas;
+}
+generateMetalGridPattern(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Dark metallic base
+    ctx.fillStyle = '#1a2332';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Grid lines
+    ctx.strokeStyle = '#2a3f5f';
+    ctx.lineWidth = 3;
+    
+    const gridSize = 128;
+    for (let x = 0; x < width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+    }
+    
+    for (let y = 0; y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+    }
+    
+    // Tech details (random panels)
+    ctx.fillStyle = '#00d4ff';
+    ctx.globalAlpha = 0.3;
+    for (let i = 0; i < 20; i++) {
+        const x = Math.floor(Math.random() * (width / gridSize)) * gridSize;
+        const y = Math.floor(Math.random() * (height / gridSize)) * gridSize;
+        ctx.fillRect(x + 10, y + 10, gridSize - 20, gridSize - 20);
+    }
+    
+    return canvas;
+}
 
+generateEarthTexture(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Ocean base
+    ctx.fillStyle = '#0a3d62';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Continents (simplified)
+    ctx.fillStyle = '#2d5016';
+    
+    // Africa
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.5, width * 0.15, height * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Americas
+    ctx.beginPath();
+    ctx.ellipse(width * 0.2, height * 0.4, width * 0.1, height * 0.25, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.ellipse(width * 0.25, height * 0.6, width * 0.08, height * 0.15, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Asia
+    ctx.beginPath();
+    ctx.ellipse(width * 0.7, height * 0.35, width * 0.18, height * 0.15, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Europe
+    ctx.beginPath();
+    ctx.ellipse(width * 0.52, height * 0.32, width * 0.08, height * 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Australia
+    ctx.beginPath();
+    ctx.ellipse(width * 0.78, height * 0.65, width * 0.09, height * 0.08, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Clouds
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    for (let i = 0; i < 100; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const r = Math.random() * 50 + 20;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Ice caps
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.05, width * 0.2, height * 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.95, width * 0.15, height * 0.06, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    return canvas;
+}
 
-//   createAvatar() {
-//     this.avatarGroup = new THREE.Group();
-//     const avatarMaterial = new THREE.MeshBasicMaterial({
-//         color: 0xffffff,
-//         transparent: true,
-//         opacity: 0.1 // ✓ FIXED: Much less visible (was 0.3)
-//     });
+generateBlackMarquina(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Deep black base
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Gold and white veining
+    const numVeins = 30;
+    for (let i = 0; i < numVeins; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        // Mix of gold and white veins
+        const isGold = Math.random() > 0.6;
+        const color = isGold 
+            ? `rgba(218, 165, 32, ${0.4 + Math.random() * 0.3})`  // Gold
+            : `rgba(255, 255, 255, ${0.2 + Math.random() * 0.2})`; // White
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.random() * 3 + 1;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        let angle = Math.random() * Math.PI * 2;
+        
+        for (let j = 0; j < 120; j++) {
+            angle += (Math.random() - 0.5) * 0.4;
+            x += Math.cos(angle) * 10;
+            y += Math.sin(angle) * 10;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Polished finish
+    const gradient = ctx.createRadialGradient(
+        width / 2, height / 2, 0,
+        width / 2, height / 2, width / 2
+    );
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    return canvas;
+}
 
-//     const clickablePlane = new THREE.Mesh(
-//         new THREE.PlaneGeometry(0.5, 0.5),
-//         new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
-//     );
-//     clickablePlane.position.set(2, 1.7, 2);
-//     this.avatarGroup.add(clickablePlane);
+generateMarbleNormalMap(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base normal map color (neutral normal)
+    ctx.fillStyle = '#8080ff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const imageData = ctx.getImageData(0, 0, width, height);
+    
+    // Generate subtle height variation for normal map
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            
+            // Perlin-like noise for realistic surface
+            const noise = (Math.sin(x * 0.02) * Math.cos(y * 0.02)) * 0.5 + 0.5;
+            const variation = (Math.random() - 0.5) * 30;
+            
+            // Normal map RGB channels (X, Y, Z surface normals)
+            imageData.data[i] = 128 + noise * 25 + variation;     // R (X normal)
+            imageData.data[i + 1] = 128 + noise * 25 + variation; // G (Y normal)
+            imageData.data[i + 2] = 200 + noise * 45;             // B (Z normal - pointing up)
+            imageData.data[i + 3] = 255;                           // Alpha
+        }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+}
+    generateModernWallTexture(width, height) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        const imageData = context.createImageData(width, height);
 
-//     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
-//     body.position.set(2, 0.5, 2);
-//     this.avatarGroup.add(body);
+        for (let x = 0; x < width; x++) {
+            for (let y = 0; y < height; y++) {
+                const i = (y * width + x) * 4;
+                const noise = Math.sin(x * 0.05 + y * 0.05) * 0.5 + 0.5;
+                imageData.data[i] = noise * 255;
+                imageData.data[i + 1] = noise * 255;
+                imageData.data[i + 2] = 255;
+                imageData.data[i + 3] = 255;
+            }
+        }
 
-//     const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
-//     head.position.set(2, 1.2, 2);
-//     this.avatarGroup.add(head);
+        context.putImageData(imageData, 0, 0);
+        return canvas;
+    }
 
-//     const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-//     const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
-//     leftArm.position.set(1.7, 0.7, 2);
-//     leftArm.rotation.z = Math.PI / 4;
-//     this.avatarGroup.add(leftArm);
+    generateNoiseCanvas(width, height) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        const imageData = context.createImageData(width, height);
 
-//     const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
-//     rightArm.position.set(2.3, 0.7, 2);
-//     rightArm.rotation.z = -Math.PI / 4;
-//     this.avatarGroup.add(rightArm);
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            const noise = Math.random() * 0.1 + 0.9;
+            imageData.data[i] = 136 * noise;
+            imageData.data[i + 1] = 136 * noise;
+            imageData.data[i + 2] = 136 * noise;
+            imageData.data[i + 3] = 255;
+        }
 
-//     const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-//     const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-//     leftLeg.position.set(1.8, 0.25, 2);
-//     this.avatarGroup.add(leftLeg);
+        context.putImageData(imageData, 0, 0);
+        return canvas;
+    }
 
-//     const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-//     rightLeg.position.set(2.2, 0.25, 2);
-//     this.avatarGroup.add(rightLeg);
+  createAvatar() {
+    this.avatarGroup = new THREE.Group();
+    const avatarMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.1 // ✓ FIXED: Much less visible (was 0.3)
+    });
 
-//     this.avatarGroup.userData = { isAvatar: true };
-//     this.scene.add(this.avatarGroup);
+    const clickablePlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.5, 0.5),
+        new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
+    );
+    clickablePlane.position.set(2, 1.7, 2);
+    this.avatarGroup.add(clickablePlane);
 
-//     this.setupAvatarAnimation();
-//     this.updateAvatarPosition();
-// }
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
+    body.position.set(2, 0.5, 2);
+    this.avatarGroup.add(body);
 
-//     setupAvatarAnimation() {
-//         const times = [0, 1, 2];
-//         const armValues = [
-//             [Math.PI / 4, -Math.PI / 4],
-//             [-Math.PI / 4, Math.PI / 4],
-//             [Math.PI / 4, -Math.PI / 4]
-//         ];
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
+    head.position.set(2, 1.2, 2);
+    this.avatarGroup.add(head);
 
-//         const leftArmTrack = new THREE.NumberKeyframeTrack(
-//             '.children[3].rotation[z]',
-//             times,
-//             armValues.map(v => v[0])
-//         );
-//         const rightArmTrack = new THREE.NumberKeyframeTrack(
-//             '.children[4].rotation[z]',
-//             times,
-//             armValues.map(v => v[1])
-//         );
+    const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
+    const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
+    leftArm.position.set(1.7, 0.7, 2);
+    leftArm.rotation.z = Math.PI / 4;
+    this.avatarGroup.add(leftArm);
 
-//         const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
-//         const action = this.animationMixer.clipAction(clip, this.avatarGroup);
-//         action.setLoop(THREE.LoopRepeat);
-//         action.play();
-//     }
+    const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
+    rightArm.position.set(2.3, 0.7, 2);
+    rightArm.rotation.z = -Math.PI / 4;
+    this.avatarGroup.add(rightArm);
 
-//     updateAvatarPosition() {
-//         if (this.isMobile) {
-//             const roomCenter = this.rooms[this.currentRoom].position.clone();
-//             this.avatarGroup.position.copy(roomCenter);
-//             this.avatarGroup.position.y = 0.5;
-//         } else {
-//             const direction = new THREE.Vector3();
-//             this.camera.getWorldDirection(direction);
-//             direction.y = 0;
-//             direction.normalize().multiplyScalar(3);
-//             this.avatarGroup.position.copy(this.camera.position).add(direction);
-//             this.avatarGroup.position.y = 0.5;
-//         }
-//     }
+    const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
+    const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
+    leftLeg.position.set(1.8, 0.25, 2);
+    this.avatarGroup.add(leftLeg);
+
+    const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
+    rightLeg.position.set(2.2, 0.25, 2);
+    this.avatarGroup.add(rightLeg);
+
+    this.avatarGroup.userData = { isAvatar: true };
+    this.scene.add(this.avatarGroup);
+
+    this.setupAvatarAnimation();
+    this.updateAvatarPosition();
+}
+
+    setupAvatarAnimation() {
+        const times = [0, 1, 2];
+        const armValues = [
+            [Math.PI / 4, -Math.PI / 4],
+            [-Math.PI / 4, Math.PI / 4],
+            [Math.PI / 4, -Math.PI / 4]
+        ];
+
+        const leftArmTrack = new THREE.NumberKeyframeTrack(
+            '.children[3].rotation[z]',
+            times,
+            armValues.map(v => v[0])
+        );
+        const rightArmTrack = new THREE.NumberKeyframeTrack(
+            '.children[4].rotation[z]',
+            times,
+            armValues.map(v => v[1])
+        );
+
+        const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
+        const action = this.animationMixer.clipAction(clip, this.avatarGroup);
+        action.setLoop(THREE.LoopRepeat);
+        action.play();
+    }
+
+    updateAvatarPosition() {
+        if (this.isMobile) {
+            const roomCenter = this.rooms[this.currentRoom].position.clone();
+            this.avatarGroup.position.copy(roomCenter);
+            this.avatarGroup.position.y = 0.5;
+        } else {
+            const direction = new THREE.Vector3();
+            this.camera.getWorldDirection(direction);
+            direction.y = 0;
+            direction.normalize().multiplyScalar(3);
+            this.avatarGroup.position.copy(this.camera.position).add(direction);
+            this.avatarGroup.position.y = 0.5;
+        }
+    }
 
     async setupAudio() {
             try {
@@ -1259,36 +2364,26 @@ createGallery() {
 
 
 
-   animate() {
+  animate() {
     requestAnimationFrame(() => this.animate());
     const delta = 0.016;
     this.time += delta;
-    
     this.update();
     this.updateImageEffects();
     this.updateLighting();
-    this.updateFoodParticles();
-    this.updateAttractedFish();
-    
-    // ✨ NEW: Update fish follow camera
-    if (this.followingFish) {
-        this.updateFishFollowCamera();
+    this.updateLibraryAnimations(); // ← ADD THIS LINE
+   
+        this.renderer.render(this.scene, this.camera);
+        this.updateArtworkProgress();
+        if (this.isMobile) this.controls.update();
+        this.updateAvatarPosition();
+        
+        if (this.isRecording) {
+            // Frame capture handled by MediaRecorder
+        }
+        this.animationMixer.update(delta * this.animationSpeed);
+        this.updateObjectAnimations();
     }
-    
-    this.renderer.render(this.scene, this.camera);
-    this.updateArtworkProgress();
-    if (this.isMobile) this.controls.update();
-    // this.updateAvatarPosition();
-    
-    if (this.isRecording) {
-        // Frame capture handled by MediaRecorder
-    }
-      if (this.isDiving) {
-        this.updateSubmarineDive();
-    }
-    this.animationMixer.update(delta * this.animationSpeed);
-    this.updateObjectAnimations();
-}
 showArtworkInfo(index) {
     const metadata = this.metadata[index];
     if (!metadata) return;
@@ -1540,261 +2635,7 @@ toggleHelpOverlay() {
         this.showMessage('recordStatus', 'Recording stopped', 'success');
         console.log("🎥 Recording stopped");
     }
-feedFish() {
-    console.log("🍽️ Releasing food particles...");
-    
-    // Get click position or use camera forward
-    const foodPosition = this.camera.position.clone();
-    const direction = new THREE.Vector3();
-    this.camera.getWorldDirection(direction);
-    foodPosition.add(direction.multiplyScalar(5));
-    
-    // Create food particle system
-    const foodGroup = new THREE.Group();
-    
-    // Create 20 food particles
-    for (let i = 0; i < 20; i++) {
-        const particle = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 8, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0xffa500, // Orange food pellets
-                emissive: 0xff8800,
-                emissiveIntensity: 0.5
-            })
-        );
-        
-        // Random spread
-        particle.position.set(
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2
-        );
-        
-        particle.userData = {
-            velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.02,
-                -0.02 - Math.random() * 0.03, // Sink downward
-                (Math.random() - 0.5) * 0.02
-            ),
-            lifespan: 5000 + Math.random() * 3000, // 5-8 seconds
-            createdTime: Date.now()
-        };
-        
-        foodGroup.add(particle);
-    }
-    
-    foodGroup.position.copy(foodPosition);
-    this.scene.add(foodGroup);
-    
-    // Store for animation
-    if (!this.foodParticles) this.foodParticles = [];
-    this.foodParticles.push(foodGroup);
-    
-    // Attract nearby fish
-    this.attractFishToFood(foodPosition);
-    
-    // Show feeding notification
-    this.showFeedingNotification();
-}
 
-attractFishToFood(foodPosition) {
-    if (!this.fishSchools) return;
-    
-    const attractionRadius = 8;
-    
-    this.fishSchools.forEach(fish => {
-        const distance = fish.position.distanceTo(foodPosition);
-        
-        if (distance < attractionRadius) {
-            // Store original data
-            if (!fish.userData.originalOrbitRadius) {
-                fish.userData.originalOrbitRadius = fish.userData.orbitRadius;
-                fish.userData.originalSpeed = fish.userData.speed;
-            }
-            
-            // Make fish swim toward food
-            fish.userData.attractedToFood = true;
-            fish.userData.foodTarget = foodPosition.clone();
-            fish.userData.attractionStartTime = Date.now();
-            
-            console.log("Fish attracted to food!");
-        }
-    });
-}
-
-updateFoodParticles() {
-    if (!this.foodParticles || this.foodParticles.length === 0) return;
-    
-    const currentTime = Date.now();
-    
-    this.foodParticles.forEach((foodGroup, groupIndex) => {
-        const particlesToRemove = [];
-        
-        foodGroup.children.forEach((particle, index) => {
-            const data = particle.userData;
-            const age = currentTime - data.createdTime;
-            
-            // Remove if lifespan exceeded
-            if (age > data.lifespan) {
-                particlesToRemove.push(index);
-                return;
-            }
-            
-            // Apply velocity (sinking motion)
-            particle.position.add(data.velocity);
-            
-            // Check if fish ate it
-            let wasEaten = false;
-            if (this.fishSchools) {
-                this.fishSchools.forEach(fish => {
-                    const worldPos = new THREE.Vector3();
-                    particle.getWorldPosition(worldPos);
-                    
-                    if (fish.position.distanceTo(worldPos) < 0.5) {
-                        wasEaten = true;
-                        
-                        // Create eating effect
-                        this.createEatingEffect(worldPos);
-                    }
-                });
-            }
-            
-            if (wasEaten) {
-                particlesToRemove.push(index);
-            }
-            
-            // Fade out near end of lifespan
-            const fadeProgress = age / data.lifespan;
-            if (fadeProgress > 0.7) {
-                particle.material.opacity = 1 - ((fadeProgress - 0.7) / 0.3);
-                particle.material.transparent = true;
-            }
-        });
-        
-        // Remove eaten/expired particles
-        particlesToRemove.reverse().forEach(index => {
-            const particle = foodGroup.children[index];
-            particle.geometry.dispose();
-            particle.material.dispose();
-            foodGroup.remove(particle);
-        });
-        
-        // Remove empty food groups
-        if (foodGroup.children.length === 0) {
-            this.scene.remove(foodGroup);
-            this.foodParticles.splice(groupIndex, 1);
-        }
-    });
-}
-
-updateAttractedFish() {
-    if (!this.fishSchools) return;
-    
-    const currentTime = Date.now();
-    
-    this.fishSchools.forEach(fish => {
-        if (fish.userData.attractedToFood) {
-            const elapsed = currentTime - fish.userData.attractionStartTime;
-            
-            // Fish stays attracted for 8 seconds
-            if (elapsed > 8000) {
-                // Return to normal behavior
-                fish.userData.attractedToFood = false;
-                fish.userData.orbitRadius = fish.userData.originalOrbitRadius;
-                fish.userData.speed = fish.userData.originalSpeed;
-                return;
-            }
-            
-            // Move toward food
-            const direction = new THREE.Vector3()
-                .subVectors(fish.userData.foodTarget, fish.position)
-                .normalize();
-            
-            fish.position.add(direction.multiplyScalar(0.08));
-            fish.lookAt(fish.userData.foodTarget);
-            
-            // Faster movement when attracted
-            fish.userData.speed = fish.userData.originalSpeed * 2;
-        }
-    });
-}
-
-createEatingEffect(position) {
-    // Create small splash/bubble effect
-    const splash = new THREE.Mesh(
-        new THREE.SphereGeometry(0.2, 8, 8),
-        new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.6
-        })
-    );
-    splash.position.copy(position);
-    this.scene.add(splash);
-    
-    // Animate splash
-    const startTime = Date.now();
-    const duration = 500;
-    
-    const animateSplash = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = elapsed / duration;
-        
-        if (progress >= 1) {
-            this.scene.remove(splash);
-            splash.geometry.dispose();
-            splash.material.dispose();
-            return;
-        }
-        
-        splash.scale.setScalar(1 + progress * 2);
-        splash.material.opacity = 0.6 * (1 - progress);
-        
-        requestAnimationFrame(animateSplash);
-    };
-    
-    animateSplash();
-}
-
-showFeedingNotification() {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(255, 165, 0, 0.95);
-        color: white;
-        padding: 15px 30px;
-        border-radius: 10px;
-        z-index: 10000;
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-        font-weight: bold;
-        animation: slideDown 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    `;
-    
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 24px;">🍽️</span>
-            <span>Food Released! Fish incoming...</span>
-        </div>
-        <style>
-            @keyframes slideDown {
-                from { transform: translate(-50%, -100%); opacity: 0; }
-                to { transform: translate(-50%, 0); opacity: 1; }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'fadeOut 0.5s ease';
-        setTimeout(() => notification.remove(), 500);
-    }, 3000);
-}
 
     saveRecording() {
         const blob = new Blob(this.recordedFrames, { type: 'video/webm' });
@@ -1836,159 +2677,236 @@ showFeedingNotification() {
     }
 
     updateObjectAnimations() {
-
             const time = this.time || Date.now() * 0.001;
         if (this.isAnimatingObjects) {
             this.images.forEach(img => {
                 img.mesh.rotation.y += 0.02 * this.animationSpeed;
             });
-            this.wallLights.forEach(light => {
-                light.left.rotation.y += 0.03 * this.animationSpeed;
-                light.right.rotation.y += 0.03 * this.animationSpeed;
-            });
-            this.glassSpotlights.forEach(light => {
-                light.mesh.rotation.y += 0.01 * this.animationSpeed;
-            });
+           
         }
-         if (this.fishSchools) {
-        this.fishSchools.forEach((fish, index) => {
-            const data = fish.userData;
+        if (this.turbine) {
+        this.turbine.rotation.z += this.turbine.userData.rotationSpeed;
+    }
+    
+    // 2. CENTER SCULPTURE ROTATION
+    if (this.centerSculpture) {
+        this.centerSculpture.rotation.y += this.centerSculpture.userData.rotationSpeed;
+    }
+    
+    // 3. SUSPENDED ARTWORKS (rotate + sway)
+    if (this.suspendedArtworks) {
+        this.suspendedArtworks.forEach((artwork, index) => {
+            // Slow rotation
+            artwork.rotation.y += artwork.userData.rotationSpeed;
             
-            // Orbital swimming path
-            data.orbitAngle += data.orbitSpeed;
-            const orbitX = Math.cos(data.orbitAngle) * data.orbitRadius;
-            const orbitZ = Math.sin(data.orbitAngle) * data.orbitRadius;
-            
-            // Wave motion (up/down)
-            const wave = Math.sin(time * data.speed + data.phase) * data.amplitude;
-            
-            fish.position.x = orbitX;
-            fish.position.y = wave;
-            fish.position.z = orbitZ;
-            
-            // Face direction of travel
-            const nextAngle = data.orbitAngle + 0.01;
-            const nextX = Math.cos(nextAngle) * data.orbitRadius;
-            const nextZ = Math.sin(nextAngle) * data.orbitRadius;
-            fish.lookAt(new THREE.Vector3(nextX, wave, nextZ));
-            
-            // Tail wiggle
-            if (fish.children[0]) {
-                fish.children[0].rotation.y = Math.sin(time * 5 + index) * 0.3;
-            }
+            // Swaying motion (like hanging on cables)
+            const sway = Math.sin(time * 0.5 + index) * artwork.userData.swayAmount;
+            artwork.rotation.z = sway;
         });
-
-         if (this.fish) {
-        this.fish.forEach((fish, index) => {
-            if (fish.userData.isHungry && fish.userData.targetFood) {
-                // Swim toward food
-                const direction = new THREE.Vector3()
-                    .subVectors(fish.userData.targetFood, fish.position)
-                    .normalize();
-                
-                fish.position.add(direction.multiplyScalar(0.05));
-                fish.lookAt(fish.userData.targetFood);
-                
-                // Stop when close
-                if (fish.position.distanceTo(fish.userData.targetFood) < 1) {
-                    fish.userData.isHungry = false;
-                    fish.userData.targetFood = null;
-                }
+    }
+    
+    // 4. EDISON BULBS (subtle swaying + flicker)
+    if (this.edisonBulbs) {
+        this.edisonBulbs.forEach((bulb, index) => {
+            // Gentle sway
+            const baseY = bulb.bulb.position.y;
+            bulb.bulb.position.y = baseY + Math.sin(time * 0.3 + index * 0.5) * 0.02;
+            bulb.light.position.copy(bulb.bulb.position);
+            
+            // Random flicker
+            if (Math.random() < 0.01) {
+                const flicker = 0.8 + Math.random() * 0.4;
+                bulb.light.intensity = 1.5 * flicker;
+                bulb.bulb.material.emissiveIntensity = 1.2 * flicker;
             } else {
-                // Normal swimming pattern
-                fish.position.x += Math.sin(time * 0.5 + index) * 0.02;
-                fish.position.y += Math.cos(time * 0.3 + index) * 0.01;
-                fish.position.z += Math.sin(time * 0.4 + index) * 0.02;
+                bulb.light.intensity += (1.5 - bulb.light.intensity) * 0.1;
+                bulb.bulb.material.emissiveIntensity += (1.2 - bulb.bulb.material.emissiveIntensity) * 0.1;
             }
         });
     }
     
-    // Food particles falling
-    if (this.foodParticles) {
-        this.foodParticles = this.foodParticles.filter(food => {
-            food.position.add(food.userData.velocity);
-            food.userData.lifetime--;
+    // 5. TRACK SPOTLIGHTS (subtle movement + flicker)
+    if (this.trackSpotlights) {
+        this.trackSpotlights.forEach((light, index) => {
+            // Subtle rotation (like wind or vibration)
+            light.group.rotation.x += Math.sin(time * 0.2 + index) * 0.0001;
+            light.group.rotation.z += Math.cos(time * 0.3 + index) * 0.0001;
             
-            if (food.userData.lifetime <= 0 || food.position.y < -2) {
-                this.scene.remove(food);
-                return false;
-            }
-            return true;
-        });
-    }
-    }
-    
-    // 2. JELLYFISH FLOATING (vertical bobbing + pulsing)
-    if (this.jellyfish) {
-        this.jellyfish.forEach((jelly, index) => {
-            const data = jelly.userData;
-            
-            // Slow vertical float
-            const baseY = jelly.position.y;
-            jelly.position.y = baseY + Math.sin(time * data.floatSpeed + data.floatPhase) * data.floatAmplitude * 0.01;
-            
-            // Bell pulsing (scale animation)
-            const pulse = 1.0 + Math.sin(time * data.pulseSpeed) * 0.1;
-            jelly.children[0].scale.set(1, pulse, 1);
-            
-            // Tentacles wave
-            for (let i = 1; i < jelly.children.length - 1; i++) {
-                const tentacle = jelly.children[i];
-                tentacle.rotation.x = Math.sin(time * 2 + i) * 0.3;
-                tentacle.rotation.z = Math.cos(time * 2 + i) * 0.2;
-            }
-            
-            // Glow pulse
-            const light = jelly.children[jelly.children.length - 1];
-            if (light.isPointLight) {
-                light.intensity = 2.0 + Math.sin(time * data.pulseSpeed) * 1.0;
+            // Occasional flicker/spark
+            if (Math.random() < 0.005) {
+                light.spotlight.intensity = 5.0 + Math.random() * 2.0;
+                light.lens.material.emissiveIntensity = 1.5;
+            } else {
+                light.spotlight.intensity += (3.5 - light.spotlight.intensity) * 0.05;
+                light.lens.material.emissiveIntensity += (0.8 - light.lens.material.emissiveIntensity) * 0.05;
             }
         });
     }
     
-    // 3. KELP SWAYING
-    if (this.kelpStrands) {
-        this.kelpStrands.forEach(kelp => {
-            const data = kelp.userData;
-            const sway = Math.sin(time * data.swaySpeed + data.phaseOffset) * data.swayAmount;
-            kelp.rotation.z = sway;
+    // 6. OFFICE FLUORESCENT FLICKER
+    if (this.officeFlicker && Math.random() < 0.02) {
+        this.officeFlicker.intensity = Math.random() < 0.5 ? 0.5 : 2.0;
+        setTimeout(() => {
+            if (this.officeFlicker) this.officeFlicker.intensity = 2.0;
+        }, 50 + Math.random() * 100);
+    }
+    
+    // 7. STEAM VENTS (periodic puffs)
+    if (this.steamVents) {
+        this.steamVents.forEach(vent => {
+            const currentTime = Date.now();
+            if (currentTime - vent.lastPuff > vent.interval) {
+                this.createSteamPuff(vent.position);
+                vent.lastPuff = currentTime;
+                vent.interval = 3000 + Math.random() * 5000;
+            }
         });
     }
     
-    // 4. BUBBLES RISING
-    if (this.bubbles) {
-        this.bubbles.forEach(bubble => {
-            const data = bubble.userData;
+    // 8. DUST PARTICLES (floating in god-rays)
+    if (this.dustParticles) {
+        this.dustParticles.forEach(particle => {
+            // Slow upward drift
+            particle.position.add(particle.userData.velocity);
             
-            // Rise upward
-            bubble.position.y += data.riseSpeed;
+            // Brownian motion (random walk)
+            particle.position.x += (Math.random() - 0.5) * 0.01;
+            particle.position.z += (Math.random() - 0.5) * 0.01;
             
-            // Wobble sideways
-            bubble.position.x += Math.sin(time * data.wobbleSpeed + data.phaseOffset) * data.wobbleAmount * 0.01;
+            // Keep within cylinder around light shaft
+            const center = particle.userData.center;
+            const radius = particle.userData.radius;
+            const distFromCenter = Math.sqrt(
+                Math.pow(particle.position.x - center.x, 2) +
+                Math.pow(particle.position.z - center.z, 2)
+            );
+            
+            if (distFromCenter > radius) {
+                const angle = Math.atan2(
+                    particle.position.z - center.z,
+                    particle.position.x - center.x
+                );
+                particle.position.x = center.x + Math.cos(angle) * radius;
+                particle.position.z = center.z + Math.sin(angle) * radius;
+            }
             
             // Reset when reaching top
-            if (bubble.position.y > 8) {
-                bubble.position.y = -3;
-                bubble.position.x = (Math.random() - 0.5) * 50;
-                bubble.position.z = (Math.random() - 0.5) * 30;
+            if (particle.position.y > 24) {
+                particle.position.y = 0.5;
             }
         });
     }
     
-    // 5. WATER CAUSTICS LIGHT ANIMATION
-    if (this.causticsLight) {
-        // Simulate moving water surface refracting light
-        this.causticsLight.position.x = Math.sin(time * 0.3) * 5;
-        this.causticsLight.position.z = Math.cos(time * 0.5) * 5;
-        this.causticsLight.intensity = 1.5 + Math.sin(time * 0.8) * 0.3;
+    // 9. CATWALK RATTLING (if player nearby)
+    if (this.catwalks && this.camera) {
+        this.catwalks.forEach(catwalk => {
+            const distance = this.camera.position.distanceTo(catwalk.position);
+            if (distance < 5) {
+                // Shake when player is nearby
+                catwalk.position.y += Math.sin(time * 10) * 0.002;
+            }
+        });
     }
     
-    // 6. AIRLOCK WHEEL SPINNING (optional decoration)
-    if (this.airlockWheel && Math.random() < 0.01) {
-        // Occasionally spin
-        this.airlockWheel.rotation.z += 0.05;
+    // 10. FREIGHT ELEVATOR ANIMATION (if moving)
+    if (this.freightElevator && this.freightElevator.userData.isMoving) {
+        const elevator = this.freightElevator;
+        const targetY = elevator.userData.targetY || 0;
+        const currentY = elevator.position.y;
+        const speed = 0.05;
+        
+        if (Math.abs(targetY - currentY) > 0.1) {
+            // Move elevator
+            elevator.position.y += (targetY - currentY) * speed;
+            
+            // Warning lights flash
+            elevator.traverse(child => {
+                if (child.material && child.material.emissive && child.material.emissive.getHex() === 0xff0000) {
+                    child.material.emissiveIntensity = 1.5 + Math.sin(time * 10) * 0.5;
+                }
+            });
+            
+            // Mechanical sound effect (visual cue)
+            if (Math.floor(time * 10) % 2 === 0) {
+                elevator.rotation.z = 0.002;
+            } else {
+                elevator.rotation.z = -0.002;
+            }
+        } else {
+            // Arrived at destination
+            elevator.position.y = targetY;
+            elevator.userData.isMoving = false;
+            elevator.rotation.z = 0;
+            
+            // Turn off warning lights
+            elevator.traverse(child => {
+                if (child.material && child.material.emissive && child.material.emissive.getHex() === 0xff0000) {
+                    child.material.emissiveIntensity = 1.5;
+                }
+            });
+            
+            console.log("🛗 Elevator arrived at level", elevator.userData.currentLevel);
+        }
     }
     }
+
+    createSteamPuff(position) {
+    const steamGroup = new THREE.Group();
+    
+    // Create multiple steam particles
+    for (let i = 0; i < 10; i++) {
+        const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 8, 8),
+            new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.6
+            })
+        );
+        
+        particle.position.set(
+            (Math.random() - 0.5) * 0.5,
+            (Math.random() - 0.5) * 0.5,
+            (Math.random() - 0.5) * 0.5
+        );
+        
+        steamGroup.add(particle);
+    }
+    
+    steamGroup.position.copy(position);
+    this.scene.add(steamGroup);
+    
+    // Animate steam rising and dissipating
+    const startTime = Date.now();
+    const duration = 2000;
+    
+    const animateSteam = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+        
+        if (progress >= 1) {
+            this.scene.remove(steamGroup);
+            steamGroup.children.forEach(child => {
+                child.geometry.dispose();
+                child.material.dispose();
+            });
+            return;
+        }
+        
+        // Rise and expand
+        steamGroup.position.y += 0.03;
+        steamGroup.scale.setScalar(1 + progress * 2);
+        
+        // Fade out
+        steamGroup.children.forEach(child => {
+            child.material.opacity = 0.6 * (1 - progress);
+        });
+        
+        requestAnimationFrame(animateSteam);
+    };
+    
+    animateSteam();
+}
 
 updateLighting() {
     const time = this.time || 0;
@@ -2185,28 +3103,6 @@ updateLighting() {
             this.animationSpeed = parseFloat(slider.value);
             value.textContent = this.animationSpeed.toFixed(1);
         });
-
-          // Camera Height Slider - FIXED VERSION
-        const cameraHeightSlider = document.getElementById("cameraHeightSlider");
-        const cameraHeightValue = document.getElementById("cameraHeightValue");
-
-       if (cameraHeightSlider && cameraHeightValue) {
-    cameraHeightSlider.addEventListener("input", () => {
-        this.cameraHeight = parseFloat(cameraHeightSlider.value);
-        cameraHeightValue.textContent = this.cameraHeight.toFixed(1);
-        
-        this.roomCameraSettings[0].position.y = this.cameraHeight;
-        this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
-        this.camera.position.y = this.cameraHeight;
-        
-        if (!this.isMobile) {
-            this.controls.getObject().position.y = this.cameraHeight;
-        } else {
-            this.controls.target.y = this.cameraHeight;
-            this.controls.update();
-        }
-    });
-}
     
         document.getElementById("sensitivitySlider")?.addEventListener("input", () => {
             const sensitivitySlider = document.getElementById("sensitivitySlider");
@@ -2214,9 +3110,7 @@ updateLighting() {
             const sensitivity = parseFloat(sensitivitySlider.value);
             sensitivityValue.textContent = sensitivity.toFixed(3);
             this.controls.setSensitivity(sensitivity);
-        }); 
-
-
+        });
     
         const prevBtn = document.getElementById('prevImage');
         const nextBtn = document.getElementById('nextImage');
@@ -2634,112 +3528,42 @@ updateLighting() {
         console.log(this.controlsVisible ? "🖥️ Controls visible" : "🖥️ Controls hidden");
     }
 
- onKeyDown(event) {
-        // Existing movement keys
-        switch (event.key.toLowerCase()) {
-            case "w": this.keys.w = true; break;
-            case "a": this.keys.a = true; break;
-            case "s": this.keys.s = true; break;
-            case "d": this.keys.d = true; break;
-            case "q": this.keys.q = true; break;
-            case "e": this.keys.e = true; break;
-
-            // ✅ NEW: Glider toggle
-            case " ": // Spacebar
-                if (!this.isSliderActive && !this.isFocused && this.glider) {
-                    event.preventDefault();
-                    this.toggleGlider();
-                }
-                break;
-
-            // ✅ NEW: Zipline activation
-            case "z":
-                if (!this.isRidingZipline) {
-                    const nearbyZipline = this.checkNearZipline();
-                    if (nearbyZipline) {
-                        this.startZiplineRide(nearbyZipline);
-                    }
-                }
-                break;
-
-            // ✅ NEW: Manual weather change (for testing)
-            case "t":
-                if (this.weatherSystem) {
-                    this.changeWeather();
-                }
-                break;
+   onKeyDown(event) {
+    // Existing movement keys
+    switch(event.key.toLowerCase()) {
+        case "w": this.keys.w = true; break;
+        case "a": this.keys.a = true; break;
+        case "s": this.keys.s = true; break;
+        case "d": this.keys.d = true; break;
+        case "q": this.keys.q = true; break;
+        case "e": this.keys.e = true; break;
+        case "control": this.isControlPressed = true; break;
+    }
+    
+    // ✨ NEW: Number keys for artwork navigation
+    const num = parseInt(event.key);
+    if (num >= 1 && num <= 9 && num <= this.images.length) {
+        this.focusOnArtwork(num - 1);
+    }
+    
+    // ✨ NEW: Arrow keys for navigation
+    if (!this.isSliderActive) {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+            this.navigateToNextArtwork();
         }
- if (event.key === " " || event.code === "Space") {
-        console.log("🚀 SPACEBAR DETECTED!");
-        console.log("  - isSliderActive:", this.isSliderActive);
-        console.log("  - isFocused:", this.isFocused);
-        console.log("  - glider exists:", !!this.glider);
-        
-        if (!this.isSliderActive && !this.isFocused && this.glider) {
-            console.log("✅ All conditions met, toggling glider...");
-            event.preventDefault();
-            this.toggleGlider();
-        } else {
-            console.log("❌ Conditions NOT met:");
-            if (this.isSliderActive) console.log("  - Slider is active");
-            if (this.isFocused) console.log("  - Camera is focused");
-            if (!this.glider) console.log("  - Glider doesn't exist!");
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+            this.navigateToPrevArtwork();
         }
     }
-     if (event.key === 'PageUp' || event.key === ']') {
-    this.cameraHeight = Math.min(5.0, this.cameraHeight + 0.5);
-
-
-    document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
-    document.getElementById('cameraHeightSlider').value = this.cameraHeight;
     
-    // ✅ ADD: Actually update camera position
-    this.roomCameraSettings[0].position.y = this.cameraHeight;
-    this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
-    this.camera.position.y = this.cameraHeight;
-    
-    if (!this.isMobile) {
-        this.controls.getObject().position.y = this.cameraHeight;
-    } else {
-        this.controls.target.y = this.cameraHeight;
-        this.controls.update();
+    // ✨ NEW: Help toggle
+    if (event.key === '?' || event.key === '/') {
+        this.toggleHelpOverlay();
     }
+    if (event.key.toLowerCase() === 'r') {
+    this.resetCameraPosition();
 }
-if (event.key === 'PageDown' || event.key === '[') {
-    this.cameraHeight = Math.max(-2.0, this.cameraHeight - 0.5); // ✅ CHANGED from 0.3 to -2.0
-
-
-    
-    document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
-    document.getElementById('cameraHeightSlider').value = this.cameraHeight;
-    
-    // ✅ ADD: Actually update camera position
-    this.roomCameraSettings[0].position.y = this.cameraHeight;
-    this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
-    this.camera.position.y = this.cameraHeight;
-    
-    if (!this.isMobile) {
-        this.controls.getObject().position.y = this.cameraHeight;
-    } else {
-        this.controls.target.y = this.cameraHeight;
-        this.controls.update();
-    }
 }
-
-        // Existing artwork navigation
-        const num = parseInt(event.key);
-        if (num >= 4 && num <= 9 && num <= this.images.length + 3) {
-            this.focusOnArtwork(num - 4);
-        }
-
-        // Help toggle
-        if (event.key === '?' || event.key === '/') {
-            this.toggleHelpOverlay();
-        }
-        if (event.key.toLowerCase() === 'r') {
-            this.resetCameraPosition();
-        }
-    }
 
     onKeyUp(event) {
         switch (event.key.toLowerCase()) {
@@ -2787,32 +3611,20 @@ if (event.key === 'PageDown' || event.key === '[') {
     this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
     this.isFocused = false;
 }
- checkCollisions() {
-        if (!this.isMobile) {
-            this.camera.position.y = this.cameraHeight || 1.6;
+    checkCollisions() {
+    if (!this.isMobile) {
+        this.camera.position.y = 1.6;
+        const roomBounds = this.rooms[this.currentRoom].position;
+        const minX = -38;
+        const maxX = 38;
+        const minZ = -28;
+        const maxZ = 28;
 
-            // ✓ FIXED: Sky Islands bounds (much larger to reach all islands)
-            const minX = -50; // ✓ CHANGE: was -13, now -50
-            const maxX = 50;  // ✓ CHANGE: was 13, now 50
-            const minZ = -50; // ✓ CHANGE: was -13, now -50
-            const maxZ = 50;  // ✓ CHANGE: was 13, now 50
-            const minY = -10; // Safety net (respawn if falling too far)
-
-            // Respawn if falling into the void
-            if (this.camera.position.y < minY) {
-                console.log("⚠️ Fell into void! Respawning at main island...");
-                this.camera.position.set(0, 2, 10);
-                this.controls.getObject().position.copy(this.camera.position);
-
-                // Show respawn message
-                this.showRespawnMessage();
-            }
-
-            this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
-            this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
-            this.controls.getObject().position.copy(this.camera.position);
-        }
+        this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
+        this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
+        this.controls.getObject().position.copy(this.camera.position);
     }
+}
 
     async computeImageHash(texture) {
         return new Promise((resolve) => {
@@ -3129,79 +3941,229 @@ if (event.key === 'PageDown' || event.key === '[') {
         });
     }
 
-    onCanvasClick(event) {
-        const currentTime = new Date().getTime();
-        const timeSinceLastClick = currentTime - this.lastClickTime;
+onCanvasClick(event) {
+    const currentTime = new Date().getTime();
+    const timeSinceLastClick = currentTime - this.lastClickTime;
 
-        if (timeSinceLastClick < this.clickDelay) {
-            this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    if (timeSinceLastClick < this.clickDelay) {
+        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-            this.raycaster.setFromCamera(this.mouse, this.camera);
-            const intersects = this.raycaster.intersectObjects([...this.images.map(img => img.mesh), ...this.scene.children.filter(obj => (obj.parent && obj.parent.userData.isAvatar))]);
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        
+        // ✓ FIXED: Include all interactive objects
+        const interactiveObjects = [
+            ...this.images.map(img => img.mesh),
+            ...this.scene.children.filter(obj => (obj.parent && obj.parent.userData.isAvatar)),
+            ...(this.scrolls || []).map(scroll => scroll.children).flat(), // All scroll children
+            ...(this.secretPassages || []).map(p => p.door) // Secret doors
+        ];
+        
+        const intersects = this.raycaster.intersectObjects(interactiveObjects, true);
 
-            if (intersects.length > 0) {
-                const obj = intersects[0].object;
-                if (this.isFocused) {
-                    this.resetCamera();
-                    this.closeSlider();
-                } else if (obj.parent && obj.parent.userData.isAvatar) {
-                    this.showAvatarInstructions();
-                } else if (obj.userData.filename) {
-                    console.log(`Clicked image: ${obj.userData.filename}`);
-                    if (!this.clickSound.isPlaying) this.clickSound.play();
-                    this.focusImage(obj);
-                    this.scaleImage(obj);
-                    this.openSlider(obj);
-                }
+        if (intersects.length > 0) {
+            const obj = intersects[0].object;
+            if (this.isFocused) {
+                this.resetCamera();
+                this.closeSlider();
+            } else if (obj.parent && obj.parent.userData.isAvatar) {
+                this.showAvatarInstructions();
+            } else if (obj.userData.filename) {
+                console.log(`Clicked image: ${obj.userData.filename}`);
+                if (!this.clickSound.isPlaying) this.clickSound.play();
+                this.focusImage(obj);
+                this.scaleImage(obj);
+                this.openSlider(obj);
             }
-            else{
-            if (this.fishSchools && this.fishSchools.length > 0) {
-                // Raycast against all fish
-                const fishIntersects = this.raycaster.intersectObjects(this.fishSchools, true);
-                
-                if (fishIntersects.length > 0) {
-                    const clickedFish = fishIntersects[0].object.parent || fishIntersects[0].object;
-                    
-                    // Check if it's actually a fish
-                    if (this.fishSchools.includes(clickedFish)) {
-                        this.followFish(clickedFish);
-                        
-                        // Play sound
-                        if (!this.clickSound.isPlaying) this.clickSound.play();
-                        
-                        // Show fish info
-                        this.showFishInfo(clickedFish);
-                    }
-                }
-            }
+        }
+        else {
+            // ========================================
+            // ELEVATOR BUTTON INTERACTION
+            // ========================================
             
-            // ========================================
-            // NEW: JELLYFISH FOLLOWING SYSTEM
-            // ========================================
-            if (this.jellyfish && this.jellyfish.length > 0) {
-                const jellyIntersects = this.raycaster.intersectObjects(
-                    this.jellyfish.map(j => j.children).flat(),
-                    true
-                );
+            // Get all clickable objects in scene
+            const clickableObjects = [];
+            this.scene.traverse(child => {
+                if (child.userData.isElevatorButton || 
+                    child.userData.canMove || 
+                    child.userData.isLightSwitch) {
+                    clickableObjects.push(child);
+                }
+            });
+            
+            const clickIntersects = this.raycaster.intersectObjects(clickableObjects, true);
+            
+            if (clickIntersects.length > 0) {
+                const clicked = clickIntersects[0].object;
                 
-                if (jellyIntersects.length > 0) {
-                    const clickedJelly = jellyIntersects[0].object.parent;
-                    
-                    if (this.jellyfish.includes(clickedJelly)) {
-                        this.followFish(clickedJelly); // Reuse follow system
-                        if (!this.clickSound.isPlaying) this.clickSound.play();
-                        this.showFishInfo(clickedJelly, true); // Pass true for jellyfish
-                    }
+                // ELEVATOR BUTTON CLICKED
+                if (clicked.userData.isElevatorButton) {
+                    this.callElevator(clicked.userData.targetLevel);
+                    if (!this.clickSound.isPlaying) this.clickSound.play();
+                }
+                
+                // MOVABLE WALL CLICKED
+                else if (clicked.parent && clicked.parent.userData.canMove) {
+                    this.moveWall(clicked.parent);
+                    if (!this.clickSound.isPlaying) this.clickSound.play();
                 }
             }
         }
+        
+        // ✓ FIXED: Handle library interactions for ANY intersected object
+        if (intersects.length > 0) {
+            this.handleLibraryInteractions(intersects[0].object);
+        }
     }
     this.lastClickTime = currentTime;
-            
-      
-    }
+}
 
+
+callElevator(targetLevel) {
+    if (!this.freightElevator) return;
+    
+    console.log(`🛗 Calling elevator to level ${targetLevel}`);
+    
+    const elevator = this.freightElevator;
+    
+    // Prevent multiple calls while moving
+    if (elevator.userData.isMoving) {
+        console.log("⏳ Elevator is already moving");
+        return;
+    }
+    
+    // Set target height based on level
+    const levels = [0, 8, 15]; // Ground, Mezzanine 1, Mezzanine 2
+    elevator.userData.targetY = levels[targetLevel];
+    elevator.userData.currentLevel = targetLevel;
+    elevator.userData.isMoving = true;
+    
+    // Show elevator UI
+    this.showElevatorUI(targetLevel);
+}
+
+showElevatorUI(level) {
+    const existing = document.getElementById('elevatorUI');
+    if (existing) existing.remove();
+    
+    const ui = document.createElement('div');
+    ui.id = 'elevatorUI';
+    ui.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.9);
+        color: #ffcc00;
+        padding: 15px 30px;
+        border-radius: 8px;
+        z-index: 10000;
+        font-family: 'Courier New', monospace;
+        font-size: 18px;
+        font-weight: bold;
+        border: 2px solid #ffcc00;
+        animation: slideDown 0.3s ease;
+    `;
+    
+    ui.innerHTML = `
+        🛗 FREIGHT ELEVATOR: ${['GROUND FLOOR', 'MEZZANINE 1', 'MEZZANINE 2'][level]}
+        <style>
+            @keyframes slideDown {
+                from { transform: translate(-50%, -100%); opacity: 0; }
+                to { transform: translate(-50%, 0); opacity: 1; }
+            }
+        </style>
+    `;
+    
+    document.body.appendChild(ui);
+    
+    setTimeout(() => {
+        ui.style.animation = 'fadeOut 0.5s ease';
+        setTimeout(() => ui.remove(), 500);
+    }, 3000);
+}
+moveWall(wall) {
+    if (!wall.userData.canMove) return;
+    
+    console.log("🚧 Moving wall panel...");
+    
+    // Animate wall sliding along track
+    const currentX = wall.position.x;
+    const trackStart = wall.userData.trackStart;
+    const trackEnd = wall.userData.trackEnd;
+    
+    // Toggle between start and end positions
+    let targetX;
+    if (Math.abs(currentX - trackStart) < 1) {
+        targetX = trackEnd;
+    } else {
+        targetX = trackStart;
+    }
+    
+    const startX = currentX;
+    const duration = 2000;
+    const startTime = Date.now();
+    
+    const animateWall = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = this.easeInOutCubic(progress);
+        
+        wall.position.x = startX + (targetX - startX) * eased;
+        
+        // Grinding sound effect (visual vibration)
+        if (progress < 1) {
+            wall.rotation.z = Math.sin(elapsed * 0.05) * 0.005;
+            requestAnimationFrame(animateWall);
+        } else {
+            wall.rotation.z = 0;
+            console.log("✅ Wall moved to new position");
+        }
+    };
+    
+    animateWall();
+    
+    // Show notification
+    this.showWallNotification();
+}
+
+showWallNotification() {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(139, 69, 19, 0.95);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        z-index: 10000;
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        animation: slideInRight 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    `;
+    
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 24px;">🚧</span>
+            <span>Wall Panel Repositioning...</span>
+        </div>
+        <style>
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        </style>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.5s ease';
+        setTimeout(() => notification.remove(), 500);
+    }, 2000);
+}
     openSlider(selectedMesh) {
        if (!this.isFocused) {
     this.updateCameraState(); // Only save if not already focused
@@ -3237,384 +4199,6 @@ if (event.key === 'PageDown' || event.key === '[') {
         }
     }
     
-    followFish(fish) {
-    console.log("Following marine creature:", fish);
-    
-    // Cancel any existing follow
-    if (this.followingFish) {
-        this.stopFollowingFish();
-    }
-    
-    this.followingFish = fish;
-    this.isFocused = true;
-    this.followStartTime = Date.now();
-    
-    // Store original camera state
-    this.updateCameraState();
-    
-    // Create follow indicator (green ring around fish)
-    const indicator = new THREE.Mesh(
-        new THREE.TorusGeometry(0.4, 0.05, 16, 32),
-        new THREE.MeshBasicMaterial({
-            color: 0x00ff00,
-            transparent: true,
-            opacity: 0.8
-        })
-    );
-    indicator.rotation.x = Math.PI / 2;
-    fish.add(indicator);
-    this.fishFollowIndicator = indicator;
-    
-    // Animate indicator pulsing
-    this.fishIndicatorPulse = 1.0;
-}
-
-stopFollowingFish() {
-    if (!this.followingFish) return;
-    
-    console.log("Stopped following fish");
-    
-    // Remove indicator
-    if (this.fishFollowIndicator) {
-        this.followingFish.remove(this.fishFollowIndicator);
-        this.fishFollowIndicator = null;
-    }
-    
-    this.followingFish = null;
-    this.isFocused = false;
-    
-    // Don't reset camera - let user keep exploring from current position
-}
-
-updateFishFollowCamera() {
-    if (!this.followingFish || !this.followingFish.position) {
-        return;
-    }
-    
-    const time = Date.now() * 0.001;
-    const fish = this.followingFish;
-    
-    // Calculate camera position (behind and slightly above fish)
-    const fishDirection = new THREE.Vector3();
-    fish.getWorldDirection(fishDirection);
-    
-    const offset = new THREE.Vector3()
-        .copy(fishDirection)
-        .multiplyScalar(-3) // 3 units behind
-        .add(new THREE.Vector3(0, 1, 0)); // 1 unit above
-    
-    const targetPos = fish.position.clone().add(offset);
-    
-    // Smooth camera movement
-    this.camera.position.lerp(targetPos, 0.05);
-    
-    // Look at fish
-    const lookAtPos = fish.position.clone();
-    lookAtPos.y += 0.2; // Look slightly above center
-    this.camera.lookAt(lookAtPos);
-    
-    // Update OrbitControls target for mobile
-    if (this.isMobile) {
-        this.controls.target.copy(lookAtPos);
-        this.controls.update();
-    }
-    
-    // Update indicator pulse
-    if (this.fishFollowIndicator) {
-        this.fishIndicatorPulse = 1.0 + Math.sin(time * 3) * 0.2;
-        this.fishFollowIndicator.scale.set(
-            this.fishIndicatorPulse,
-            this.fishIndicatorPulse,
-            this.fishIndicatorPulse
-        );
-    }
-    
-    // Auto-stop after 20 seconds
-    if (Date.now() - this.followStartTime > 20000) {
-        this.stopFollowingFish();
-    }
-}
-
-showFishInfo(fish, isJellyfish = false) {
-    const existing = document.getElementById('fishInfo');
-    if (existing) existing.remove();
-    
-    // Determine species
-    let species, description, color;
-    
-    if (isJellyfish) {
-        species = "Bioluminescent Jellyfish";
-        description = "These ethereal creatures pulse with cyan light, drifting through the depths.";
-        color = "#00ffff";
-    } else {
-        // Detect fish type by geometry
-        const isBigFish = fish.scale.x > 1.5;
-        
-        if (isBigFish) {
-            species = "Manta Ray";
-            description = "Graceful giant gliding through the water with powerful wing-like fins.";
-            color = "#5a7d9a";
-        } else {
-            const fishColor = fish.material.color.getHex();
-            const colorNames = {
-                0xff6b35: { name: "Coral Tang", desc: "Vibrant orange reef dweller, feeds on algae." },
-                0xf7931e: { name: "Clownfish", desc: "Orange and white striped, lives in anemones." },
-                0xfdc82f: { name: "Yellow Tang", desc: "Bright yellow surgeon fish from coral reefs." },
-                0x00a8e8: { name: "Blue Damselfish", desc: "Electric blue, territorial but beautiful." }
-            };
-            
-            const match = colorNames[fishColor] || { name: "Tropical Fish", desc: "Colorful reef inhabitant." };
-            species = match.name;
-            description = match.desc;
-            color = `#${fishColor.toString(16).padStart(6, '0')}`;
-        }
-    }
-    
-    const info = document.createElement('div');
-    info.id = 'fishInfo';
-    info.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: rgba(0,0,0,0.9);
-        color: white;
-        padding: 20px;
-        border-radius: 10px;
-        max-width: 320px;
-        z-index: 1000;
-        font-family: Arial, sans-serif;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        animation: slideInRight 0.3s ease;
-        border-left: 4px solid ${color};
-    `;
-    
-    info.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-            <div style="font-size: 32px;">${isJellyfish ? '🪼' : '🐠'}</div>
-            <h3 style="margin: 0; font-size: 18px; color: ${color};">${species}</h3>
-        </div>
-        <p style="margin: 8px 0; font-size: 13px; line-height: 1.5; opacity: 0.9;">
-            ${description}
-        </p>
-        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; font-size: 12px;">
-            <strong>📹 Following Mode Active</strong><br>
-            <span style="opacity: 0.8;">Press ESC or right-click to stop</span>
-        </div>
-        <button id="stopFollowing" style="
-            margin-top: 12px;
-            width: 100%;
-            padding: 10px;
-            background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
-            border: none;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-        ">Stop Following</button>
-        <style>
-            @keyframes slideInRight {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(info);
-    
-    document.getElementById('stopFollowing').addEventListener('click', () => {
-        this.stopFollowingFish();
-        info.remove();
-    });
-}
-
-
-startSubmarineDive() {
-    if (this.isDiving) return;
-    
-    console.log("🚢 Starting submarine dive sequence...");
-    this.isDiving = true;
-    this.isFocused = true;
-    
-    // Save current position
-    this.updateCameraState();
-    
-    // Show dive UI
-    this.showDiveUI();
-    
-    // Animate descent through depth zones
-    this.diveSequence = [
-        { depth: 0, duration: 2000, zone: "Surface Level", color: 0x4da6ff },
-        { depth: -5, duration: 3000, zone: "Shallow Reef", color: 0x3d8fb8 },
-        { depth: -10, duration: 3000, zone: "Twilight Zone", color: 0x2d5f7a },
-        { depth: -15, duration: 3000, zone: "Deep Abyss", color: 0x1a3a4d },
-        { depth: -20, duration: 3000, zone: "Hadal Zone", color: 0x0d1f2d }
-    ];
-    
-    this.currentDiveStep = 0;
-    this.diveStartTime = Date.now();
-    this.diveStartY = this.camera.position.y;
-    
-    // Play dive sound (optional)
-    if (!this.clickSound.isPlaying) this.clickSound.play();
-}
-
-updateSubmarineDive() {
-    if (!this.isDiving || this.currentDiveStep >= this.diveSequence.length) {
-        if (this.isDiving && this.currentDiveStep >= this.diveSequence.length) {
-            this.completeDive();
-        }
-        return;
-    }
-    
-    const currentStep = this.diveSequence[this.currentDiveStep];
-    const elapsed = Date.now() - this.diveStartTime;
-    const progress = Math.min(elapsed / currentStep.duration, 1);
-    const eased = this.easeInOutCubic(progress);
-    
-    // Calculate target depth
-    const startDepth = this.currentDiveStep === 0 ? this.diveStartY : this.diveSequence[this.currentDiveStep - 1].depth;
-    const targetDepth = currentStep.depth;
-    
-    // Smoothly move camera down
-    this.camera.position.y = startDepth + (targetDepth - startDepth) * eased;
-    
-    // Update fog color and density based on depth
-    if (this.scene.fog) {
-        const fogColor = new THREE.Color(currentStep.color);
-        this.scene.fog.color.lerp(fogColor, 0.05);
-        this.scene.fog.density = 0.015 + (Math.abs(targetDepth) / 100);
-    }
-    
-    // Update ambient light intensity (darker as we go deeper)
-    const ambientLight = this.scene.children.find(child => child instanceof THREE.AmbientLight);
-    if (ambientLight) {
-        const targetIntensity = 0.4 - (Math.abs(targetDepth) / 50);
-        ambientLight.intensity += (targetIntensity - ambientLight.intensity) * 0.05;
-    }
-    
-    // Update dive UI
-    this.updateDiveUI(currentStep.zone, targetDepth, progress);
-    
-    // Move to next step when complete
-    if (progress >= 1) {
-        this.currentDiveStep++;
-        this.diveStartTime = Date.now();
-        
-        if (this.currentDiveStep < this.diveSequence.length) {
-            console.log(`Entering ${this.diveSequence[this.currentDiveStep].zone}`);
-        }
-    }
-}
-
-completeDive() {
-    console.log("🌊 Dive complete! Returning to surface...");
-    
-    // Animate return to original position
-    const returnDuration = 5000;
-    const startY = this.camera.position.y;
-    const targetY = this.previousCameraState.position.y;
-    const startTime = Date.now();
-    
-    const ascend = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / returnDuration, 1);
-        const eased = this.easeInOutCubic(progress);
-        
-        this.camera.position.y = startY + (targetY - startY) * eased;
-        
-        // Restore fog
-        if (this.scene.fog) {
-            this.scene.fog.color.lerp(new THREE.Color(0x1a4d7a), 0.05);
-            this.scene.fog.density += (0.015 - this.scene.fog.density) * 0.05;
-        }
-        
-        // Restore ambient light
-        const ambientLight = this.scene.children.find(child => child instanceof THREE.AmbientLight);
-        if (ambientLight) {
-            ambientLight.intensity += (0.4 - ambientLight.intensity) * 0.05;
-        }
-        
-        this.updateDiveUI("Ascending...", this.camera.position.y, progress);
-        
-        if (progress < 1) {
-            requestAnimationFrame(ascend);
-        } else {
-            this.isDiving = false;
-            this.isFocused = false;
-            this.hideDiveUI();
-        }
-    };
-    
-    requestAnimationFrame(ascend);
-}
-
-showDiveUI() {
-    const diveUI = document.createElement('div');
-    diveUI.id = 'diveUI';
-    diveUI.style.cssText = `
-        position: fixed;
-        bottom: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,0.85);
-        color: white;
-        padding: 20px 30px;
-        border-radius: 15px;
-        z-index: 1000;
-        font-family: 'Courier New', monospace;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        border: 2px solid #00ffff;
-        min-width: 350px;
-    `;
-    
-    diveUI.innerHTML = `
-        <div style="text-align: center;">
-            <div style="font-size: 24px; margin-bottom: 10px;">🚢 SUBMARINE DIVE</div>
-            <div id="diveZone" style="font-size: 16px; color: #00ffff; margin-bottom: 10px;">Preparing...</div>
-            <div id="diveDepth" style="font-size: 20px; font-weight: bold; color: #ffffff; margin-bottom: 10px;">0m</div>
-            <div style="background: rgba(255,255,255,0.2); height: 8px; border-radius: 4px; overflow: hidden;">
-                <div id="diveProgress" style="background: linear-gradient(90deg, #00ffff, #00ff88); height: 100%; width: 0%; transition: width 0.3s;"></div>
-            </div>
-            <button id="cancelDive" style="
-                margin-top: 15px;
-                padding: 8px 20px;
-                background: #ff4444;
-                border: none;
-                color: white;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 12px;
-            ">Cancel Dive</button>
-        </div>
-    `;
-    
-    document.body.appendChild(diveUI);
-    
-    document.getElementById('cancelDive').addEventListener('click', () => {
-        this.isDiving = false;
-        this.isFocused = false;
-        this.camera.position.copy(this.previousCameraState.position);
-        this.hideDiveUI();
-    });
-}
-
-updateDiveUI(zone, depth, progress) {
-    const zoneEl = document.getElementById('diveZone');
-    const depthEl = document.getElementById('diveDepth');
-    const progressEl = document.getElementById('diveProgress');
-    
-    if (zoneEl) zoneEl.textContent = zone;
-    if (depthEl) depthEl.textContent = `${Math.abs(depth).toFixed(1)}m`;
-    if (progressEl) progressEl.style.width = `${progress * 100}%`;
-}
-
-hideDiveUI() {
-    const diveUI = document.getElementById('diveUI');
-    if (diveUI) diveUI.remove();
-}
     closeSlider() {
         this.isSliderActive = false;
         const sliderContainer = document.getElementById('imageSliderContainer');

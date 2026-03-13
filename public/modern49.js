@@ -55,9 +55,24 @@ class ThreeJSApp {
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
         this.roomCameraSettings = [
-            { position: new THREE.Vector3(0, 1.6, 28), lookAt: new THREE.Vector3(0, 1.6, 0) }
+            {
+                position: new THREE.Vector3(0, 2.5, 35), // ✓ CHANGE: was 1.6, now 2.5
+                lookAt: new THREE.Vector3(0, 2.5, 0)     // ✓ CHANGE: was 1.6, now 2.5
+            }
         ];
 
+        this.glassSegments = [];
+        this.jellyfish = [];
+        this.sharks = [];
+        this.fishSchools = [];
+        this.coralReefs = [];
+        this.bioluminescentCreatures = [];
+        this.bubbles = [];
+        this.pressureCracks = [];
+        this.causticsPlanes = [];
+        this.underwaterLights = [];
+        this.seaPlants = [];
+        this.artworkFrames = [];
         const initialSettings = this.roomCameraSettings[0];
         this.camera.position.copy(initialSettings.position);
         this.camera.lookAt(initialSettings.lookAt);
@@ -128,6 +143,7 @@ class ThreeJSApp {
         this.clickDelay = 300;
         this.moveSpeed = 0.15;
         this.rotationSpeed = 0.05;
+        this.cameraHeight = 1.6; // ✓ ADD THIS LINE
         this.keys = { w: false, a: false, s: false, d: false, q: false, e: false };
 
         this.time = 0;
@@ -151,7 +167,7 @@ class ThreeJSApp {
         this.createGallery();
         this.setupAudio();
         this.setupEventListeners();
-        this.createAvatar();
+        // this.createAvatar();
 
         this.isLoading = true;
         this.showPreloader();
@@ -305,2247 +321,1513 @@ class ThreeJSApp {
         this.scene.add(fillLight);
     }
 
-
-
     createGallery() {
-        const room1 = new THREE.Group();
+        // Initialize arrays
+        this.artworkSpots = [];
+        this.glassSegments = [];
+        this.jellyfish = [];
+        this.sharks = [];
+        this.fishSchools = [];
+        this.coralReefs = [];
+        this.bioluminescentCreatures = [];
+        this.bubbles = [];
+        this.pressureCracks = [];
+        this.causticsPlanes = [];
+        this.underwaterLights = [];
+        this.seaPlants = [];
+        this.artworkFrames = [];
 
-        // ========================================
-        // MATERIALS LIBRARY - RAW INDUSTRIAL
-        // ========================================
+        // Create underwater environment
+        this.createUnderwaterObservatory();    // Main tunnel structure
+        this.createGlassTunnels();             // Transparent walkways
+        this.createObservationDome();          // Central viewing area
+        this.createCoralReefs();               // Reef structures with artwork
+        this.createJellyfish();                // Floating jellyfish
+        this.createSharks();                   // Patrolling sharks
+        this.createFishSchools();              // Schools of fish
+        this.createBioluminescentLife();       // Glowing creatures
+        this.createSeaPlants();                // Swaying kelp & plants
+        this.createBubbles();                  // Rising bubbles
+        this.createPressureCracks();           // Glass damage effects
+        this.createCaustics();                 // Water light patterns
+        this.createUnderwaterLighting();       // Deep sea lighting
+        this.createOceanFloor();               // Sandy bottom
+        this.createUnderwaterFog();            // Volumetric water
 
-        // 1. Raw board-formed concrete
-        const rawConcreteMaterial = new THREE.MeshStandardMaterial({
-            color: 0x4a4a4a,
-            roughness: 0.9,
-            metalness: 0.05,
-            envMapIntensity: 0.3
-        });
+        console.log("🌊 ═══════════════════════════════════════");
+        console.log("🌊  UNDERWATER OBSERVATORY INITIALIZED");
+        console.log("🌊 ═══════════════════════════════════════");
+        console.log("✅ Glass Tunnel Segments: " + this.glassSegments.length);
+        console.log("✅ Jellyfish: " + this.jellyfish.length);
+        console.log("✅ Sharks: " + this.sharks.length);
+        console.log("✅ Fish Schools: " + this.fishSchools.length);
+        console.log("✅ Coral Reefs: " + this.coralReefs.length);
+        console.log("✅ Bioluminescent Creatures: " + this.bioluminescentCreatures.length);
+        console.log("✅ Artwork Spots: " + this.artworkSpots.length);
+        console.log("🌊 ═══════════════════════════════════════");
+    }
 
-        // Generate concrete texture
-        const concreteTexture = this.generateBoardFormedConcrete(2048, 2048);
-        const concreteTextureObj = new THREE.Texture(concreteTexture);
-        concreteTextureObj.needsUpdate = true;
-        concreteTextureObj.wrapS = concreteTextureObj.wrapT = THREE.RepeatWrapping;
-        concreteTextureObj.repeat.set(4, 4);
-        rawConcreteMaterial.map = concreteTextureObj;
+    // ========================================
+    // UNDERWATER OBSERVATORY (main structure)
+    // ========================================
 
-        // 2. Acid-stained polished concrete floor
-        const polishedFloorMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3d2b1f,
-            roughness: 0.3,
-            metalness: 0.2,
-            envMapIntensity: 0.8
-        });
+    createUnderwaterObservatory() {
+        const observatoryRoom = new THREE.Group();
+        observatoryRoom.visible = true;
 
-        // 3. Weathered rusted steel
-        const rustedSteelMaterial = new THREE.MeshStandardMaterial({
-            color: 0x8b4513,
-            roughness: 0.85,
-            metalness: 0.3,
-            envMapIntensity: 0.5
-        });
-
-        // 4. Chrome pipes and railings
-        const chromeMaterial = new THREE.MeshStandardMaterial({
-            color: 0xc0c0c0,
-            roughness: 0.1,
-            metalness: 1.0,
-            envMapIntensity: 2.0
-        });
-
-        // 5. Industrial steel grating (semi-transparent)
-        const gratingMaterial = new THREE.MeshStandardMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.8,
-            metalness: 0.9,
+        // Materials
+        this.glassMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x88ccff,
+            transmission: 0.95,
+            opacity: 0.3,
             transparent: true,
-            opacity: 0.7,
-            side: THREE.DoubleSide
-        });
-
-        // 6. Exposed steel I-beams
-        const iBeamMaterial = new THREE.MeshStandardMaterial({
-            color: 0x5a5a5a,
-            roughness: 0.7,
-            metalness: 0.8
-        });
-
-        // 7. Old wood crates
-        const crateWoodMaterial = new THREE.MeshStandardMaterial({
-            color: 0x6b4423,
-            roughness: 0.95,
-            metalness: 0.0
-        });
-
-        // 8. Graffiti/street art surface
-        const graffitiMaterial = new THREE.MeshStandardMaterial({
-            color: 0x888888,
-            roughness: 0.8,
-            metalness: 0.1
-        });
-
-        // 9. Frosted industrial glass
-        const industrialGlassMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff,
-            transmission: 0.7,
+            roughness: 0.05,
             thickness: 0.5,
+            envMapIntensity: 1
+        });
+
+        this.metalMaterial = new THREE.MeshStandardMaterial({
+            color: 0x4a5a6a,
             roughness: 0.4,
-            transparent: true,
-            opacity: 0.6
+            metalness: 0.9
         });
 
-        // ========================================
-        // MASSIVE CONCRETE SHELL STRUCTURE
-        // ========================================
-
-        const warehouseWidth = 80;
-        const warehouseDepth = 60;
-        const warehouseHeight = 25;
-
-        // Main polished concrete floor with acid-stain pattern
-        const mainFloor = new THREE.Mesh(
-            new THREE.PlaneGeometry(warehouseWidth, warehouseDepth),
-            polishedFloorMaterial
-        );
-        mainFloor.rotation.x = -Math.PI / 2;
-        mainFloor.receiveShadow = true;
-        room1.add(mainFloor);
-
-        // Crack lines and expansion joints
-        const crackPositions = [-20, -10, 0, 10, 20];
-        crackPositions.forEach(pos => {
-            // Longitudinal cracks
-            const crackX = new THREE.Mesh(
-                new THREE.BoxGeometry(warehouseWidth * 0.95, 0.05, 0.1),
-                new THREE.MeshStandardMaterial({
-                    color: 0x1a1a1a,
-                    roughness: 1.0
-                })
-            );
-            crackX.position.set(0, 0.01, pos);
-            crackX.receiveShadow = true;
-            room1.add(crackX);
-
-            // Lateral cracks
-            const crackZ = new THREE.Mesh(
-                new THREE.BoxGeometry(0.1, 0.05, warehouseDepth * 0.95),
-                new THREE.MeshStandardMaterial({
-                    color: 0x1a1a1a,
-                    roughness: 1.0
-                })
-            );
-            crackZ.position.set(pos, 0.01, 0);
-            crackZ.receiveShadow = true;
-            room1.add(crackZ);
-        });
-
-        // Random oil stains and water damage
-        for (let i = 0; i < 15; i++) {
-            const stain = new THREE.Mesh(
-                new THREE.CircleGeometry(Math.random() * 2 + 0.5, 32),
-                new THREE.MeshStandardMaterial({
-                    color: 0x2a2a2a,
-                    roughness: 0.95,
-                    transparent: true,
-                    opacity: 0.6
-                })
-            );
-            stain.position.set(
-                (Math.random() - 0.5) * warehouseWidth * 0.9,
-                0.02,
-                (Math.random() - 0.5) * warehouseDepth * 0.9
-            );
-            stain.rotation.x = -Math.PI / 2;
-            room1.add(stain);
-        }
-
-        // ========================================
-        // MASSIVE CONCRETE COLUMNS (2m diameter)
-        // ========================================
-
-        const columnPositions = [
-            { x: -30, z: -20 }, { x: -30, z: 0 }, { x: -30, z: 20 },
-            { x: 0, z: -20 }, { x: 0, z: 20 },
-            { x: 30, z: -20 }, { x: 30, z: 0 }, { x: 30, z: 20 }
-        ];
-
-        columnPositions.forEach(pos => {
-            const column = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.0, 1.2, warehouseHeight, 16),
-                rawConcreteMaterial
-            );
-            column.position.set(pos.x, warehouseHeight / 2, pos.z);
-            column.castShadow = true;
-            column.receiveShadow = true;
-            room1.add(column);
-
-            // Rebar exposed at top (weathering damage)
-            for (let i = 0; i < 6; i++) {
-                const angle = (i / 6) * Math.PI * 2;
-                const rebar = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.03, 0.03, 1.5, 8),
-                    rustedSteelMaterial
-                );
-                rebar.position.set(
-                    pos.x + Math.cos(angle) * 0.9,
-                    warehouseHeight - 0.75,
-                    pos.z + Math.sin(angle) * 0.9
-                );
-                rebar.castShadow = true;
-                room1.add(rebar);
-            }
-
-            // Water damage/rust stains running down
-            const stain = new THREE.Mesh(
-                new THREE.PlaneGeometry(0.5, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x8b4513,
-                    transparent: true,
-                    opacity: 0.4,
-                    side: THREE.DoubleSide
-                })
-            );
-            stain.position.set(pos.x, warehouseHeight / 2, pos.z + 1.0);
-            room1.add(stain);
-        });
-
-        // ========================================
-        // EXPOSED STEEL I-BEAMS & TRUSSES
-        // ========================================
-
-        // Main overhead beams (spanning width)
-        for (let z = -25; z <= 25; z += 10) {
-            const beam = new THREE.Mesh(
-                new THREE.BoxGeometry(warehouseWidth, 0.6, 0.4),
-                iBeamMaterial
-            );
-            beam.position.set(0, warehouseHeight - 2, z);
-            beam.castShadow = true;
-            room1.add(beam);
-
-            // Cross bracing
-            for (let x = -35; x <= 35; x += 10) {
-                const brace = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.2, 0.2, 12),
-                    iBeamMaterial
-                );
-                brace.position.set(x, warehouseHeight - 2, z);
-                brace.rotation.x = Math.PI / 6;
-                brace.castShadow = true;
-                room1.add(brace);
-            }
-        }
-
-        // Roof trusses
-        for (let x = -30; x <= 30; x += 15) {
-            // Top chord
-            const topChord = new THREE.Mesh(
-                new THREE.BoxGeometry(0.3, 0.3, warehouseDepth),
-                iBeamMaterial
-            );
-            topChord.position.set(x, warehouseHeight - 1, 0);
-            topChord.castShadow = true;
-            room1.add(topChord);
-
-            // Diagonal web members
-            for (let z = -25; z < 25; z += 10) {
-                const web = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.15, 0.15, 12),
-                    iBeamMaterial
-                );
-                web.position.set(x, warehouseHeight - 2, z + 5);
-                web.rotation.x = Math.PI / 4;
-                room1.add(web);
-            }
-        }
-
-        // ========================================
-        // STEEL GRATING CATWALKS (Multi-Level)
-        // ========================================
-
-        this.catwalks = [];
-
-        // Mezzanine Level 1 (8m high)
-        const mezzanine1Paths = [
-            { start: [-35, 8, -25], end: [-35, 8, 25] },
-            { start: [35, 8, -25], end: [35, 8, 25] },
-            { start: [-35, 8, -25], end: [35, 8, -25] },
-            { start: [-35, 8, 25], end: [35, 8, 25] }
-        ];
-
-        mezzanine1Paths.forEach(path => {
-            const length = Math.sqrt(
-                Math.pow(path.end[0] - path.start[0], 2) +
-                Math.pow(path.end[2] - path.start[2], 2)
-            );
-
-            const catwalk = new THREE.Mesh(
-                new THREE.BoxGeometry(2.0, 0.1, length),
-                gratingMaterial
-            );
-
-            const midX = (path.start[0] + path.end[0]) / 2;
-            const midZ = (path.start[2] + path.end[2]) / 2;
-
-            catwalk.position.set(midX, 8, midZ);
-
-            if (path.start[0] !== path.end[0]) {
-                catwalk.rotation.y = 0;
-            } else {
-                catwalk.rotation.y = Math.PI / 2;
-            }
-
-            catwalk.receiveShadow = true;
-            catwalk.castShadow = true;
-            room1.add(catwalk);
-            this.catwalks.push(catwalk);
-
-            // Safety railings (chain-link)
-            const railing1 = new THREE.Mesh(
-                new THREE.BoxGeometry(0.05, 1.2, length),
-                chromeMaterial
-            );
-            railing1.position.set(midX + (catwalk.rotation.y === 0 ? 0 : 1.0), 8.6, midZ + (catwalk.rotation.y === 0 ? 1.0 : 0));
-            room1.add(railing1);
-
-            const railing2 = new THREE.Mesh(
-                new THREE.BoxGeometry(0.05, 1.2, length),
-                chromeMaterial
-            );
-            railing2.position.set(midX - (catwalk.rotation.y === 0 ? 0 : 1.0), 8.6, midZ - (catwalk.rotation.y === 0 ? 1.0 : 0));
-            room1.add(railing2);
-        });
-
-        // Mezzanine Level 2 (15m high)
-        const mezzanine2Positions = [
-            { x: -25, z: -20, size: 8 },
-            { x: 25, z: -20, size: 8 },
-            { x: -25, z: 20, size: 8 },
-            { x: 25, z: 20, size: 8 }
-        ];
-
-        mezzanine2Positions.forEach(pos => {
-            const platform = new THREE.Mesh(
-                new THREE.BoxGeometry(pos.size, 0.3, pos.size),
-                rawConcreteMaterial
-            );
-            platform.position.set(pos.x, 15, pos.z);
-            platform.castShadow = true;
-            platform.receiveShadow = true;
-            room1.add(platform);
-
-            // Cantilevered edge beam
-            const edgeBeam = new THREE.Mesh(
-                new THREE.BoxGeometry(pos.size + 0.4, 0.5, 0.3),
-                iBeamMaterial
-            );
-            edgeBeam.position.set(pos.x, 14.85, pos.z + pos.size / 2);
-            edgeBeam.castShadow = true;
-            room1.add(edgeBeam);
-
-            // Precarious safety cage (chain-link fencing)
-            for (let side = 0; side < 4; side++) {
-                const fence = new THREE.Mesh(
-                    new THREE.PlaneGeometry(pos.size, 2.0),
-                    new THREE.MeshStandardMaterial({
-                        color: 0x5a5a5a,
-                        transparent: true,
-                        opacity: 0.5,
-                        side: THREE.DoubleSide
-                    })
-                );
-
-                const angle = (side * Math.PI) / 2;
-                fence.position.set(
-                    pos.x + Math.cos(angle) * (pos.size / 2),
-                    16,
-                    pos.z + Math.sin(angle) * (pos.size / 2)
-                );
-                fence.rotation.y = angle;
-                room1.add(fence);
-            }
-        });
-
-        // Industrial ladder access to mezzanines
-        const ladderPositions = [
-            { x: -35, z: -25 },
-            { x: 35, z: 25 }
-        ];
-
-        ladderPositions.forEach(pos => {
-            for (let y = 0; y < 8; y += 0.4) {
-                const rung = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8),
-                    chromeMaterial
-                );
-                rung.position.set(pos.x, y, pos.z);
-                rung.rotation.z = Math.PI / 2;
-                rung.castShadow = true;
-                room1.add(rung);
-            }
-
-            // Side rails
-            const rail1 = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.06, 0.06, 8, 8),
-                chromeMaterial
-            );
-            rail1.position.set(pos.x - 0.4, 4, pos.z);
-            rail1.castShadow = true;
-            room1.add(rail1);
-
-            const rail2 = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.06, 0.06, 8, 8),
-                chromeMaterial
-            );
-            rail2.position.set(pos.x + 0.4, 4, pos.z);
-            rail2.castShadow = true;
-            room1.add(rail2);
-        });
-
-        // ========================================
-        // MASSIVE SKYLIGHTS (Grid Pattern)
-        // ========================================
-
-        const skylightPositions = [
-            { x: -25, z: -15 }, { x: 0, z: -15 }, { x: 25, z: -15 },
-            { x: -25, z: 0 }, { x: 0, z: 0 }, { x: 25, z: 0 },
-            { x: -25, z: 15 }, { x: 0, z: 15 }, { x: 25, z: 15 }
-        ];
-
-        skylightPositions.forEach((pos, index) => {
-            // Frosted industrial glass panel
-            const skylight = new THREE.Mesh(
-                new THREE.BoxGeometry(12, 0.2, 8),
-                industrialGlassMaterial
-            );
-            skylight.position.set(pos.x, warehouseHeight - 0.1, pos.z);
-            skylight.receiveShadow = true;
-            room1.add(skylight);
-
-            // Some skylights are "broken" (missing glass)
-            if (index === 2 || index === 7) {
-                skylight.visible = false;
-
-                // Broken glass shards on floor below
-                for (let i = 0; i < 8; i++) {
-                    const shard = new THREE.Mesh(
-                        new THREE.PlaneGeometry(0.3 + Math.random() * 0.5, 0.5 + Math.random() * 0.8),
-                        new THREE.MeshStandardMaterial({
-                            color: 0xffffff,
-                            transparent: true,
-                            opacity: 0.7,
-                            side: THREE.DoubleSide
-                        })
-                    );
-                    shard.position.set(
-                        pos.x + (Math.random() - 0.5) * 10,
-                        0.05,
-                        pos.z + (Math.random() - 0.5) * 6
-                    );
-                    shard.rotation.x = -Math.PI / 2;
-                    shard.rotation.z = Math.random() * Math.PI;
-                    room1.add(shard);
-                }
-            }
-
-            // Metal frame around skylight
-            const frame = new THREE.Mesh(
-                new THREE.BoxGeometry(12.4, 0.3, 8.4),
-                iBeamMaterial
-            );
-            frame.position.set(pos.x, warehouseHeight - 0.25, pos.z);
-            frame.castShadow = true;
-            room1.add(frame);
-
-            // God rays coming through (especially broken ones)
-            if (index === 2 || index === 7) {
-                const godRay = new THREE.SpotLight(0xffffee, 4.0, 30, Math.PI / 6, 0.8);
-                godRay.position.set(pos.x, warehouseHeight - 0.5, pos.z);
-                godRay.target.position.set(pos.x, 0, pos.z);
-                godRay.castShadow = true;
-                godRay.shadow.mapSize.width = 1024;
-                godRay.shadow.mapSize.height = 1024;
-                room1.add(godRay);
-                room1.add(godRay.target);
-            }
-        });
-
-        // ========================================
-        // GIANT FREIGHT ELEVATOR (INTERACTIVE)
-        // ========================================
-
-        const elevatorGroup = new THREE.Group();
-
-        // Elevator platform (5m × 5m)
-        const elevatorPlatform = new THREE.Mesh(
-            new THREE.BoxGeometry(5, 0.3, 5),
-            gratingMaterial
-        );
-        elevatorPlatform.position.set(0, 0.15, -28);
-        elevatorPlatform.castShadow = true;
-        elevatorPlatform.receiveShadow = true;
-        elevatorGroup.add(elevatorPlatform);
-
-        // Safety cage (yellow industrial color)
-        const cageMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffcc00,
+        this.darkMetalMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2a3a4a,
             roughness: 0.6,
             metalness: 0.8
         });
 
-        // Cage frame
-        for (let i = 0; i < 4; i++) {
-            const angle = (i * Math.PI) / 2;
-            const post = new THREE.Mesh(
-                new THREE.BoxGeometry(0.1, 3.0, 0.1),
-                cageMaterial
-            );
-            post.position.set(
-                Math.cos(angle) * 2.4,
-                1.5,
-                -28 + Math.sin(angle) * 2.4
-            );
-            elevatorGroup.add(post);
+        this.sandMaterial = new THREE.MeshStandardMaterial({
+            color: 0xc2b280,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+
+        // Ocean dimensions
+        this.tunnelRadius = 2.5;
+        this.tunnelLength = 60;
+
+        // Ambient water color
+        const waterAmbient = new THREE.AmbientLight(0x1a4a6a, 0.4);
+        observatoryRoom.add(waterAmbient);
+
+        this.rooms.push(observatoryRoom);
+        this.scene.add(observatoryRoom);
+    }
+
+    // ========================================
+    // GLASS TUNNELS (cylindrical walkways)
+    // ========================================
+
+    createGlassTunnels() {
+        const segmentLength = 6;
+        const segmentCount = 10;
+
+        for (let i = 0; i < segmentCount; i++) {
+            const segment = this.createTunnelSegment(i, segmentLength);
+            this.rooms[0].add(segment);
+            this.glassSegments.push(segment);
         }
 
-        // Cage mesh walls
-        for (let side = 0; side < 4; side++) {
-            const wall = new THREE.Mesh(
-                new THREE.PlaneGeometry(5, 3),
-                new THREE.MeshStandardMaterial({
-                    color: 0xffcc00,
-                    transparent: true,
-                    opacity: 0.3,
-                    side: THREE.DoubleSide
-                })
+        console.log(`✅ Created ${segmentCount} glass tunnel segments`);
+    }
+
+    createTunnelSegment(index, length) {
+        const group = new THREE.Group();
+        const z = -this.tunnelLength / 2 + index * length;
+
+        // Glass cylinder (walkway)
+        const glassWall = new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                this.tunnelRadius,
+                this.tunnelRadius,
+                length,
+                16,
+                1,
+                true
+            ),
+            this.glassMaterial
+        );
+        glassWall.rotation.x = Math.PI / 2;
+        glassWall.position.z = z + length / 2;
+        glassWall.position.y = 1.5;
+        group.add(glassWall);
+
+        // Metal support rings
+        const ringCount = 3;
+        for (let i = 0; i < ringCount; i++) {
+            const ring = new THREE.Mesh(
+                new THREE.TorusGeometry(this.tunnelRadius + 0.1, 0.15, 8, 16),
+                this.metalMaterial
             );
-            wall.position.set(
-                side % 2 === 0 ? 0 : (side === 1 ? 2.5 : -2.5),
-                1.5,
-                side % 2 === 1 ? -28 : (side === 0 ? -30.5 : -25.5)
-            );
-            wall.rotation.y = side % 2 === 0 ? 0 : Math.PI / 2;
-            elevatorGroup.add(wall);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.z = z + (i / (ringCount - 1)) * length;
+            ring.position.y = 1.5;
+            group.add(ring);
         }
 
-        // Exposed cables (4 corners)
-        for (let i = 0; i < 4; i++) {
-            const angle = (i * Math.PI) / 2 + Math.PI / 4;
-            const cable = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.04, 0.04, warehouseHeight + 5, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x3a3a3a,
-                    roughness: 0.8,
-                    metalness: 0.7
-                })
-            );
-            cable.position.set(
-                Math.cos(angle) * 2.3,
-                warehouseHeight / 2 + 2.5,
-                -28 + Math.sin(angle) * 2.3
-            );
-            room1.add(cable);
-        }
-
-        // Control panel on wall
-        const controlPanel = new THREE.Mesh(
-            new THREE.BoxGeometry(0.6, 0.8, 0.1),
+        // Floor grating
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(this.tunnelRadius * 1.8, length),
             new THREE.MeshStandardMaterial({
-                color: 0x2a2a2a,
-                roughness: 0.5,
-                metalness: 0.7
+                color: 0x3a4a5a,
+                roughness: 0.7,
+                metalness: 0.6,
+                transparent: true,
+                opacity: 0.9
             })
         );
-        controlPanel.position.set(-3, 1.6, -30.5);
-        room1.add(controlPanel);
-
-        // Elevator buttons (3 levels)
-        for (let i = 0; i < 3; i++) {
-            const button = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.08, 0.08, 0.05, 16),
-                new THREE.MeshStandardMaterial({
-                    color: i === 0 ? 0x00ff00 : 0xff0000,
-                    emissive: i === 0 ? 0x00ff00 : 0xff0000,
-                    emissiveIntensity: 0.5
-                })
-            );
-            button.position.set(-3, 1.8 - i * 0.2, -30.4);
-            button.rotation.x = Math.PI / 2;
-            button.userData.isElevatorButton = true;
-            button.userData.targetLevel = i;
-            room1.add(button);
-
-            // Label
-            const canvas = document.createElement('canvas');
-            canvas.width = 128;
-            canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 80px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(['G', 'M1', 'M2'][i], 64, 90);
-
-            const labelTexture = new THREE.CanvasTexture(canvas);
-            const label = new THREE.Mesh(
-                new THREE.PlaneGeometry(0.15, 0.15),
-                new THREE.MeshBasicMaterial({ map: labelTexture })
-            );
-            label.position.set(-2.8, 1.8 - i * 0.2, -30.4);
-            room1.add(label);
-        }
-
-        // Warning lights (red, flashing when moving)
-        for (let i = 0; i < 2; i++) {
-            const warningLight = new THREE.Mesh(
-                new THREE.SphereGeometry(0.12, 16, 16),
-                new THREE.MeshStandardMaterial({
-                    color: 0xff0000,
-                    emissive: 0xff0000,
-                    emissiveIntensity: 1.5
-                })
-            );
-            warningLight.position.set(i === 0 ? -2 : 2, 3.2, -28);
-            elevatorGroup.add(warningLight);
-
-            const light = new THREE.PointLight(0xff0000, 2.0, 8);
-            light.position.copy(warningLight.position);
-            elevatorGroup.add(light);
-        }
-
-        elevatorGroup.position.y = 0;
-        elevatorGroup.userData.currentLevel = 0;
-        elevatorGroup.userData.isElevator = true;
-        room1.add(elevatorGroup);
-        this.freightElevator = elevatorGroup;
-
-        // ========================================
-        // ABANDONED MACHINERY AS ART
-        // ========================================
-
-        // Large rusted turbine (3m diameter)
-        const turbineGroup = new THREE.Group();
-
-        const turbineBody = new THREE.Mesh(
-            new THREE.CylinderGeometry(1.5, 1.5, 2.0, 32),
-            rustedSteelMaterial
-        );
-        turbineBody.rotation.z = Math.PI / 2;
-        turbineBody.castShadow = true;
-        turbineGroup.add(turbineBody);
-
-        // Turbine blades
-        for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            const blade = new THREE.Mesh(
-                new THREE.BoxGeometry(0.2, 1.8, 0.05),
-                rustedSteelMaterial
-            );
-            blade.position.set(Math.cos(angle) * 0.9, Math.sin(angle) * 0.9, 0);
-            blade.rotation.z = angle + Math.PI / 2;
-            blade.castShadow = true;
-            turbineGroup.add(blade);
-        }
-
-        turbineGroup.position.set(15, 2, 18);
-        turbineGroup.userData.rotationSpeed = 0.002; // Slow ambient rotation
-        room1.add(turbineGroup);
-        this.turbine = turbineGroup;
-
-        // Old conveyor belt system
-        const conveyorLength = 20;
-        const conveyor = new THREE.Mesh(
-            new THREE.BoxGeometry(1.5, 0.3, conveyorLength),
-            new THREE.MeshStandardMaterial({
-                color: 0x2a2a2a,
-                roughness: 0.8
-            })
-        );
-        conveyor.position.set(-20, 1.5, 0);
-        conveyor.castShadow = true;
-        room1.add(conveyor);
-
-        // Conveyor rollers
-        for (let z = -conveyorLength / 2; z < conveyorLength / 2; z += 1) {
-            const roller = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.15, 0.15, 1.5, 12),
-                chromeMaterial
-            );
-            roller.position.set(-20, 1.65, z);
-            roller.rotation.z = Math.PI / 2;
-            roller.castShadow = true;
-            room1.add(roller);
-        }
-
-        // Support legs
-        for (let z = -8; z <= 8; z += 8) {
-            const leg = new THREE.Mesh(
-                new THREE.BoxGeometry(0.1, 1.5, 0.1),
-                iBeamMaterial
-            );
-            leg.position.set(-20.6, 0.75, z);
-            leg.castShadow = true;
-            room1.add(leg);
-        }
-
-        // Vintage control panels with flickering gauges
-        const controlPanelGroup = new THREE.Group();
-
-        const panelBack = new THREE.Mesh(
-            new THREE.BoxGeometry(2.5, 2.0, 0.2),
-            new THREE.MeshStandardMaterial({
-                color: 0x3a3a3a,
-                roughness: 0.6
-            })
-        );
-        panelBack.castShadow = true;
-        controlPanelGroup.add(panelBack);
-
-        // Analog gauges (8 circular meters)
-        for (let i = 0; i < 8; i++) {
-            const gauge = new THREE.Mesh(
-                new THREE.CircleGeometry(0.2, 32),
-                new THREE.MeshStandardMaterial({
-                    color: 0x1a1a1a,
-                    emissive: 0x00ff00,
-                    emissiveIntensity: 0.3
-                })
-            );
-            gauge.position.set(
-                -1.0 + (i % 4) * 0.6,
-                0.5 - Math.floor(i / 4) * 0.8,
-                0.11
-            );
-            controlPanelGroup.add(gauge);
-
-            // Gauge needle
-            const needle = new THREE.Mesh(
-                new THREE.BoxGeometry(0.02, 0.15, 0.01),
-                new THREE.MeshBasicMaterial({ color: 0xff0000 })
-            );
-            needle.position.copy(gauge.position);
-            needle.position.z += 0.01;
-            needle.rotation.z = (Math.random() - 0.5) * Math.PI;
-            controlPanelGroup.add(needle);
-        }
-
-        this.lightSwitches = [];
-
-        const switchPositions = [
-            { x: -38, y: 1.8, z: 0 },
-            { x: 38, y: 1.8, z: 0 },
-            { x: 0, y: 1.8, z: -28 },
-            { x: 0, y: 1.8, z: 28 }
-        ];
-
-        switchPositions.forEach((pos, index) => {
-            const switchBox = new THREE.Mesh(
-                new THREE.BoxGeometry(0.4, 0.6, 0.15),
-                new THREE.MeshStandardMaterial({
-                    color: 0x3a3a3a,
-                    roughness: 0.6,
-                    metalness: 0.7
-                })
-            );
-            switchBox.position.set(pos.x, pos.y, pos.z);
-            switchBox.castShadow = true;
-            room1.add(switchBox);
-
-            // Flip switches (3 per box)
-            for (let i = 0; i < 3; i++) {
-                const sw = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.08, 0.15, 0.03),
-                    new THREE.MeshStandardMaterial({
-                        color: 0xff0000,
-                        roughness: 0.5,
-                        metalness: 0.6
-                    })
-                );
-                sw.position.set(
-                    pos.x + (pos.x > 0 ? -0.08 : 0.08),
-                    pos.y + 0.15 - i * 0.15,
-                    pos.z + (pos.z > 0 ? -0.08 : 0.08)
-                );
-                sw.rotation.x = Math.random() > 0.5 ? 0.3 : -0.3;
-                sw.userData.isLightSwitch = true;
-                sw.userData.zoneIndex = index;
-                sw.userData.isOn = Math.random() > 0.5;
-                room1.add(sw);
-
-                this.lightSwitches.push(sw);
-            }
-        });
-        // Warning labels
-        const labelCanvas = document.createElement('canvas');
-        labelCanvas.width = 512;
-        labelCanvas.height = 256;
-        const labelCtx = labelCanvas.getContext('2d');
-        labelCtx.fillStyle = '#ffcc00';
-        labelCtx.font = 'bold 60px Arial';
-        labelCtx.fillText('DANGER', 20, 80);
-        labelCtx.fillText('HIGH VOLTAGE', 20, 160);
-        const labelTexture = new THREE.CanvasTexture(labelCanvas);
-
-        const warning = new THREE.Mesh(
-            new THREE.PlaneGeometry(1.5, 0.8),
-            new THREE.MeshBasicMaterial({ map: labelTexture })
-        );
-        warning.position.set(0, -0.8, 0.11);
-        controlPanelGroup.add(warning);
-
-        controlPanelGroup.position.set(-15, 3, -28);
-        controlPanelGroup.rotation.y = Math.PI;
-        room1.add(controlPanelGroup);
-
-        // Steam pipes with occasional "steam" vents
-        this.steamVents = [];
-
-        const pipeConfigs = [
-            { start: [-35, 10, -25], end: [-35, 10, 25], diameter: 0.4 },
-            { start: [35, 12, -25], end: [35, 12, 25], diameter: 0.3 },
-            { start: [-30, warehouseHeight - 3, -25], end: [30, warehouseHeight - 3, -25], diameter: 0.5 }
-        ];
-
-        pipeConfigs.forEach((config, pipeIndex) => {
-            const length = Math.sqrt(
-                Math.pow(config.end[0] - config.start[0], 2) +
-                Math.pow(config.end[1] - config.start[1], 2) +
-                Math.pow(config.end[2] - config.start[2], 2)
-            );
-
-            const pipe = new THREE.Mesh(
-                new THREE.CylinderGeometry(config.diameter, config.diameter, length, 16),
-                chromeMaterial
-            );
-
-            const midX = (config.start[0] + config.end[0]) / 2;
-            const midY = (config.start[1] + config.end[1]) / 2;
-            const midZ = (config.start[2] + config.end[2]) / 2;
-
-            pipe.position.set(midX, midY, midZ);
-
-            // Rotate pipe to align with endpoints
-            if (config.start[2] !== config.end[2]) {
-                pipe.rotation.x = Math.PI / 2;
-            } else if (config.start[0] !== config.end[0]) {
-                pipe.rotation.z = Math.PI / 2;
-            }
-
-            pipe.castShadow = true;
-            room1.add(pipe);
-
-            // Pipe joints every 10m
-            const numJoints = Math.floor(length / 10);
-            for (let j = 0; j < numJoints; j++) {
-                const t = (j + 1) / (numJoints + 1);
-                const joint = new THREE.Mesh(
-                    new THREE.SphereGeometry(config.diameter * 1.3, 16, 16),
-                    rustedSteelMaterial
-                );
-                joint.position.set(
-                    config.start[0] + (config.end[0] - config.start[0]) * t,
-                    config.start[1] + (config.end[1] - config.start[1]) * t,
-                    config.start[2] + (config.end[2] - config.start[2]) * t
-                );
-                joint.castShadow = true;
-                room1.add(joint);
-            }
-
-            // Steam vent (randomly positioned along pipe)
-            const ventPos = new THREE.Vector3(
-                config.start[0] + (config.end[0] - config.start[0]) * 0.3,
-                config.start[1] + (config.end[1] - config.start[1]) * 0.3,
-                config.start[2] + (config.end[2] - config.start[2]) * 0.3
-            );
-
-            this.steamVents.push({
-                position: ventPos,
-                lastPuff: 0,
-                interval: 3000 + Math.random() * 5000
-            });
-        });
-
-        // ========================================
-        // SHIPPING CONTAINER GALLERIES (6 Total)
-        // ========================================
-
-        this.shippingContainers = [];
-
-        const containerConfigs = [
-            { x: -35, z: 10, rot: 0, color: 0x8b0000, open: true },
-            { x: -35, z: -10, rot: 0, color: 0x1a4d7a, open: true },
-            { x: 35, z: 10, rot: Math.PI, color: 0x2d5016, open: true },
-            { x: 35, z: -10, rot: Math.PI, color: 0x8b4513, open: false },
-            { x: 0, z: 25, rot: -Math.PI / 2, color: 0x4a4a4a, open: true },
-            { x: 20, z: -25, rot: Math.PI / 6, color: 0xffcc00, open: false, sideways: true }
-        ];
-
-        containerConfigs.forEach(config => {
-            const containerGroup = new THREE.Group();
-
-            // Container body (20ft standard)
-            const body = new THREE.Mesh(
-                new THREE.BoxGeometry(2.4, 2.6, 6.0),
-                new THREE.MeshStandardMaterial({
-                    color: config.color,
-                    roughness: 0.85,
-                    metalness: 0.6
-                })
-            );
-            body.castShadow = true;
-            body.receiveShadow = true;
-            containerGroup.add(body);
-
-            // Corrugated texture (vertical ribs)
-            for (let z = -2.8; z <= 2.8; z += 0.3) {
-                const rib = new THREE.Mesh(
-                    new THREE.BoxGeometry(2.42, 2.62, 0.05),
-                    new THREE.MeshStandardMaterial({
-                        color: config.color,
-                        roughness: 0.9,
-                        metalness: 0.5
-                    })
-                );
-                rib.position.z = z;
-                containerGroup.add(rib);
-            }
-
-            // Weathering/rust patches
-            for (let i = 0; i < 8; i++) {
-                const rust = new THREE.Mesh(
-                    new THREE.CircleGeometry(0.2 + Math.random() * 0.3, 16),
-                    new THREE.MeshStandardMaterial({
-                        color: 0x8b4513,
-                        roughness: 1.0
-                    })
-                );
-                rust.position.set(
-                    (Math.random() - 0.5) * 2.2,
-                    (Math.random() - 0.5) * 2.4,
-                    3.01
-                );
-                containerGroup.add(rust);
-            }
-
-            // Dents (deformed geometry)
-            const dent = new THREE.Mesh(
-                new THREE.SphereGeometry(0.4, 16, 16, 0, Math.PI, 0, Math.PI / 2),
-                new THREE.MeshStandardMaterial({
-                    color: config.color,
-                    roughness: 0.85,
-                    metalness: 0.6
-                })
-            );
-            dent.position.set(0.8, 0, 2.5);
-            dent.rotation.y = Math.PI;
-            containerGroup.add(dent);
-
-            // Container doors (double doors at back)
-            if (config.open) {
-                // Left door (open 90 degrees)
-                const leftDoor = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.2, 2.5, 0.1),
-                    new THREE.MeshStandardMaterial({
-                        color: config.color,
-                        roughness: 0.8,
-                        metalness: 0.7
-                    })
-                );
-                leftDoor.position.set(-1.8, 0, -3.0);
-                leftDoor.rotation.y = -Math.PI / 2;
-                leftDoor.castShadow = true;
-                containerGroup.add(leftDoor);
-
-                // Right door (open 90 degrees)
-                const rightDoor = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.2, 2.5, 0.1),
-                    new THREE.MeshStandardMaterial({
-                        color: config.color,
-                        roughness: 0.8,
-                        metalness: 0.7
-                    })
-                );
-                rightDoor.position.set(1.8, 0, -3.0);
-                rightDoor.rotation.y = Math.PI / 2;
-                rightDoor.castShadow = true;
-                containerGroup.add(rightDoor);
-
-                // Interior mini-gallery setup
-                // Fluorescent light inside
-                const interiorLight = new THREE.RectAreaLight(0xffffcc, 3.0, 2.0, 2.4);
-                interiorLight.position.set(0, 1.2, 0);
-                interiorLight.rotation.x = -Math.PI / 2;
-                containerGroup.add(interiorLight);
-
-                // Interior walls (white gallery walls)
-                const interiorWall = new THREE.Mesh(
-                    new THREE.PlaneGeometry(2.2, 2.4),
-                    new THREE.MeshStandardMaterial({
-                        color: 0xf5f5f5,
-                        roughness: 0.9
-                    })
-                );
-                interiorWall.position.set(0, 0, 2.95);
-                interiorWall.receiveShadow = true;
-                containerGroup.add(interiorWall);
-
-                // Industrial fan (not running)
-                const fan = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16),
-                    new THREE.MeshStandardMaterial({
-                        color: 0x3a3a3a,
-                        roughness: 0.5
-                    })
-                );
-                fan.position.set(0.8, 1.0, 2.8);
-                fan.rotation.z = Math.PI / 2;
-                containerGroup.add(fan);
-            } else {
-                // Closed doors
-                const closedDoor = new THREE.Mesh(
-                    new THREE.BoxGeometry(2.4, 2.5, 0.1),
-                    new THREE.MeshStandardMaterial({
-                        color: config.color,
-                        roughness: 0.8,
-                        metalness: 0.7
-                    })
-                );
-                closedDoor.position.set(0, 0, -3.05);
-                closedDoor.castShadow = true;
-                containerGroup.add(closedDoor);
-
-                // Locking bars
-                const lockBar = new THREE.Mesh(
-                    new THREE.BoxGeometry(2.2, 0.08, 0.08),
-                    chromeMaterial
-                );
-                lockBar.position.set(0, 0, -3.1);
-                containerGroup.add(lockBar);
-            }
-
-            // Container markings (shipping codes)
-            const markingCanvas = document.createElement('canvas');
-            markingCanvas.width = 512;
-            markingCanvas.height = 256;
-            const mCtx = markingCanvas.getContext('2d');
-            mCtx.fillStyle = '#ffffff';
-            mCtx.font = 'bold 60px Courier';
-            mCtx.fillText(`MAEU ${Math.floor(Math.random() * 900000 + 100000)}`, 20, 80);
-            mCtx.font = '40px Courier';
-            mCtx.fillText('22G1', 20, 140);
-            mCtx.fillText(`TARE: ${2300 + Math.floor(Math.random() * 500)} kg`, 20, 200);
-            const markingTex = new THREE.CanvasTexture(markingCanvas);
-
-            const marking = new THREE.Mesh(
-                new THREE.PlaneGeometry(1.5, 0.8),
-                new THREE.MeshBasicMaterial({ map: markingTex })
-            );
-            marking.position.set(0, 0.5, 3.01);
-            containerGroup.add(marking);
-
-            // Position container
-            if (config.sideways) {
-                containerGroup.position.set(config.x, 1.3, config.z);
-                containerGroup.rotation.set(0, config.rot, Math.PI / 2);
-            } else {
-                containerGroup.position.set(config.x, 1.3, config.z);
-                containerGroup.rotation.y = config.rot;
-            }
-
-            room1.add(containerGroup);
-            this.shippingContainers.push(containerGroup);
-        });
-
-        // ========================================
-        // MOVABLE WALL PANELS ON TRACKS
-        // ========================================
-
-        this.movableWalls = [];
-
-        const wallConfigs = [
-            { x: -10, z: 0, width: 6, height: 8 },
-            { x: 0, z: 5, width: 8, height: 8 },
-            { x: 10, z: -5, width: 5, height: 7 }
-        ];
-
-        wallConfigs.forEach(config => {
-            const wallGroup = new THREE.Group();
-
-            // Main concrete panel
-            const panel = new THREE.Mesh(
-                new THREE.BoxGeometry(config.width, config.height, 0.3),
-                rawConcreteMaterial
-            );
-            panel.position.y = config.height / 2;
-            panel.castShadow = true;
-            panel.receiveShadow = true;
-            wallGroup.add(panel);
-
-            // Graffiti layer (wheat paste posters)
-            const graffiti = new THREE.Mesh(
-                new THREE.PlaneGeometry(config.width * 0.9, config.height * 0.8),
-                graffitiMaterial
-            );
-            graffiti.position.set(0, config.height / 2, 0.16);
-            wallGroup.add(graffiti);
-
-            // Random street art stickers
-            for (let i = 0; i < 5 + Math.floor(Math.random() * 5); i++) {
-                const sticker = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.3 + Math.random() * 0.4, 0.4 + Math.random() * 0.5),
-                    new THREE.MeshBasicMaterial({
-                        color: [0xff0000, 0x00ff00, 0x0000ff, 0xffff00][Math.floor(Math.random() * 4)],
-                        transparent: true,
-                        opacity: 0.8
-                    })
-                );
-                sticker.position.set(
-                    (Math.random() - 0.5) * config.width * 0.8,
-                    Math.random() * config.height,
-                    0.17
-                );
-                wallGroup.add(sticker);
-            }
-
-            // Wheeled base (industrial casters)
-            for (let i = 0; i < 4; i++) {
-                const wheel = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16),
-                    new THREE.MeshStandardMaterial({
-                        color: 0x2a2a2a,
-                        roughness: 0.8
-                    })
-                );
-                wheel.position.set(
-                    (i % 2 === 0 ? -1 : 1) * (config.width / 2 - 0.5),
-                    0.15,
-                    (i < 2 ? -1 : 1) * 0.15
-                );
-                wheel.rotation.x = Math.PI / 2;
-                wheel.castShadow = true;
-                wallGroup.add(wheel);
-            }
-
-            // Floor track (rusty rails)
-            const track = new THREE.Mesh(
-                new THREE.BoxGeometry(config.width + 2, 0.05, 0.15),
-                rustedSteelMaterial
-            );
-            track.position.set(config.x, 0.025, config.z);
-            room1.add(track);
-
-            wallGroup.position.set(config.x, 0, config.z);
-            wallGroup.userData.canMove = true;
-            wallGroup.userData.trackStart = config.x - 3;
-            wallGroup.userData.trackEnd = config.x + 3;
-            room1.add(wallGroup);
-            this.movableWalls.push(wallGroup);
-        });
-
-        // ========================================
-        // SUSPENDED WIRE ARTWORK SYSTEM
-        // ========================================
-
-        this.suspendedArtworks = [];
-
-        const suspendedPositions = [
-            { x: -15, y: 6, z: -10 },
-            { x: 0, y: 5, z: -15 },
-            { x: 15, y: 7, z: -8 },
-            { x: -10, y: 8, z: 10 },
-            { x: 10, y: 6, z: 12 }
-        ];
-
-        suspendedPositions.forEach(pos => {
-            // Steel cable from ceiling
-            const cable = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.02, 0.02, warehouseHeight - pos.y, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x5a5a5a,
-                    roughness: 0.7,
-                    metalness: 0.8
-                })
-            );
-            cable.position.set(pos.x, (warehouseHeight + pos.y) / 2, pos.z);
-            cable.castShadow = true;
-            room1.add(cable);
-
-            // Pulley mechanism at ceiling
-            const pulley = new THREE.Mesh(
-                new THREE.TorusGeometry(0.15, 0.05, 16, 32),
-                chromeMaterial
-            );
-            pulley.position.set(pos.x, warehouseHeight - 0.5, pos.z);
-            pulley.rotation.x = Math.PI / 2;
-            room1.add(pulley);
-
-            // Suspended artwork frame (empty frame for now, artwork added later)
-            const frame = new THREE.Mesh(
-                new THREE.BoxGeometry(2.5, 3.5, 0.15),
-                new THREE.MeshStandardMaterial({
-                    color: 0x2a2a2a,
-                    roughness: 0.6,
-                    metalness: 0.7
-                })
-            );
-            frame.position.set(pos.x, pos.y, pos.z);
-            frame.castShadow = true;
-            frame.receiveShadow = true;
-            frame.userData.rotationSpeed = 0.001 + Math.random() * 0.002;
-            frame.userData.swayAmount = 0.05 + Math.random() * 0.1;
-            room1.add(frame);
-
-            this.suspendedArtworks.push(frame);
-
-            // Clip/hook at top of frame
-            const hook = new THREE.Mesh(
-                new THREE.TorusGeometry(0.08, 0.03, 8, 16),
-                chromeMaterial
-            );
-            hook.position.set(pos.x, pos.y + 1.8, pos.z);
-            room1.add(hook);
-        });
-
-        // ========================================
-        // MASSIVE OVERHEAD TRACK LIGHTING GANTRY
-        // ========================================
-
-        this.trackSpotlights = [];
-
-        // Main lighting gantry (motorized track system)
-        const gantryTracks = [
-            { x: -25, z: 0, length: warehouseDepth },
-            { x: -12, z: 0, length: warehouseDepth },
-            { x: 0, z: 0, length: warehouseDepth },
-            { x: 12, z: 0, length: warehouseDepth },
-            { x: 25, z: 0, length: warehouseDepth }
-        ];
-
-        gantryTracks.forEach((track, trackIndex) => {
-            // Aluminum track rail
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.z = z + length / 2;
+        floor.receiveShadow = true;
+        group.add(floor);
+
+        // Handrails
+        for (let side = -1; side <= 1; side += 2) {
             const rail = new THREE.Mesh(
-                new THREE.BoxGeometry(0.15, 0.15, track.length),
-                new THREE.MeshStandardMaterial({
-                    color: 0xa8a8a8,
-                    roughness: 0.25,
-                    metalness: 0.9
-                })
+                new THREE.CylinderGeometry(0.05, 0.05, length, 8),
+                this.darkMetalMaterial
             );
-            rail.position.set(track.x, warehouseHeight - 1.5, 0);
-            rail.castShadow = true;
-            room1.add(rail);
-
-            // Power cables draped along track
-            const cable = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.03, 0.03, track.length, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x1a1a1a,
-                    roughness: 0.8
-                })
-            );
-            cable.position.set(track.x + 0.1, warehouseHeight - 1.7, 0);
-            cable.rotation.x = Math.PI / 2;
-            room1.add(cable);
-
-            // Theater-style spotlights (8-12 per track)
-            const numLights = 10;
-            for (let i = 0; i < numLights; i++) {
-                const lightGroup = new THREE.Group();
-
-                // Fixture housing (cylinder)
-                const housing = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.12, 0.18, 0.4, 16),
-                    new THREE.MeshStandardMaterial({
-                        color: 0x1a1a1a,
-                        roughness: 0.4,
-                        metalness: 0.8
-                    })
-                );
-                housing.castShadow = true;
-                lightGroup.add(housing);
-
-                // Barn doors (4 flaps)
-                for (let b = 0; b < 4; b++) {
-                    const angle = (b * Math.PI) / 2;
-                    const door = new THREE.Mesh(
-                        new THREE.BoxGeometry(0.25, 0.08, 0.02),
-                        new THREE.MeshStandardMaterial({
-                            color: 0x1a1a1a,
-                            roughness: 0.5,
-                            metalness: 0.7
-                        })
-                    );
-                    door.position.set(
-                        Math.cos(angle) * 0.15,
-                        -0.25 + Math.sin(angle) * 0.15,
-                        0
-                    );
-                    door.rotation.z = angle;
-                    lightGroup.add(door);
-                }
-
-                // LED lens with colored gel (random)
-                const gelColors = [0xffffff, 0xff6b6b, 0x6b9dff, 0xffcc66, 0x66ff66];
-                const lens = new THREE.Mesh(
-                    new THREE.CircleGeometry(0.1, 16),
-                    new THREE.MeshStandardMaterial({
-                        color: gelColors[trackIndex % gelColors.length],
-                        emissive: gelColors[trackIndex % gelColors.length],
-                        emissiveIntensity: 0.8,
-                        transparent: true,
-                        opacity: 0.7
-                    })
-                );
-                lens.position.y = -0.21;
-                lightGroup.add(lens);
-
-                // Actual spotlight
-                const spotlight = new THREE.SpotLight(
-                    gelColors[trackIndex % gelColors.length],
-                    3.5,
-                    30,
-                    Math.PI / 7,
-                    0.6
-                );
-                spotlight.position.y = -0.3;
-                spotlight.castShadow = (trackIndex === 2 && i === 5); // Only center track, middle light
-
-                if (spotlight.castShadow) {
-                    spotlight.shadow.mapSize.width = 1024;
-                    spotlight.shadow.mapSize.height = 1024;
-                    spotlight.shadow.bias = -0.0005;
-                }
-                lightGroup.add(spotlight);
-
-                // Target (points downward with slight random angle)
-                const target = new THREE.Object3D();
-                target.position.set(
-                    (Math.random() - 0.5) * 5,
-                    0,
-                    (Math.random() - 0.5) * 5
-                );
-                lightGroup.add(target);
-                spotlight.target = target;
-
-                // Position on track
-                const z = -track.length / 2 + (i / (numLights - 1)) * track.length;
-                lightGroup.position.set(track.x, warehouseHeight - 2.0, z);
-
-                // Random rotation for dramatic angles
-                lightGroup.rotation.x = Math.random() * 0.3 - 0.15;
-                lightGroup.rotation.z = Math.random() * 0.3 - 0.15;
-
-                room1.add(lightGroup);
-                this.trackSpotlights.push({
-                    group: lightGroup,
-                    spotlight: spotlight,
-                    lens: lens
-                });
-            }
-        });
-
-        // ========================================
-        // EDISON BULB STRING LIGHTS
-        // ========================================
-
-        this.edisonBulbs = [];
-
-        const stringConfigs = [
-            { start: [-35, 18, -25], end: [35, 18, -25] },
-            { start: [-35, 18, 25], end: [35, 18, 25] },
-            { start: [-35, 18, -25], end: [-35, 18, 25] },
-            { start: [35, 18, -25], end: [35, 18, 25] }
-        ];
-
-        stringConfigs.forEach(config => {
-            const numBulbs = 15;
-            for (let i = 0; i < numBulbs; i++) {
-                const t = i / (numBulbs - 1);
-                const pos = new THREE.Vector3(
-                    config.start[0] + (config.end[0] - config.start[0]) * t,
-                    config.start[1] + (config.end[1] - config.start[1]) * t - Math.sin(t * Math.PI) * 2,
-                    config.start[2] + (config.end[2] - config.start[2]) * t
-                );
-
-                // Bulb filament (warm glow)
-                const bulb = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.08, 16, 16),
-                    new THREE.MeshStandardMaterial({
-                        color: 0xffd699,
-                        emissive: 0xffa500,
-                        emissiveIntensity: 1.2,
-                        transparent: true,
-                        opacity: 0.8
-                    })
-                );
-                bulb.position.copy(pos);
-                room1.add(bulb);
-
-                // Warm tungsten light
-                const light = new THREE.PointLight(0xffa500, 1.5, 6);
-                light.position.copy(pos);
-                room1.add(light);
-
-                this.edisonBulbs.push({ bulb, light });
-
-                // Power cord segment
-                if (i > 0) {
-                    const prevT = (i - 1) / (numBulbs - 1);
-                    const prevPos = new THREE.Vector3(
-                        config.start[0] + (config.end[0] - config.start[0]) * prevT,
-                        config.start[1] + (config.end[1] - config.start[1]) * prevT - Math.sin(prevT * Math.PI) * 2,
-                        config.start[2] + (config.end[2] - config.start[2]) * prevT
-                    );
-
-                    const cordLength = pos.distanceTo(prevPos);
-                    const cord = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.02, 0.02, cordLength, 8),
-                        new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
-                    );
-
-                    const midPoint = new THREE.Vector3().addVectors(pos, prevPos).multiplyScalar(0.5);
-                    cord.position.copy(midPoint);
-                    cord.lookAt(pos);
-                    cord.rotation.x += Math.PI / 2;
-
-                    room1.add(cord);
-                }
-            }
-        });
-
-        // ========================================
-        // DUST PARTICLE SYSTEM (In God-Rays)
-        // ========================================
-
-        this.dustParticles = [];
-
-        // Only create dust in areas with broken skylights
-        skylightPositions.forEach((pos, index) => {
-            if (index === 2 || index === 7) { // Broken skylights
-                for (let i = 0; i < 100; i++) {
-                    const particle = new THREE.Mesh(
-                        new THREE.SphereGeometry(0.02, 4, 4),
-                        new THREE.MeshBasicMaterial({
-                            color: 0xcccccc,
-                            transparent: true,
-                            opacity: 0.4
-                        })
-                    );
-
-                    particle.position.set(
-                        pos.x + (Math.random() - 0.5) * 8,
-                        Math.random() * warehouseHeight,
-                        pos.z + (Math.random() - 0.5) * 6
-                    );
-
-                    particle.userData = {
-                        velocity: new THREE.Vector3(
-                            (Math.random() - 0.5) * 0.005,
-                            0.01 + Math.random() * 0.02,
-                            (Math.random() - 0.5) * 0.005
-                        ),
-                        center: new THREE.Vector3(pos.x, warehouseHeight / 2, pos.z),
-                        radius: 4
-                    };
-
-                    room1.add(particle);
-                    this.dustParticles.push(particle);
-                }
-            }
-        });
-
-        // ========================================
-        // AMBIENT & ACCENT LIGHTING
-        // ========================================
-
-        // Harsh overhead fluorescents (some flickering)
-        for (let x = -30; x <= 30; x += 15) {
-            for (let z = -20; z <= 20; z += 20) {
-                // ✓ OPTIMIZED: Fewer RectAreaLights (4 instead of 12)
-                const fluorescentPositions = [
-                    { x: -20, z: -15 },
-                    { x: 20, z: -15 },
-                    { x: -20, z: 15 },
-                    { x: 20, z: 15 }
-                ];
-
-                fluorescentPositions.forEach(pos => {
-                    const fluorescentLight = new THREE.RectAreaLight(0xffffee, 3.0, 6, 2); // Larger size
-                    fluorescentLight.position.set(pos.x, warehouseHeight - 3, pos.z);
-                    fluorescentLight.rotation.x = -Math.PI / 2;
-                    room1.add(fluorescentLight);
-
-                    // Visible fixture
-                    const fixture = new THREE.Mesh(
-                        new THREE.BoxGeometry(6.2, 0.3, 2.2),
-                        new THREE.MeshStandardMaterial({
-                            color: 0xffffff,
-                            emissive: 0xffffee,
-                            emissiveIntensity: 0.5
-                        })
-                    );
-                    fixture.position.set(pos.x, warehouseHeight - 3, pos.z);
-                    room1.add(fixture);
-                });
-            }
+            rail.rotation.x = Math.PI / 2;
+            rail.position.set(side * 1.2, 1, z + length / 2);
+            group.add(rail);
         }
 
-        // Emergency exit signs (red glow)
-        const exitPositions = [
-            { x: -38, y: 3, z: -28 },
-            { x: 38, y: 3, z: -28 },
-            { x: 0, y: 3, z: 28 }
-        ];
-
-        exitPositions.forEach(pos => {
-            const exitSign = new THREE.Mesh(
-                new THREE.BoxGeometry(1.2, 0.4, 0.1),
-                new THREE.MeshStandardMaterial({
-                    color: 0xff0000,
-                    emissive: 0xff0000,
-                    emissiveIntensity: 2.0
-                })
-            );
-            exitSign.position.set(pos.x, pos.y, pos.z);
-            room1.add(exitSign);
-
-            const exitLight = new THREE.PointLight(0xff0000, 1.5, 8);
-            exitLight.position.copy(exitSign.position);
-            room1.add(exitLight);
-        });
-
-        // Ambient warehouse darkness
-        const ambientDark = new THREE.AmbientLight(0x404040, 0.3);
-        room1.add(ambientDark);
-
-        // Directional "daylight" from broken skylights
-        // ✓ OPTIMIZED: Smaller shadow map
-        const daylight = new THREE.DirectionalLight(0xffffee, 1.2);
-        daylight.position.set(10, warehouseHeight, 5);
-        daylight.castShadow = true;
-        daylight.shadow.mapSize.width = 1024; // Reduced from 2048
-        daylight.shadow.mapSize.height = 1024; // Reduced from 2048
-        daylight.shadow.camera.left = -40; // Adjusted bounds
-        daylight.shadow.camera.right = 40;
-        daylight.shadow.camera.top = 40;
-        daylight.shadow.camera.bottom = -40;
-        room1.add(daylight);
-
-        // ========================================
-        // ABANDONED OFFICE CONTROL ROOM (Side Area)
-        // ========================================
-
-        const officeGroup = new THREE.Group();
-
-        // Glass walls (dirty, cracked)
-        for (let side = 0; side < 4; side++) {
-            const wall = new THREE.Mesh(
-                new THREE.BoxGeometry(side % 2 === 0 ? 8 : 6, 3, 0.1),
-                new THREE.MeshPhysicalMaterial({
-                    color: 0x888888,
-                    transmission: 0.3,
-                    thickness: 0.5,
-                    roughness: 0.8,
-                    transparent: true,
-                    opacity: 0.7
-                })
-            );
-
-            if (side === 0) wall.position.set(0, 1.5, 3);
-            else if (side === 1) wall.position.set(4, 1.5, 0);
-            else if (side === 2) wall.position.set(0, 1.5, -3);
-            else wall.position.set(-4, 1.5, 0);
-
-            wall.rotation.y = (side % 2 === 0 ? 0 : Math.PI / 2);
-            officeGroup.add(wall);
-        }
-
-        // Desk with scattered papers
-        const desk = new THREE.Mesh(
-            new THREE.BoxGeometry(2.0, 0.1, 1.2),
-            new THREE.MeshStandardMaterial({
-                color: 0x6b4423,
-                roughness: 0.8
-            })
-        );
-        desk.position.set(0, 0.8, 0);
-        desk.castShadow = true;
-        officeGroup.add(desk);
-
-        // Desk legs
-        for (let i = 0; i < 4; i++) {
-            const leg = new THREE.Mesh(
-                new THREE.BoxGeometry(0.08, 0.8, 0.08),
-                crateWoodMaterial
-            );
-            leg.position.set(
-                (i % 2 === 0 ? -1 : 1) * 0.9,
-                0.4,
-                (i < 2 ? -1 : 1) * 0.5
-            );
-            leg.castShadow = true;
-            officeGroup.add(leg);
-        }
-
-        // Vintage computer monitor (green CRT glow)
-        const monitor = new THREE.Mesh(
-            new THREE.BoxGeometry(0.5, 0.4, 0.4),
-            new THREE.MeshStandardMaterial({
-                color: 0x3a3a3a,
-                roughness: 0.6
-            })
-        );
-        monitor.position.set(0, 1.1, 0);
-        monitor.castShadow = true;
-        officeGroup.add(monitor);
-
-        // CRT screen (glowing)
-        const screen = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.35, 0.28),
-            new THREE.MeshStandardMaterial({
-                color: 0x00ff00,
-                emissive: 0x00ff00,
-                emissiveIntensity: 1.5
-            })
-        );
-        screen.position.set(0, 1.1, 0.21);
-        officeGroup.add(screen);
-
-        const screenLight = new THREE.PointLight(0x00ff00, 1.5, 4);
-        screenLight.position.set(0, 1.1, 0.3);
-        officeGroup.add(screenLight);
-
-        // Coffee mug with mold
-        const mug = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.06, 0.06, 0.1, 16),
-            new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                roughness: 0.7
-            })
-        );
-        mug.position.set(0.4, 0.9, 0.3);
-        mug.castShadow = true;
-        officeGroup.add(mug);
-
-        // Moldy liquid inside
-        const mold = new THREE.Mesh(
-            new THREE.CircleGeometry(0.055, 16),
-            new THREE.MeshStandardMaterial({
-                color: 0x2d5016,
-                roughness: 1.0
-            })
-        );
-        mold.position.set(0.4, 0.95, 0.3);
-        mold.rotation.x = -Math.PI / 2;
-        officeGroup.add(mold);
-
-        // Calendar stuck on old date
-        const calendar = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.3, 0.4),
-            new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                roughness: 0.9
-            })
-        );
-        calendar.position.set(-3.9, 1.5, 0);
-        calendar.rotation.y = Math.PI / 2;
-        officeGroup.add(calendar);
-
-        // Flickering overhead fluorescent
-        const officeLight = new THREE.RectAreaLight(0xffffee, 2.0, 1.5, 1.5);
-        officeLight.position.set(0, 2.8, 0);
-        officeLight.rotation.x = -Math.PI / 2;
-        officeGroup.add(officeLight);
-        this.officeFlicker = officeLight;
-
-        officeGroup.position.set(30, 0, 0);
-        room1.add(officeGroup);
-
-        // ========================================
-        // KINETIC SCULPTURE / ART INSTALLATION
-        // ========================================
-
-        const sculptureGroup = new THREE.Group();
-
-        // Abstract geometric sculpture (rusted metal)
-        for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            const piece = new THREE.Mesh(
-                new THREE.BoxGeometry(0.3, 3 + Math.random() * 2, 0.3),
-                rustedSteelMaterial
-            );
-            piece.position.set(
-                Math.cos(angle) * 2,
-                2.5,
-                Math.sin(angle) * 2
-            );
-            piece.rotation.set(
-                (Math.random() - 0.5) * 0.5,
-                angle,
-                (Math.random() - 0.5) * 0.5
-            );
-            piece.castShadow = true;
-            sculptureGroup.add(piece);
-        }
-
-        sculptureGroup.position.set(0, 0, 0);
-        sculptureGroup.userData.rotationSpeed = 0.001;
-        room1.add(sculptureGroup);
-        this.centerSculpture = sculptureGroup;
-
-        // Dramatic spotlight on sculpture
-        const sculptureSpot = new THREE.SpotLight(0xffffff, 5.0, 20, Math.PI / 8, 0.4);
-        sculptureSpot.position.set(0, warehouseHeight - 2, 0);
-        sculptureSpot.target.position.set(0, 2, 0);
-        sculptureSpot.castShadow = true;
-        room1.add(sculptureSpot);
-        room1.add(sculptureSpot.target);
-
-        // ========================================
-        // FINAL SETUP
-        // ========================================
-
-        room1.position.set(0, 0, 0);
-        this.rooms.push(room1);
-        this.scene.add(room1);
-
-        console.log("🏭 Brutalist industrial warehouse gallery created!");
-    }
-
-    toggleLightZone(zoneIndex) {
-        console.log(`💡 Toggling light zone ${zoneIndex}`);
-
-        // Find all lights in this zone
-        const zoneLights = this.trackSpotlights.filter((_, i) => i % 4 === zoneIndex);
-
-        zoneLights.forEach(light => {
-            const currentIntensity = light.spotlight.intensity;
-            const targetIntensity = currentIntensity > 1 ? 0 : 3.5;
-
-            // Animate intensity change
-            const duration = 500;
-            const startTime = Date.now();
-            const startIntensity = currentIntensity;
-
-            const animateLight = () => {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-
-                light.spotlight.intensity = startIntensity + (targetIntensity - startIntensity) * progress;
-                light.lens.material.emissiveIntensity = light.spotlight.intensity / 3.5 * 0.8;
-
-                if (progress < 1) {
-                    requestAnimationFrame(animateLight);
-                }
-            };
-
-            animateLight();
-        });
-
-        // Spark effect
-        if (Math.random() > 0.7) {
-            this.createSparkEffect(this.lightSwitches[zoneIndex].position);
-        }
-    }
-
-    createSparkEffect(position) {
-        const sparks = new THREE.Group();
-
-        for (let i = 0; i < 8; i++) {
-            const spark = new THREE.Mesh(
-                new THREE.SphereGeometry(0.02, 4, 4),
+        // Emergency lights
+        if (index % 2 === 0) {
+            const emergencyLight = new THREE.Mesh(
+                new THREE.SphereGeometry(0.1, 8, 8),
                 new THREE.MeshBasicMaterial({
-                    color: 0xffaa00,
-                    transparent: true,
-                    opacity: 1.0
+                    color: 0xff3300,
+                    emissive: 0xff3300,
+                    emissiveIntensity: 1
                 })
             );
+            emergencyLight.position.set(0, 2.5, z + length / 2);
+            group.add(emergencyLight);
 
-            spark.userData.velocity = new THREE.Vector3(
-                (Math.random() - 0.5) * 0.1,
-                (Math.random() - 0.5) * 0.1,
-                (Math.random() - 0.5) * 0.1
-            );
-
-            sparks.add(spark);
+            const light = new THREE.PointLight(0xff3300, 0.5, 8);
+            light.position.copy(emergencyLight.position);
+            group.add(light);
         }
 
-        sparks.position.copy(position);
-        this.scene.add(sparks);
-
-        // Animate sparks
-        const startTime = Date.now();
-        const duration = 800;
-
-        const animateSparks = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = elapsed / duration;
-
-            if (progress >= 1) {
-                this.scene.remove(sparks);
-                sparks.children.forEach(child => {
-                    child.geometry.dispose();
-                    child.material.dispose();
-                });
-                return;
-            }
-
-            sparks.children.forEach(spark => {
-                spark.position.add(spark.userData.velocity);
-                spark.userData.velocity.y -= 0.005; // Gravity
-                spark.material.opacity = 1 - progress;
-            });
-
-            requestAnimationFrame(animateSparks);
+        group.userData = {
+            index: index,
+            glassWall: glassWall
         };
 
-        animateSparks();
+        return group;
     }
-    generateBoardFormedConcrete(width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
 
-        // Base concrete gray
-        ctx.fillStyle = '#4a4a4a';
-        ctx.fillRect(0, 0, width, height);
+    // ========================================
+    // OBSERVATION DOME (central viewing area)
+    // ========================================
 
-        // Horizontal wood grain lines (formwork boards)
-        const boardHeight = 120;
-        for (let y = 0; y < height; y += boardHeight) {
-            // Darker seam line
-            ctx.fillStyle = '#3a3a3a';
-            ctx.fillRect(0, y, width, 3);
+    createObservationDome() {
+        const dome = new THREE.Group();
 
-            // Wood grain texture
-            for (let i = 0; i < 50; i++) {
-                const grainY = y + Math.random() * boardHeight;
-                ctx.strokeStyle = `rgba(${60 + Math.random() * 20}, ${60 + Math.random() * 20}, ${60 + Math.random() * 20}, ${0.3 + Math.random() * 0.3})`;
-                ctx.lineWidth = 1 + Math.random() * 2;
-                ctx.beginPath();
-                ctx.moveTo(0, grainY);
-                ctx.lineTo(width, grainY + (Math.random() - 0.5) * 10);
-                ctx.stroke();
-            }
-        }
-
-        // Random concrete imperfections
-        for (let i = 0; i < 200; i++) {
-            const x = Math.random() * width;
-            const y = Math.random() * height;
-            const size = Math.random() * 4 + 1;
-            const shade = Math.random() * 40 + 40;
-            ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.5)`;
-            ctx.fillRect(x, y, size, size);
-        }
-
-        return canvas;
-    }
-    generateCarraraMarble(width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-
-        // Base white marble
-        ctx.fillStyle = '#f8f8f8';
-        ctx.fillRect(0, 0, width, height);
-
-        // Subtle gray veining (diagonal flow)
-        const numVeins = 40;
-        for (let i = 0; i < numVeins; i++) {
-            const startX = Math.random() * width;
-            const startY = Math.random() * height;
-
-            // Mix of gray tones
-            const grayValue = 200 + Math.random() * 40;
-            const color = `rgba(${grayValue}, ${grayValue}, ${grayValue + 5}, ${0.15 + Math.random() * 0.25})`;
-
-            ctx.strokeStyle = color;
-            ctx.lineWidth = Math.random() * 2 + 0.5;
-            ctx.lineCap = 'round';
-
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-
-            let x = startX;
-            let y = startY;
-            // Diagonal angle for natural marble flow
-            let angle = Math.PI / 4 + (Math.random() - 0.5) * 0.8;
-
-            for (let j = 0; j < 150; j++) {
-                angle += (Math.random() - 0.5) * 0.3;
-                x += Math.cos(angle) * 8;
-                y += Math.sin(angle) * 8;
-                ctx.lineTo(x, y);
-            }
-
-            ctx.stroke();
-        }
-
-        // Add occasional darker accent veins
-        for (let i = 0; i < 8; i++) {
-            const startX = Math.random() * width;
-            const startY = Math.random() * height;
-
-            ctx.strokeStyle = `rgba(150, 150, 155, ${0.2 + Math.random() * 0.2})`;
-            ctx.lineWidth = Math.random() * 3 + 1;
-            ctx.lineCap = 'round';
-
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-
-            let x = startX;
-            let y = startY;
-            let angle = Math.PI / 4 + (Math.random() - 0.5) * 1.0;
-
-            for (let j = 0; j < 100; j++) {
-                angle += (Math.random() - 0.5) * 0.4;
-                x += Math.cos(angle) * 12;
-                y += Math.sin(angle) * 12;
-                ctx.lineTo(x, y);
-            }
-
-            ctx.stroke();
-        }
-
-        // Polished finish with subtle shine
-        const gradient = ctx.createRadialGradient(
-            width / 2, height / 2, 0,
-            width / 2, height / 2, width / 2
+        // Large glass hemisphere
+        const domeGlass = new THREE.Mesh(
+            new THREE.SphereGeometry(8, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+            this.glassMaterial
         );
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.03)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, width, height);
+        domeGlass.position.y = 1.5;
+        domeGlass.position.z = 0;
+        dome.add(domeGlass);
 
-        return canvas;
-    }
-    generateMetalGridPattern(width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
+        // Metal frame ribs
+        const ribCount = 8;
+        for (let i = 0; i < ribCount; i++) {
+            const angle = (i / ribCount) * Math.PI * 2;
 
-        // Dark metallic base
-        ctx.fillStyle = '#1a2332';
-        ctx.fillRect(0, 0, width, height);
+            const points = [];
+            for (let j = 0; j <= 10; j++) {
+                const t = j / 10;
+                const radius = 8 * Math.sin(t * Math.PI / 2);
+                const y = 1.5 + 8 * (1 - Math.cos(t * Math.PI / 2));
 
-        // Grid lines
-        ctx.strokeStyle = '#2a3f5f';
-        ctx.lineWidth = 3;
-
-        const gridSize = 128;
-        for (let x = 0; x < width; x += gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, height);
-            ctx.stroke();
-        }
-
-        for (let y = 0; y < height; y += gridSize) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(width, y);
-            ctx.stroke();
-        }
-
-        // Tech details (random panels)
-        ctx.fillStyle = '#00d4ff';
-        ctx.globalAlpha = 0.3;
-        for (let i = 0; i < 20; i++) {
-            const x = Math.floor(Math.random() * (width / gridSize)) * gridSize;
-            const y = Math.floor(Math.random() * (height / gridSize)) * gridSize;
-            ctx.fillRect(x + 10, y + 10, gridSize - 20, gridSize - 20);
-        }
-
-        return canvas;
-    }
-
-    generateEarthTexture(width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-
-        // Ocean base
-        ctx.fillStyle = '#0a3d62';
-        ctx.fillRect(0, 0, width, height);
-
-        // Continents (simplified)
-        ctx.fillStyle = '#2d5016';
-
-        // Africa
-        ctx.beginPath();
-        ctx.ellipse(width * 0.5, height * 0.5, width * 0.15, height * 0.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Americas
-        ctx.beginPath();
-        ctx.ellipse(width * 0.2, height * 0.4, width * 0.1, height * 0.25, -0.3, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.ellipse(width * 0.25, height * 0.6, width * 0.08, height * 0.15, 0.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Asia
-        ctx.beginPath();
-        ctx.ellipse(width * 0.7, height * 0.35, width * 0.18, height * 0.15, 0.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Europe
-        ctx.beginPath();
-        ctx.ellipse(width * 0.52, height * 0.32, width * 0.08, height * 0.08, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Australia
-        ctx.beginPath();
-        ctx.ellipse(width * 0.78, height * 0.65, width * 0.09, height * 0.08, -0.3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Clouds
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        for (let i = 0; i < 100; i++) {
-            const x = Math.random() * width;
-            const y = Math.random() * height;
-            const r = Math.random() * 50 + 20;
-            ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Ice caps
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.beginPath();
-        ctx.ellipse(width * 0.5, height * 0.05, width * 0.2, height * 0.08, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.ellipse(width * 0.5, height * 0.95, width * 0.15, height * 0.06, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        return canvas;
-    }
-
-    generateBlackMarquina(width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-
-        // Deep black base
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(0, 0, width, height);
-
-        // Gold and white veining
-        const numVeins = 30;
-        for (let i = 0; i < numVeins; i++) {
-            const startX = Math.random() * width;
-            const startY = Math.random() * height;
-
-            // Mix of gold and white veins
-            const isGold = Math.random() > 0.6;
-            const color = isGold
-                ? `rgba(218, 165, 32, ${0.4 + Math.random() * 0.3})`  // Gold
-                : `rgba(255, 255, 255, ${0.2 + Math.random() * 0.2})`; // White
-
-            ctx.strokeStyle = color;
-            ctx.lineWidth = Math.random() * 3 + 1;
-            ctx.lineCap = 'round';
-
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-
-            let x = startX;
-            let y = startY;
-            let angle = Math.random() * Math.PI * 2;
-
-            for (let j = 0; j < 120; j++) {
-                angle += (Math.random() - 0.5) * 0.4;
-                x += Math.cos(angle) * 10;
-                y += Math.sin(angle) * 10;
-                ctx.lineTo(x, y);
+                points.push(new THREE.Vector3(
+                    Math.cos(angle) * radius,
+                    y,
+                    Math.sin(angle) * radius
+                ));
             }
 
-            ctx.stroke();
+            const curve = new THREE.CatmullRomCurve3(points);
+            const tubeGeometry = new THREE.TubeGeometry(curve, 20, 0.08, 8, false);
+            const rib = new THREE.Mesh(tubeGeometry, this.metalMaterial);
+            dome.add(rib);
         }
 
-        // Polished finish
-        const gradient = ctx.createRadialGradient(
-            width / 2, height / 2, 0,
-            width / 2, height / 2, width / 2
+        // Viewing platforms
+        const platformCount = 4;
+        for (let i = 0; i < platformCount; i++) {
+            const angle = (i / platformCount) * Math.PI * 2;
+            const platform = new THREE.Mesh(
+                new THREE.BoxGeometry(2, 0.1, 1.5),
+                this.metalMaterial
+            );
+            platform.position.set(
+                Math.cos(angle) * 5,
+                0.5,
+                Math.sin(angle) * 5
+            );
+            platform.rotation.y = angle + Math.PI / 2;
+            dome.add(platform);
+
+            // Bench
+            const bench = new THREE.Mesh(
+                new THREE.BoxGeometry(1.5, 0.3, 0.5),
+                this.darkMetalMaterial
+            );
+            bench.position.copy(platform.position);
+            bench.position.y += 0.35;
+            bench.rotation.y = angle + Math.PI / 2;
+            dome.add(bench);
+        }
+
+        // Central control panel
+        const controlPanel = this.createControlPanel();
+        controlPanel.position.y = 1;
+        dome.add(controlPanel);
+
+        this.rooms[0].add(dome);
+        this.observationDome = dome;
+    }
+
+    createControlPanel() {
+        const group = new THREE.Group();
+
+        // Panel base
+        const base = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.8, 1, 1.5, 8),
+            this.darkMetalMaterial
         );
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, width, height);
+        group.add(base);
 
-        return canvas;
-    }
-
-    generateMarbleNormalMap(width, height) {
+        // Screen
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = 512;
+        canvas.height = 512;
         const ctx = canvas.getContext('2d');
 
-        // Base normal map color (neutral normal)
-        ctx.fillStyle = '#8080ff';
-        ctx.fillRect(0, 0, width, height);
+        // Background
+        ctx.fillStyle = '#001a2a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        const imageData = ctx.getImageData(0, 0, width, height);
+        // Border
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
-        // Generate subtle height variation for normal map
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const i = (y * width + x) * 4;
+        // Title
+        ctx.fillStyle = '#00ffff';
+        ctx.font = 'bold 40px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('OBSERVATORY', 256, 60);
 
-                // Perlin-like noise for realistic surface
-                const noise = (Math.sin(x * 0.02) * Math.cos(y * 0.02)) * 0.5 + 0.5;
-                const variation = (Math.random() - 0.5) * 30;
+        // Data
+        ctx.font = '28px Courier New';
+        ctx.textAlign = 'left';
+        ctx.fillText('Depth: 342m', 40, 120);
+        ctx.fillText('Pressure: 34.2 bar', 40, 160);
+        ctx.fillText('Temp: 4°C', 40, 200);
+        ctx.fillText('Visibility: 15m', 40, 240);
 
-                // Normal map RGB channels (X, Y, Z surface normals)
-                imageData.data[i] = 128 + noise * 25 + variation;     // R (X normal)
-                imageData.data[i + 1] = 128 + noise * 25 + variation; // G (Y normal)
-                imageData.data[i + 2] = 200 + noise * 45;             // B (Z normal - pointing up)
-                imageData.data[i + 3] = 255;                           // Alpha
-            }
-        }
+        ctx.fillText('Status: NOMINAL', 40, 300);
+        ctx.fillText('O₂: 98%', 40, 340);
+        ctx.fillText('Systems: OK', 40, 380);
 
-        ctx.putImageData(imageData, 0, 0);
-        return canvas;
-    }
-    generateModernWallTexture(width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d');
-        const imageData = context.createImageData(width, height);
+        // Warning
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚠ Minor pressure anomaly detected', 256, 450);
 
-        for (let x = 0; x < width; x++) {
-            for (let y = 0; y < height; y++) {
-                const i = (y * width + x) * 4;
-                const noise = Math.sin(x * 0.05 + y * 0.05) * 0.5 + 0.5;
-                imageData.data[i] = noise * 255;
-                imageData.data[i + 1] = noise * 255;
-                imageData.data[i + 2] = 255;
-                imageData.data[i + 3] = 255;
-            }
-        }
+        const texture = new THREE.CanvasTexture(canvas);
 
-        context.putImageData(imageData, 0, 0);
-        return canvas;
-    }
-
-    generateNoiseCanvas(width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d');
-        const imageData = context.createImageData(width, height);
-
-        for (let i = 0; i < imageData.data.length; i += 4) {
-            const noise = Math.random() * 0.1 + 0.9;
-            imageData.data[i] = 136 * noise;
-            imageData.data[i + 1] = 136 * noise;
-            imageData.data[i + 2] = 136 * noise;
-            imageData.data[i + 3] = 255;
-        }
-
-        context.putImageData(imageData, 0, 0);
-        return canvas;
-    }
-
-    createAvatar() {
-        this.avatarGroup = new THREE.Group();
-        const avatarMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.1 // ✓ FIXED: Much less visible (was 0.3)
-        });
-
-        const clickablePlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.5, 0.5),
-            new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
+        const screen = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.2, 1.2),
+            new THREE.MeshBasicMaterial({
+                map: texture,
+                side: THREE.DoubleSide
+            })
         );
-        clickablePlane.position.set(2, 1.7, 2);
-        this.avatarGroup.add(clickablePlane);
+        screen.position.y = 0.5;
+        screen.position.z = 0.8;
+        group.add(screen);
 
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
-        body.position.set(2, 0.5, 2);
-        this.avatarGroup.add(body);
+        // Screen glow
+        const light = new THREE.PointLight(0x00ffff, 1, 5);
+        light.position.set(0, 0.5, 1);
+        group.add(light);
 
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
-        head.position.set(2, 1.2, 2);
-        this.avatarGroup.add(head);
-
-        const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-        const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
-        leftArm.position.set(1.7, 0.7, 2);
-        leftArm.rotation.z = Math.PI / 4;
-        this.avatarGroup.add(leftArm);
-
-        const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
-        rightArm.position.set(2.3, 0.7, 2);
-        rightArm.rotation.z = -Math.PI / 4;
-        this.avatarGroup.add(rightArm);
-
-        const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-        const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-        leftLeg.position.set(1.8, 0.25, 2);
-        this.avatarGroup.add(leftLeg);
-
-        const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-        rightLeg.position.set(2.2, 0.25, 2);
-        this.avatarGroup.add(rightLeg);
-
-        this.avatarGroup.userData = { isAvatar: true };
-        this.scene.add(this.avatarGroup);
-
-        this.setupAvatarAnimation();
-        this.updateAvatarPosition();
+        return group;
     }
 
-    setupAvatarAnimation() {
-        const times = [0, 1, 2];
-        const armValues = [
-            [Math.PI / 4, -Math.PI / 4],
-            [-Math.PI / 4, Math.PI / 4],
-            [Math.PI / 4, -Math.PI / 4]
+    // ========================================
+    // CORAL REEFS (with artwork mounts)
+    // ========================================
+
+    createCoralReefs() {
+        const reefConfigs = [
+            // Left side reefs
+            { x: -6, y: -1, z: -25, size: 'large' },
+            { x: -7, y: -0.5, z: -12, size: 'medium' },
+            { x: -6, y: -1, z: 3, size: 'large' },
+            { x: -7, y: -0.5, z: 18, size: 'medium' },
+
+            // Right side reefs
+            { x: 6, y: -1, z: -22, size: 'medium' },
+            { x: 7, y: -0.5, z: -8, size: 'large' },
+            { x: 6, y: -1, z: 8, size: 'medium' },
+            { x: 7, y: -0.5, z: 22, size: 'large' },
+
+            // Dome area reefs
+            { x: -10, y: -1, z: -2, size: 'large' },
+            { x: 10, y: -1, z: 2, size: 'large' }
         ];
 
-        const leftArmTrack = new THREE.NumberKeyframeTrack(
-            '.children[3].rotation[z]',
-            times,
-            armValues.map(v => v[0])
-        );
-        const rightArmTrack = new THREE.NumberKeyframeTrack(
-            '.children[4].rotation[z]',
-            times,
-            armValues.map(v => v[1])
-        );
-
-        const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
-        const action = this.animationMixer.clipAction(clip, this.avatarGroup);
-        action.setLoop(THREE.LoopRepeat);
-        action.play();
+        reefConfigs.forEach((config, index) => {
+            const reef = this.createCoralReef(config, index);
+            this.rooms[0].add(reef);
+            this.coralReefs.push(reef);
+        });
     }
 
-    updateAvatarPosition() {
-        if (this.isMobile) {
-            const roomCenter = this.rooms[this.currentRoom].position.clone();
-            this.avatarGroup.position.copy(roomCenter);
-            this.avatarGroup.position.y = 0.5;
-        } else {
-            const direction = new THREE.Vector3();
-            this.camera.getWorldDirection(direction);
-            direction.y = 0;
-            direction.normalize().multiplyScalar(3);
-            this.avatarGroup.position.copy(this.camera.position).add(direction);
-            this.avatarGroup.position.y = 0.5;
+    createCoralReef(config, index) {
+        const group = new THREE.Group();
+
+        const sizeMultiplier = config.size === 'large' ? 1.5 :
+            config.size === 'medium' ? 1 : 0.7;
+
+        // Coral formations (various types)
+        const coralTypes = [
+            { color: 0xff6b9d, shape: 'branch' },
+            { color: 0x8b4789, shape: 'fan' },
+            { color: 0x00a8cc, shape: 'brain' },
+            { color: 0xe76f51, shape: 'tube' }
+        ];
+
+        const coralCount = 8 + Math.floor(Math.random() * 5);
+
+        for (let i = 0; i < coralCount; i++) {
+            const type = coralTypes[Math.floor(Math.random() * coralTypes.length)];
+            const coral = this.createCoral(type, sizeMultiplier);
+
+            const angle = (i / coralCount) * Math.PI * 2;
+            const radius = 1 + Math.random() * 2;
+
+            coral.position.set(
+                Math.cos(angle) * radius * sizeMultiplier,
+                Math.random() * 0.5,
+                Math.sin(angle) * radius * sizeMultiplier
+            );
+            coral.rotation.y = Math.random() * Math.PI * 2;
+
+            group.add(coral);
+        }
+
+        // Artwork mounting frame
+        if (index < 8) { // First 8 reefs get artwork spots
+            const artworkMount = this.createUnderwaterArtworkFrame(config.size);
+            artworkMount.position.y = 1 + sizeMultiplier * 0.5;
+            group.add(artworkMount);
+
+            this.artworkSpots.push({
+                position: new THREE.Vector3(config.x, config.y + 1, config.z),
+                normal: new THREE.Vector3(-Math.sign(config.x), 0, 0),
+                mesh: artworkMount,
+                type: 'underwater',
+                index: index
+            });
+
+            this.artworkFrames.push(artworkMount);
+        }
+
+        // Position reef
+        group.position.set(config.x, config.y, config.z);
+
+        group.userData = {
+            size: config.size,
+            swayPhase: Math.random() * Math.PI * 2
+        };
+
+        return group;
+    }
+
+    createCoral(type, sizeMultiplier) {
+        const group = new THREE.Group();
+
+        const material = new THREE.MeshStandardMaterial({
+            color: type.color,
+            roughness: 0.7,
+            metalness: 0.1,
+            emissive: type.color,
+            emissiveIntensity: 0.2
+        });
+
+        switch (type.shape) {
+            case 'branch':
+                // Branching coral
+                for (let i = 0; i < 5; i++) {
+                    const branch = new THREE.Mesh(
+                        new THREE.CylinderGeometry(
+                            0.05 * sizeMultiplier,
+                            0.1 * sizeMultiplier,
+                            0.8 * sizeMultiplier,
+                            6
+                        ),
+                        material
+                    );
+                    branch.position.y = 0.4 * sizeMultiplier;
+                    branch.rotation.z = (Math.random() - 0.5) * 0.5;
+                    branch.rotation.x = (Math.random() - 0.5) * 0.5;
+                    group.add(branch);
+                }
+                break;
+
+            case 'fan':
+                // Fan coral
+                const fan = new THREE.Mesh(
+                    new THREE.PlaneGeometry(
+                        0.8 * sizeMultiplier,
+                        1.2 * sizeMultiplier,
+                        8,
+                        12
+                    ),
+                    material
+                );
+
+
+            case 'brain':
+                // Brain coral
+                const brain = new THREE.Mesh(
+                    new THREE.SphereGeometry(
+                        0.5 * sizeMultiplier,
+                        16,
+                        12
+                    ),
+                    material
+                );
+                brain.scale.y = 0.6;
+                brain.position.y = 0.3 * sizeMultiplier;
+                group.add(brain);
+                break;
+
+            case 'tube':
+                // Tube coral
+                for (let i = 0; i < 3; i++) {
+                    const tube = new THREE.Mesh(
+                        new THREE.CylinderGeometry(
+                            0.1 * sizeMultiplier,
+                            0.12 * sizeMultiplier,
+                            1 * sizeMultiplier,
+                            8
+                        ),
+                        material
+                    );
+                    tube.position.set(
+                        (Math.random() - 0.5) * 0.3 * sizeMultiplier,
+                        0.5 * sizeMultiplier,
+                        (Math.random() - 0.5) * 0.3 * sizeMultiplier
+                    );
+                    group.add(tube);
+                }
+                break;
+        }
+
+        return group;
+    }
+
+    createUnderwaterArtworkFrame(size) {
+        const group = new THREE.Group();
+
+        const width = size === 'large' ? 2.5 : size === 'medium' ? 2 : 1.5;
+        const height = width * 0.75;
+
+        // Waterproof housing (metal frame)
+        const frame = new THREE.Mesh(
+            new THREE.BoxGeometry(width + 0.3, height + 0.3, 0.4),
+            this.darkMetalMaterial
+        );
+        group.add(frame);
+
+        // Protective glass
+        const protectiveGlass = new THREE.Mesh(
+            new THREE.PlaneGeometry(width, height),
+            new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                transmission: 0.9,
+                opacity: 0.1,
+                transparent: true,
+                roughness: 0.1
+            })
+        );
+        protectiveGlass.position.z = 0.21;
+        group.add(protectiveGlass);
+
+        // Artwork surface (black background for now)
+        const artSurface = new THREE.Mesh(
+            new THREE.PlaneGeometry(width - 0.1, height - 0.1),
+            new THREE.MeshStandardMaterial({
+                color: 0x000000,
+                roughness: 0.8
+            })
+        );
+        artSurface.position.z = 0.15;
+        group.add(artSurface);
+
+        // Mounting bolts (corners)
+        for (let x = -1; x <= 1; x += 2) {
+            for (let y = -1; y <= 1; y += 2) {
+                const bolt = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.05, 0.05, 0.1, 8),
+                    this.metalMaterial
+                );
+                bolt.position.set(
+                    x * (width / 2 + 0.1),
+                    y * (height / 2 + 0.1),
+                    0.2
+                );
+                bolt.rotation.x = Math.PI / 2;
+                group.add(bolt);
+            }
+        }
+
+        // Underwater spotlights
+        const spotlightLeft = new THREE.SpotLight(0xffffff, 1, 10, Math.PI / 6);
+        spotlightLeft.position.set(-width / 2 - 0.5, height / 2, 1);
+        spotlightLeft.target.position.set(0, 0, 0.2);
+        group.add(spotlightLeft);
+        group.add(spotlightLeft.target);
+
+        const spotlightRight = new THREE.SpotLight(0xffffff, 1, 10, Math.PI / 6);
+        spotlightRight.position.set(width / 2 + 0.5, height / 2, 1);
+        spotlightRight.target.position.set(0, 0, 0.2);
+        group.add(spotlightRight);
+        group.add(spotlightRight.target);
+
+        group.userData = {
+            artSurface: artSurface,
+            size: size,
+            width: width,
+            height: height
+        };
+
+        return group;
+    }
+
+    // Continue to Part 2...
+
+
+    // ========================================
+    // JELLYFISH (floating, animated)
+    // Performance: Only 6-8 jellyfish, low-poly
+    // ========================================
+
+    createJellyfish() {
+        const jellyfishCount = 6; // Keep low!
+
+        const positions = [
+            { x: -5, y: 3, z: -20 },
+            { x: 4, y: 4, z: -10 },
+            { x: -6, y: 2.5, z: 5 },
+            { x: 5, y: 3.5, z: 12 },
+            { x: -4, y: 4, z: -28 },
+            { x: 6, y: 2, z: 20 }
+        ];
+
+        positions.forEach((pos, index) => {
+            const jellyfish = this.createJellyfish(index);
+            jellyfish.position.set(pos.x, pos.y, pos.z);
+            this.rooms[0].add(jellyfish);
+            this.jellyfish.push(jellyfish);
+        });
+
+        console.log(`🪼 Created ${jellyfishCount} jellyfish (optimized)`);
+    }
+
+    createJellyfish(index) {
+        const group = new THREE.Group();
+
+        // Bell (dome) - LOW POLY (8 segments only!)
+        const bell = new THREE.Mesh(
+            new THREE.SphereGeometry(0.4, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({
+                color: 0xff88cc,
+                transparent: true,
+                opacity: 0.6,
+                emissive: 0xff88cc,
+                emissiveIntensity: 0.3,
+                side: THREE.DoubleSide
+            })
+        );
+        bell.scale.y = 0.7;
+        group.add(bell);
+
+        // Tentacles (simple lines, not geometry!)
+        const tentacleCount = 6; // Not 20!
+        const tentacles = [];
+
+        for (let i = 0; i < tentacleCount; i++) {
+            const angle = (i / tentacleCount) * Math.PI * 2;
+            const points = [];
+
+            // Only 4 points per tentacle (not 10!)
+            for (let j = 0; j < 4; j++) {
+                const t = j / 3;
+                points.push(new THREE.Vector3(
+                    Math.cos(angle) * 0.3,
+                    -t * (1 + Math.random() * 0.5),
+                    Math.sin(angle) * 0.3
+                ));
+            }
+
+            const curve = new THREE.CatmullRomCurve3(points);
+            const geometry = new THREE.TubeGeometry(curve, 4, 0.02, 3, false); // Low segments!
+
+            const tentacle = new THREE.Mesh(
+                geometry,
+                new THREE.MeshBasicMaterial({
+                    color: 0xff88cc,
+                    transparent: true,
+                    opacity: 0.4
+                })
+            );
+            group.add(tentacle);
+            tentacles.push({ mesh: tentacle, curve: curve, points: points });
+        }
+
+        // Single small light (not one per jellyfish!)
+        if (index % 2 === 0) { // Only half have lights!
+            const light = new THREE.PointLight(0xff88cc, 0.5, 5);
+            light.position.y = -0.2;
+            group.add(light);
+        }
+
+        group.userData = {
+            bell: bell,
+            tentacles: tentacles,
+            floatPhase: Math.random() * Math.PI * 2,
+            floatSpeed: 0.5 + Math.random() * 0.5,
+            driftSpeed: 0.01 + Math.random() * 0.01
+        };
+
+        return group;
+    }
+
+    // ========================================
+    // SHARKS (patrolling)
+    // Performance: Only 3 sharks, simple geometry
+    // ========================================
+
+    createSharks() {
+        const sharkCount = 3; // Keep minimal!
+
+        const paths = [
+            { startZ: -30, endZ: 30, y: 4, x: -8 },
+            { startZ: 30, endZ: -30, y: 3, x: 8 },
+            { startZ: -25, endZ: 25, y: 5, x: 0 }
+        ];
+
+        paths.forEach((path, index) => {
+            const shark = this.createShark();
+            shark.position.set(path.x, path.y, path.startZ);
+            this.rooms[0].add(shark);
+            this.sharks.push({
+                mesh: shark,
+                path: path,
+                progress: 0,
+                speed: 0.02 + Math.random() * 0.01
+            });
+        });
+
+        console.log(`🦈 Created ${sharkCount} sharks (optimized)`);
+    }
+
+    createShark() {
+        const group = new THREE.Group();
+
+        // Body (simple elongated sphere) - LOW POLY!
+        const body = new THREE.Mesh(
+            new THREE.SphereGeometry(0.5, 8, 6), // Only 8 segments!
+            new THREE.MeshStandardMaterial({
+                color: 0x4a5a6a,
+                roughness: 0.6,
+                metalness: 0.3
+            })
+        );
+        body.scale.set(1, 0.7, 2.5);
+        group.add(body);
+
+        // Fins (simple triangles)
+        const finMaterial = new THREE.MeshStandardMaterial({
+            color: 0x3a4a5a,
+            roughness: 0.7,
+            side: THREE.DoubleSide
+        });
+
+        // Dorsal fin
+        const dorsalFin = new THREE.Mesh(
+            new THREE.ConeGeometry(0.3, 0.6, 4), // Only 4 sides!
+            finMaterial
+        );
+        dorsalFin.rotation.z = Math.PI / 2;
+        dorsalFin.position.set(0, 0.5, -0.3);
+        group.add(dorsalFin);
+
+        // Tail (simple cone)
+        const tail = new THREE.Mesh(
+            new THREE.ConeGeometry(0.3, 0.8, 4),
+            finMaterial
+        );
+        tail.rotation.z = -Math.PI / 2;
+        tail.position.z = -1.5;
+        group.add(tail);
+
+        group.userData = {
+            body: body,
+            tail: tail,
+            tailSwing: 0
+        };
+
+        return group;
+    }
+
+    // ========================================
+    // FISH SCHOOLS (using InstancedMesh!)
+    // Performance: THE BIG WIN - 1 draw call for 50 fish!
+    // ========================================
+
+    createFishSchools() {
+        const schoolCount = 3;
+        const fishPerSchool = 50; // All rendered in ONE draw call!
+
+        const schoolConfigs = [
+            { centerX: -5, centerY: 2, centerZ: -15, radius: 3, color: 0xffaa00 },
+            { centerX: 5, centerY: 3, centerZ: 0, radius: 4, color: 0x00aaff },
+            { centerX: -6, centerY: 4, centerZ: 18, radius: 3, color: 0xff6600 }
+        ];
+
+        schoolConfigs.forEach(config => {
+            const school = this.createFishSchool(config, fishPerSchool);
+            this.rooms[0].add(school);
+            this.fishSchools.push(school);
+        });
+
+        console.log(`🐟 Created ${schoolCount} schools with ${fishPerSchool} fish each (InstancedMesh)`);
+    }
+
+    createFishSchool(config, count) {
+        // Single geometry for ALL fish in school!
+        const fishGeometry = new THREE.ConeGeometry(0.08, 0.25, 4); // Tiny, low-poly
+        fishGeometry.rotateX(Math.PI / 2);
+
+        const fishMaterial = new THREE.MeshStandardMaterial({
+            color: config.color,
+            roughness: 0.5,
+            metalness: 0.3
+        });
+
+        // InstancedMesh = ONE draw call for all fish!
+        const instancedMesh = new THREE.InstancedMesh(fishGeometry, fishMaterial, count);
+
+        // Initialize fish positions
+        const fishData = [];
+        const dummy = new THREE.Object3D();
+
+        for (let i = 0; i < count; i++) {
+            // Random position in sphere
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * config.radius;
+            const height = (Math.random() - 0.5) * config.radius;
+
+            const fishInfo = {
+                angle: angle,
+                radius: radius,
+                height: height,
+                speed: 0.01 + Math.random() * 0.02,
+                phase: Math.random() * Math.PI * 2
+            };
+            fishData.push(fishInfo);
+
+            // Set initial matrix
+            dummy.position.set(
+                config.centerX + Math.cos(angle) * radius,
+                config.centerY + height,
+                config.centerZ + Math.sin(angle) * radius
+            );
+            dummy.rotation.y = angle;
+            dummy.updateMatrix();
+            instancedMesh.setMatrixAt(i, dummy.matrix);
+        }
+
+        instancedMesh.instanceMatrix.needsUpdate = true;
+
+        instancedMesh.userData = {
+            fishData: fishData,
+            config: config
+        };
+
+        return instancedMesh;
+    }
+
+    // ========================================
+    // BIOLUMINESCENT CREATURES
+    // Performance: Only 12 total, simple spheres
+    // ========================================
+
+    createBioluminescentLife() {
+        const creatureCount = 12; // Keep LOW!
+
+        const positions = [
+            { x: -7, y: 1, z: -22 }, { x: 7, y: 1.5, z: -18 },
+            { x: -6, y: 2, z: -8 }, { x: 6, y: 1, z: -5 },
+            { x: -7, y: 1.5, z: 6 }, { x: 7, y: 2, z: 10 },
+            { x: -6, y: 1, z: 15 }, { x: 6, y: 1.5, z: 20 },
+            { x: -8, y: 2, z: -28 }, { x: 8, y: 1, z: -12 },
+            { x: -7, y: 1.5, z: 0 }, { x: 7, y: 2, z: 25 }
+        ];
+
+        const colors = [0x00ffff, 0x00ff88, 0x0088ff, 0x88ff00];
+
+        positions.forEach((pos, index) => {
+            const creature = new THREE.Mesh(
+                new THREE.SphereGeometry(0.1, 6, 4), // Tiny, low-poly
+                new THREE.MeshBasicMaterial({
+                    color: colors[index % colors.length],
+                    emissive: colors[index % colors.length],
+                    emissiveIntensity: 1
+                })
+            );
+
+            creature.position.set(pos.x, pos.y, pos.z);
+            this.rooms[0].add(creature);
+
+            // Only add light to HALF of them!
+            if (index % 2 === 0) {
+                const light = new THREE.PointLight(colors[index % colors.length], 0.5, 4);
+                light.position.copy(creature.position);
+                this.rooms[0].add(light);
+            }
+
+            this.bioluminescentCreatures.push({
+                mesh: creature,
+                baseY: pos.y,
+                phase: Math.random() * Math.PI * 2,
+                speed: 0.5 + Math.random() * 0.5
+            });
+        });
+
+        console.log(`✨ Created ${creatureCount} bioluminescent creatures (optimized)`);
+    }
+
+    // ========================================
+    // SEA PLANTS (swaying kelp)
+    // Performance: Simple planes, not 3D geometry
+    // ========================================
+
+    createSeaPlants() {
+        const plantCount = 20; // Moderate count
+
+        for (let i = 0; i < plantCount; i++) {
+            const plant = this.createKelp();
+
+            // Random position on ocean floor
+            const angle = (i / plantCount) * Math.PI * 2 + Math.random();
+            const radius = 6 + Math.random() * 4;
+
+            plant.position.set(
+                Math.cos(angle) * radius,
+                -1.5,
+                Math.sin(angle) * radius
+            );
+
+            this.rooms[0].add(plant);
+            this.seaPlants.push(plant);
+        }
+
+        console.log(`🌿 Created ${plantCount} kelp plants (optimized)`);
+    }
+
+    createKelp() {
+        const group = new THREE.Group();
+
+        // Simple curved plane (not tube geometry!)
+        const height = 2 + Math.random() * 2;
+
+        const geometry = new THREE.PlaneGeometry(0.3, height, 1, 8); // Low segments
+        const positions = geometry.attributes.position;
+
+        // Curve the plane
+        for (let i = 0; i < positions.count; i++) {
+            const y = positions.getY(i);
+            const curve = (y / height) * 0.3;
+            positions.setX(i, positions.getX(i) + Math.sin((y / height) * Math.PI) * curve);
+        }
+
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x2a4a2a,
+            roughness: 0.8,
+            side: THREE.DoubleSide
+        });
+
+        const kelp = new THREE.Mesh(geometry, material);
+        group.add(kelp);
+
+        group.userData = {
+            kelp: kelp,
+            swayPhase: Math.random() * Math.PI * 2,
+            swaySpeed: 0.3 + Math.random() * 0.4,
+            swayAmount: 0.1 + Math.random() * 0.1
+        };
+
+        return group;
+    }
+
+    // ========================================
+    // BUBBLES (rising particles)
+    // Performance: Single Points geometry, not spheres!
+    // ========================================
+
+    createBubbles() {
+        const bubbleCount = 100; // Reasonable count
+        const positions = new Float32Array(bubbleCount * 3);
+        const velocities = [];
+
+        for (let i = 0; i < bubbleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 15;
+            positions[i * 3 + 1] = -1 + Math.random() * 8;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 60;
+
+            velocities.push({
+                x: (Math.random() - 0.5) * 0.01,
+                y: 0.02 + Math.random() * 0.03,
+                z: (Math.random() - 0.5) * 0.01
+            });
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const material = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.1,
+            transparent: true,
+            opacity: 0.6
+        });
+
+        const bubbles = new THREE.Points(geometry, material);
+        this.rooms[0].add(bubbles);
+
+        this.bubbles.push({
+            mesh: bubbles,
+            velocities: velocities,
+            count: bubbleCount
+        });
+
+        console.log(`💧 Created ${bubbleCount} bubbles (Points geometry)`);
+    }
+
+    // Continue to Part 3...
+    // ========================================
+    // PRESSURE CRACKS (simple decals on glass)
+    // Performance: Just textures, no geometry!
+    // ========================================
+
+    createPressureCracks() {
+        const crackCount = 8; // Minimal cracks
+
+        // Only crack some glass segments, not all
+        const crackedSegments = [1, 3, 5, 7];
+
+        crackedSegments.forEach(segmentIndex => {
+            if (this.glassSegments[segmentIndex]) {
+                const crack = this.createCrack();
+                const segment = this.glassSegments[segmentIndex];
+
+                // Position on glass surface
+                const angle = Math.random() * Math.PI * 2;
+                const radius = this.tunnelRadius - 0.05;
+
+                crack.position.set(
+                    Math.cos(angle) * radius,
+                    1.5 + (Math.random() - 0.5) * 1,
+                    segment.position.z + (Math.random() - 0.5) * 3
+                );
+                crack.rotation.y = angle;
+
+                this.rooms[0].add(crack);
+                this.pressureCracks.push(crack);
+            }
+        });
+
+        console.log(`⚠️ Created ${crackedSegments.length} pressure cracks (texture-based)`);
+    }
+
+    createCrack() {
+        // Canvas texture for crack pattern
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        // Transparent background
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw crack lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 2;
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // Main crack
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX + (Math.random() - 0.5) * 200, centerY + (Math.random() - 0.5) * 200);
+        ctx.stroke();
+
+        // Branch cracks (3-5 branches)
+        const branches = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < branches; i++) {
+            const angle = (i / branches) * Math.PI * 2 + Math.random();
+            const length = 50 + Math.random() * 80;
+
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(
+                centerX + Math.cos(angle) * length,
+                centerY + Math.sin(angle) * length
+            );
+            ctx.stroke();
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+
+        const crack = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.8, 0.8),
+            new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 0.7,
+                depthWrite: false
+            })
+        );
+
+        crack.userData = {
+            pulsePhase: Math.random() * Math.PI * 2,
+            pulseSpeed: 0.5 + Math.random() * 0.5
+        };
+
+        return crack;
+    }
+
+    // ========================================
+    // CAUSTICS (animated water light patterns)
+    // Performance: ONE plane with animated shader!
+    // ========================================
+
+    createCaustics() {
+        // Single plane above entire scene
+        const causticsSize = 30;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+
+        this.causticsCanvas = canvas;
+        this.causticsCtx = ctx;
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(2, 2);
+
+        const caustics = new THREE.Mesh(
+            new THREE.PlaneGeometry(causticsSize, causticsSize),
+            new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 0.3,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            })
+        );
+
+        caustics.rotation.x = -Math.PI / 2;
+        caustics.position.y = -1.4; // Just above floor
+        this.rooms[0].add(caustics);
+
+        this.causticsPlanes.push({
+            mesh: caustics,
+            texture: texture,
+            frame: 0
+        });
+
+        console.log("🌊 Caustics created (single animated plane)");
+    }
+
+    drawCausticsPattern(frame) {
+        if (!this.causticsCtx) return;
+
+        const ctx = this.causticsCtx;
+        const canvas = this.causticsCanvas;
+
+        // Clear
+        ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw caustic patterns (simplified)
+        ctx.strokeStyle = 'rgba(100, 200, 255, 0.5)';
+        ctx.lineWidth = 3;
+
+        const time = frame * 0.01;
+        const lines = 15; // Not too many!
+
+        for (let i = 0; i < lines; i++) {
+            ctx.beginPath();
+            const offset = (i / lines) * canvas.width;
+
+            for (let x = 0; x < canvas.width; x += 20) {
+                const y = canvas.height / 2 +
+                    Math.sin((x + offset) * 0.02 + time) * 50 +
+                    Math.sin((x + offset) * 0.03 + time * 1.3) * 30;
+
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
         }
     }
+
+    // ========================================
+    // OCEAN FLOOR (simple plane)
+    // Performance: Single plane with texture
+    // ========================================
+
+    createOceanFloor() {
+        const floorSize = 80;
+
+        // Simple sand floor
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(floorSize, floorSize, 1, 1), // No subdivisions!
+            this.sandMaterial
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -2;
+        floor.receiveShadow = true;
+        this.rooms[0].add(floor);
+
+        // Add some scattered rocks (LOW COUNT!)
+        const rockCount = 15;
+        for (let i = 0; i < rockCount; i++) {
+            const rock = new THREE.Mesh(
+                new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 6, 4), // Low poly!
+                new THREE.MeshStandardMaterial({
+                    color: 0x4a4a3a,
+                    roughness: 0.9
+                })
+            );
+
+            rock.position.set(
+                (Math.random() - 0.5) * floorSize * 0.8,
+                -1.8,
+                (Math.random() - 0.5) * floorSize * 0.8
+            );
+            rock.scale.y = 0.6;
+            this.rooms[0].add(rock);
+        }
+
+        console.log("🏝️ Ocean floor created (minimal geometry)");
+    }
+
+    // ========================================
+    // UNDERWATER LIGHTING (strategic only!)
+    // Performance: Just 5 lights total!
+    // ========================================
+
+    createUnderwaterLighting() {
+        // Main overhead light (simulating distant surface)
+        const surfaceLight = new THREE.DirectionalLight(0x4488ff, 0.6);
+        surfaceLight.position.set(0, 20, 0);
+        surfaceLight.target.position.set(0, 0, 0);
+        surfaceLight.castShadow = false; // Shadow = expensive!
+        this.rooms[0].add(surfaceLight);
+        this.rooms[0].add(surfaceLight.target);
+
+        // Tunnel lights (only 4 along the path)
+        const lightPositions = [
+            { x: 0, y: 2.5, z: -25 },
+            { x: 0, y: 2.5, z: -10 },
+            { x: 0, y: 2.5, z: 10 },
+            { x: 0, y: 2.5, z: 25 }
+        ];
+
+        lightPositions.forEach(pos => {
+            const light = new THREE.PointLight(0x88ccff, 1, 15);
+            light.position.set(pos.x, pos.y, pos.z);
+            light.castShadow = false; // NO SHADOWS = faster!
+            this.rooms[0].add(light);
+
+            this.underwaterLights.push({
+                light: light,
+                baseIntensity: 1,
+                phase: Math.random() * Math.PI * 2
+            });
+        });
+
+        console.log("💡 Lighting created (5 lights total, no shadows)");
+    }
+
+    // ========================================
+    // UNDERWATER FOG (built-in, free!)
+    // Performance: THREE.js fog = zero cost!
+    // ========================================
+
+    createUnderwaterFog() {
+        // Exponential fog for depth effect
+        this.scene.fog = new THREE.FogExp2(0x1a3a4a, 0.035);
+
+        console.log("🌫️ Underwater fog enabled (built-in)");
+    }
+
+    // ========================================
+    // ANIMATION SYSTEM (optimized updates)
+    // ========================================
+
+    updateUnderwaterAnimations() {
+        if (!this.rooms || !this.rooms[0]) return;
+
+        const time = Date.now() * 0.001;
+
+        // Update only what's needed
+        this.updateJellyfish(time);
+        this.updateSharks();
+        this.updateFishSchools(time);
+        this.updateBioluminescentCreatures(time);
+        this.updateSeaPlants(time);
+        this.updateBubbles();
+        this.updatePressureCracks(time);
+        this.updateCaustics();
+        this.updateUnderwaterLights(time);
+        this.updateCoralSway(time);
+    }
+
+    // Jellyfish floating
+    updateJellyfish(time) {
+        this.jellyfish.forEach(jelly => {
+            const data = jelly.userData;
+
+            // Vertical bobbing
+            data.floatPhase += 0.02 * data.floatSpeed;
+            jelly.position.y += Math.sin(data.floatPhase) * 0.01;
+
+            // Horizontal drift
+            jelly.position.x += Math.sin(time * data.driftSpeed) * 0.005;
+            jelly.position.z += Math.cos(time * data.driftSpeed) * 0.005;
+
+            // Bell pulsing (scale)
+            const pulse = 1 + Math.sin(data.floatPhase * 2) * 0.05;
+            data.bell.scale.y = 0.7 * pulse;
+
+            // Tentacle waving (every 3rd frame only!)
+            if (Math.floor(time * 60) % 3 === 0) {
+                data.tentacles.forEach((tentacle, index) => {
+                    const wave = Math.sin(time * 2 + index * 0.5) * 0.2;
+                    tentacle.mesh.rotation.z = wave;
+                });
+            }
+        });
+    }
+
+    // Shark swimming
+    updateSharks() {
+        this.sharks.forEach(shark => {
+            const path = shark.path;
+
+            // Linear path movement
+            shark.progress += shark.speed;
+            if (shark.progress >= 1) shark.progress = 0;
+
+            const z = path.startZ + (path.endZ - path.startZ) * shark.progress;
+            shark.mesh.position.z = z;
+
+            // Tail swing
+            const data = shark.mesh.userData;
+            data.tailSwing += 0.1;
+            data.tail.rotation.y = Math.sin(data.tailSwing) * 0.3;
+
+            // Face direction
+            shark.mesh.rotation.y = path.endZ > path.startZ ? 0 : Math.PI;
+        });
+    }
+
+    // Fish schools (InstancedMesh update)
+    updateFishSchools(time) {
+        this.fishSchools.forEach(school => {
+            const data = school.userData;
+            const dummy = new THREE.Object3D();
+
+            data.fishData.forEach((fish, i) => {
+                // Circular swimming
+                fish.angle += fish.speed;
+                fish.phase += 0.1;
+
+                const x = data.config.centerX + Math.cos(fish.angle) * fish.radius;
+                const z = data.config.centerZ + Math.sin(fish.angle) * fish.radius;
+                const y = data.config.centerY + fish.height + Math.sin(fish.phase) * 0.2;
+
+                dummy.position.set(x, y, z);
+                dummy.rotation.y = fish.angle + Math.PI / 2;
+                dummy.updateMatrix();
+                school.setMatrixAt(i, dummy.matrix);
+            });
+
+            school.instanceMatrix.needsUpdate = true;
+        });
+    }
+
+    // Bioluminescent pulsing
+    updateBioluminescentCreatures(time) {
+        this.bioluminescentCreatures.forEach(creature => {
+            creature.phase += 0.02 * creature.speed;
+
+            // Floating
+            creature.mesh.position.y = creature.baseY + Math.sin(creature.phase) * 0.3;
+
+            // Pulsing glow
+            const intensity = 0.5 + Math.sin(creature.phase * 2) * 0.5;
+            creature.mesh.material.emissiveIntensity = intensity;
+        });
+    }
+
+    // Kelp swaying
+    updateSeaPlants(time) {
+        // Only update every other frame for performance
+        if (Math.floor(time * 60) % 2 !== 0) return;
+
+        this.seaPlants.forEach(plant => {
+            const data = plant.userData;
+            data.swayPhase += 0.02 * data.swaySpeed;
+
+            const sway = Math.sin(data.swayPhase) * data.swayAmount;
+            data.kelp.rotation.z = sway;
+        });
+    }
+
+    // Bubbles rising
+    updateBubbles() {
+        this.bubbles.forEach(bubbleGroup => {
+            const positions = bubbleGroup.mesh.geometry.attributes.position.array;
+
+            for (let i = 0; i < bubbleGroup.count; i++) {
+                // Move up
+                positions[i * 3] += bubbleGroup.velocities[i].x;
+                positions[i * 3 + 1] += bubbleGroup.velocities[i].y;
+                positions[i * 3 + 2] += bubbleGroup.velocities[i].z;
+
+                // Reset at surface
+                if (positions[i * 3 + 1] > 8) {
+                    positions[i * 3] = (Math.random() - 0.5) * 15;
+                    positions[i * 3 + 1] = -1;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 60;
+                }
+            }
+
+            bubbleGroup.mesh.geometry.attributes.position.needsUpdate = true;
+        });
+    }
+
+    // Pressure crack pulsing
+    updatePressureCracks(time) {
+        this.pressureCracks.forEach(crack => {
+            const data = crack.userData;
+            data.pulsePhase += 0.02 * data.pulseSpeed;
+
+            // Warning pulse
+            const opacity = 0.5 + Math.sin(data.pulsePhase) * 0.2;
+            crack.material.opacity = opacity;
+        });
+    }
+
+    // Caustics animation
+    updateCaustics() {
+        if (this.causticsPlanes.length === 0) return;
+
+        const caustic = this.causticsPlanes[0];
+        caustic.frame++;
+
+        // Only redraw every 3 frames (20fps is fine for caustics)
+        if (caustic.frame % 3 === 0) {
+            this.drawCausticsPattern(caustic.frame);
+            caustic.texture.needsUpdate = true;
+        }
+    }
+
+    // Light flickering (minimal)
+    updateUnderwaterLights(time) {
+        this.underwaterLights.forEach(lightData => {
+            // Gentle variation (simulating water movement)
+            const variation = Math.sin(time + lightData.phase) * 0.2;
+            lightData.light.intensity = lightData.baseIntensity + variation;
+        });
+    }
+
+    // Coral swaying
+    updateCoralSway(time) {
+        // Only every 2nd frame
+        if (Math.floor(time * 60) % 2 !== 0) return;
+
+        this.coralReefs.forEach(reef => {
+            const data = reef.userData;
+            data.swayPhase += 0.01;
+
+            const sway = Math.sin(data.swayPhase) * 0.02;
+            reef.rotation.y = sway;
+        });
+    }
+
+    // ========================================
+    // COLLISION DETECTION
+    // ========================================
+
+    checkCollisions() {
+        if (!this.camera) return;
+
+        const pos = this.camera.position;
+
+        // Tunnel bounds (cylindrical)
+        const distFromCenter = Math.sqrt(pos.x * pos.x);
+        if (distFromCenter > 2.0) { // Slightly less than tunnel radius
+            const angle = Math.atan2(0, pos.x);
+            pos.x = Math.cos(angle) * 2.0;
+        }
+
+        // Length bounds
+        if (pos.z < -28) pos.z = -28;
+        if (pos.z > 28) pos.z = 28;
+
+        // Floor/ceiling
+        if (pos.y < 0.2) pos.y = 0.2;
+        if (pos.y > 2.5) pos.y = 2.5;
+    }
+
+    // ========================================
+    // SPAWN POSITION
+    // ========================================
+
+    getSpawnPosition() {
+        return {
+            position: new THREE.Vector3(0, 1.6, 25), // Start at tunnel entrance
+            rotation: Math.PI // Looking into tunnel
+        };
+    }
+
+
 
     async setupAudio() {
         try {
@@ -2598,27 +1880,28 @@ class ThreeJSApp {
         console.log("🚀 Virtual Gallery loaded");
     }
 
-
-
     animate() {
         requestAnimationFrame(() => this.animate());
+      
         const delta = 0.016;
+
         this.time += delta;
         this.update();
         this.updateImageEffects();
         this.updateLighting();
 
+        this.updateUnderwaterAnimations();
+
+
         this.renderer.render(this.scene, this.camera);
         this.updateArtworkProgress();
         if (this.isMobile) this.controls.update();
-        this.updateAvatarPosition();
 
-        if (this.isRecording) {
-            // Frame capture handled by MediaRecorder
-        }
         this.animationMixer.update(delta * this.animationSpeed);
         this.updateObjectAnimations();
     }
+
+
     showArtworkInfo(index) {
         const metadata = this.metadata[index];
         if (!metadata) return;
@@ -2713,27 +1996,29 @@ class ThreeJSApp {
     `;
 
         const shortcuts = this.isMobile ? `
-        <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">📱 Mobile Controls</h2>
-        <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
-            <strong>👆 Swipe</strong><span>Look around</span>
-            <strong>🤏 Pinch</strong><span>Zoom in/out</span>
-            <strong>👆 Tap</strong><span>Focus artwork</span>
-            <strong>👆👆 Double-tap</strong><span>Open slider</span>
-            <strong>🕹️ Joystick</strong><span>Move (bottom-left)</span>
-        </div>
-    ` : `
-        <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">⌨️ Keyboard Shortcuts</h2>
-        <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
-            <strong>W A S D</strong><span>Move around</span>
-            <strong>Q / E</strong><span>Rotate left/right</span>
-            <strong>1-9</strong><span>Jump to artwork</span>
-            <strong>← →</strong><span>Prev/Next artwork</span>
-            <strong>Mouse</strong><span>Look around</span>
-            <strong>ESC</strong><span>Unlock/Exit</span>
-            <strong>?</strong><span>Toggle help</span>
-            <strong>Double-click</strong><span>Focus artwork</span>
-        </div>
-    `;
+    <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">📱 Mobile Controls</h2>
+    <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
+        <strong>👆 Swipe</strong><span>Look around</span>
+        <strong>🤏 Pinch</strong><span>Zoom in/out</span>
+        <strong>👆 Tap</strong><span>Focus artwork</span>
+        <strong>👆👆 Double-tap</strong><span>Open slider</span>
+        <strong>🕹️ Joystick</strong><span>Move (bottom-left)</span>
+    </div>
+` : `
+    <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">⌨️ Keyboard Shortcuts</h2>
+    <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
+        <strong>W A S D</strong><span>Move around</span>
+        <strong>Q / E</strong><span>Rotate left/right</span>
+        <strong>[ / ]</strong><span>Lower/Raise camera</span>
+        <strong>PgUp / PgDn</strong><span>Adjust height</span>
+        <strong>1-9</strong><span>Jump to artwork</span>
+        <strong>← →</strong><span>Prev/Next artwork</span>
+        <strong>Mouse</strong><span>Look around</span>
+        <strong>ESC</strong><span>Unlock/Exit</span>
+        <strong>?</strong><span>Toggle help</span>
+        <strong>Double-click</strong><span>Focus artwork</span>
+    </div>
+`;
 
         help.innerHTML = `
         ${shortcuts}
@@ -2998,39 +2283,7 @@ class ThreeJSApp {
             });
         }
 
-        // 8. DUST PARTICLES (floating in god-rays)
-        if (this.dustParticles) {
-            this.dustParticles.forEach(particle => {
-                // Slow upward drift
-                particle.position.add(particle.userData.velocity);
 
-                // Brownian motion (random walk)
-                particle.position.x += (Math.random() - 0.5) * 0.01;
-                particle.position.z += (Math.random() - 0.5) * 0.01;
-
-                // Keep within cylinder around light shaft
-                const center = particle.userData.center;
-                const radius = particle.userData.radius;
-                const distFromCenter = Math.sqrt(
-                    Math.pow(particle.position.x - center.x, 2) +
-                    Math.pow(particle.position.z - center.z, 2)
-                );
-
-                if (distFromCenter > radius) {
-                    const angle = Math.atan2(
-                        particle.position.z - center.z,
-                        particle.position.x - center.x
-                    );
-                    particle.position.x = center.x + Math.cos(angle) * radius;
-                    particle.position.z = center.z + Math.sin(angle) * radius;
-                }
-
-                // Reset when reaching top
-                if (particle.position.y > 24) {
-                    particle.position.y = 0.5;
-                }
-            });
-        }
 
         // 9. CATWALK RATTLING (if player nearby)
         if (this.catwalks && this.camera) {
@@ -3339,6 +2592,32 @@ class ThreeJSApp {
             value.textContent = this.animationSpeed.toFixed(1);
         });
 
+        // Camera Height Slider - FIXED VERSION
+        const cameraHeightSlider = document.getElementById("cameraHeightSlider");
+        const cameraHeightValue = document.getElementById("cameraHeightValue");
+
+        if (cameraHeightSlider && cameraHeightValue) {
+            cameraHeightSlider.addEventListener("input", () => {
+                // Get new height value
+                this.cameraHeight = parseFloat(cameraHeightSlider.value);
+                cameraHeightValue.textContent = this.cameraHeight.toFixed(1);
+
+                // Update the stored initial settings (so it persists on pointer lock)
+                this.roomCameraSettings[0].position.y = this.cameraHeight;
+                this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
+
+                // Update camera position
+                this.camera.position.y = this.cameraHeight;
+
+                // Update controls position (this is the critical fix!)
+                if (!this.isMobile) {
+                    this.controls.getObject().position.y = this.cameraHeight;
+                } else {
+                    this.controls.target.y = this.cameraHeight;
+                    this.controls.update();
+                }
+            });
+        }
         document.getElementById("sensitivitySlider")?.addEventListener("input", () => {
             const sensitivitySlider = document.getElementById("sensitivitySlider");
             const sensitivityValue = document.getElementById("sensitivityValue");
@@ -3771,27 +3050,49 @@ class ThreeJSApp {
             case "s": this.keys.s = true; break;
             case "d": this.keys.d = true; break;
             case "q": this.keys.q = true; break;
-            case "e": this.keys.e = true; break;
+            case "e":
+                this.keys.e = true;
+                // ✅ IMPROVED: Toggle spacewalk with E
+                if (!this.isSliderActive && !this.isFocused) {
+                    this.toggleSpacewalk();
+                    this.updateSpacewalkButton();
+                }
+                break;
+            case "c":
+                // ✅ ADD: Cycle spacewalk cameras
+                if (this.isSpacewalkMode) {
+                    this.cycleSpacewalkCamera();
+                    this.updateSpacewalkHints();
+                }
+                break;
             case "control": this.isControlPressed = true; break;
+            case " ":
+                if (this.nearWormhole) {
+                    event.preventDefault();
+                    this.teleportThroughWormhole();
+                }
+                break;
         }
 
-        // ✨ NEW: Number keys for artwork navigation
+        // Height adjustment
+        if (event.key === 'PageUp' || event.key === ']') {
+            this.cameraHeight = Math.min(3.0, this.cameraHeight + 0.1);
+            document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
+            document.getElementById('cameraHeightSlider').value = this.cameraHeight;
+        }
+        if (event.key === 'PageDown' || event.key === '[') {
+            this.cameraHeight = Math.max(1.2, this.cameraHeight - 0.1);
+            document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
+            document.getElementById('cameraHeightSlider').value = this.cameraHeight;
+        }
+
+        // Artwork navigation
         const num = parseInt(event.key);
-        if (num >= 1 && num <= 9 && num <= this.images.length) {
-            this.focusOnArtwork(num - 1);
+        if (num >= 4 && num <= 9 && num <= this.images.length + 3) {
+            this.focusOnArtwork(num - 4);
         }
 
-        // ✨ NEW: Arrow keys for navigation
-        if (!this.isSliderActive) {
-            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-                this.navigateToNextArtwork();
-            }
-            if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-                this.navigateToPrevArtwork();
-            }
-        }
-
-        // ✨ NEW: Help toggle
+        // Help toggle
         if (event.key === '?' || event.key === '/') {
             this.toggleHelpOverlay();
         }
@@ -3845,20 +3146,6 @@ class ThreeJSApp {
         const initialSettings = this.roomCameraSettings[0];
         this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
         this.isFocused = false;
-    }
-    checkCollisions() {
-        if (!this.isMobile) {
-            this.camera.position.y = 1.6;
-            const roomBounds = this.rooms[this.currentRoom].position;
-            const minX = -38;
-            const maxX = 38;
-            const minZ = -28;
-            const maxZ = 28;
-
-            this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
-            this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
-            this.controls.getObject().position.copy(this.camera.position);
-        }
     }
 
     async computeImageHash(texture) {
@@ -4131,6 +3418,14 @@ class ThreeJSApp {
                 }
             }
         }
+        // Apply quantum superposition effect to artworks in quantum lab
+        if (this.labArtworkSpots) {
+            this.images.forEach((img, index) => {
+                if (img.mesh.userData.quantum) {
+                    this.makeArtworkQuantum(img.mesh, index);
+                }
+            });
+        }
         console.log(`🎨 Images rendered in room ${this.currentRoom}:`, this.images.length, "Unique hashes:", seenHashes.size);
     }
 
@@ -4175,7 +3470,6 @@ class ThreeJSApp {
             );
         });
     }
-
     onCanvasClick(event) {
         const currentTime = new Date().getTime();
         const timeSinceLastClick = currentTime - this.lastClickTime;
@@ -4185,10 +3479,41 @@ class ThreeJSApp {
             this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
             this.raycaster.setFromCamera(this.mouse, this.camera);
-            const intersects = this.raycaster.intersectObjects([...this.images.map(img => img.mesh), ...this.scene.children.filter(obj => (obj.parent && obj.parent.userData.isAvatar))]);
+
+            // Get all interactive objects including portal meshes
+            const interactiveObjects = [
+                ...this.images.map(img => img.mesh),
+                ...this.scene.children.filter(obj => (obj.parent && obj.parent.userData.isAvatar))
+            ];
+
+            // ✓ ADD: Get all portal meshes from current room
+            const currentRoom = this.rooms[this.currentEra];
+            if (currentRoom) {
+                currentRoom.traverse(child => {
+                    if (child.isMesh && child.parent?.userData?.isPortal) {
+                        interactiveObjects.push(child);
+                    }
+                });
+            }
+
+            const intersects = this.raycaster.intersectObjects(interactiveObjects, true);
 
             if (intersects.length > 0) {
                 const obj = intersects[0].object;
+
+                // ✓ CHECK: Portal click detection
+                // Add after existing click handling
+                if (intersects.length > 0) {
+                    const obj = intersects[0].object;
+
+                    // Check if clicked on jukebox
+                    if (obj.parent && obj.parent.userData.isJukebox) {
+                        this.playJukeboxSong();
+                        return;
+                    }
+                }
+
+                // Rest of your existing click handling
                 if (this.isFocused) {
                     this.resetCamera();
                     this.closeSlider();
@@ -4202,188 +3527,68 @@ class ThreeJSApp {
                     this.openSlider(obj);
                 }
             }
-            else {
-                // ========================================
-                // NEW: ELEVATOR BUTTON INTERACTION
-                // ========================================
-
-                // Get all clickable objects in scene
-                const clickableObjects = [];
-                this.scene.traverse(child => {
-                    if (child.userData.isElevatorButton ||
-                        child.userData.canMove ||
-                        child.userData.isLightSwitch) {
-                        clickableObjects.push(child);
-                    }
-                });
-
-                const clickIntersects = this.raycaster.intersectObjects(clickableObjects, true);
-
-                if (clickIntersects.length > 0) {
-                    const clicked = clickIntersects[0].object;
-
-                    // ELEVATOR BUTTON CLICKED
-                    if (clicked.userData.isElevatorButton) {
-                        this.callElevator(clicked.userData.targetLevel);
-                        if (!this.clickSound.isPlaying) this.clickSound.play();
-                    }
-
-                    // MOVABLE WALL CLICKED
-                    else if (clicked.parent && clicked.parent.userData.canMove) {
-                        this.moveWall(clicked.parent);
-                        if (!this.clickSound.isPlaying) this.clickSound.play();
-                    }
-                }
-            }
         }
         this.lastClickTime = currentTime;
     }
 
+    playJukeboxSong() {
+        const songs = [
+            'Rock Around the Clock',
+            'Johnny B. Goode',
+            'Great Balls of Fire',
+            'Blue Suede Shoes',
+            'Peggy Sue'
+        ];
 
-    callElevator(targetLevel) {
-        if (!this.freightElevator) return;
+        const randomSong = songs[Math.floor(Math.random() * songs.length)];
 
-        console.log(`🛗 Calling elevator to level ${targetLevel}`);
-
-        const elevator = this.freightElevator;
-
-        // Prevent multiple calls while moving
-        if (elevator.userData.isMoving) {
-            console.log("⏳ Elevator is already moving");
-            return;
-        }
-
-        // Set target height based on level
-        const levels = [0, 8, 15]; // Ground, Mezzanine 1, Mezzanine 2
-        elevator.userData.targetY = levels[targetLevel];
-        elevator.userData.currentLevel = targetLevel;
-        elevator.userData.isMoving = true;
-
-        // Show elevator UI
-        this.showElevatorUI(targetLevel);
-    }
-
-    showElevatorUI(level) {
-        const existing = document.getElementById('elevatorUI');
-        if (existing) existing.remove();
-
-        const ui = document.createElement('div');
-        ui.id = 'elevatorUI';
-        ui.style.cssText = `
+        const notification = document.createElement('div');
+        notification.style.cssText = `
         position: fixed;
-        top: 20px;
+        top: 100px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(0,0,0,0.9);
-        color: #ffcc00;
-        padding: 15px 30px;
-        border-radius: 8px;
+        background: rgba(255, 0, 255, 0.95);
+        color: white;
+        padding: 20px 30px;
+        border-radius: 15px;
         z-index: 10000;
         font-family: 'Courier New', monospace;
         font-size: 18px;
         font-weight: bold;
-        border: 2px solid #ffcc00;
-        animation: slideDown 0.3s ease;
-    `;
-
-        ui.innerHTML = `
-        🛗 FREIGHT ELEVATOR: ${['GROUND FLOOR', 'MEZZANINE 1', 'MEZZANINE 2'][level]}
-        <style>
-            @keyframes slideDown {
-                from { transform: translate(-50%, -100%); opacity: 0; }
-                to { transform: translate(-50%, 0); opacity: 1; }
-            }
-        </style>
-    `;
-
-        document.body.appendChild(ui);
-
-        setTimeout(() => {
-            ui.style.animation = 'fadeOut 0.5s ease';
-            setTimeout(() => ui.remove(), 500);
-        }, 3000);
-    }
-    moveWall(wall) {
-        if (!wall.userData.canMove) return;
-
-        console.log("🚧 Moving wall panel...");
-
-        // Animate wall sliding along track
-        const currentX = wall.position.x;
-        const trackStart = wall.userData.trackStart;
-        const trackEnd = wall.userData.trackEnd;
-
-        // Toggle between start and end positions
-        let targetX;
-        if (Math.abs(currentX - trackStart) < 1) {
-            targetX = trackEnd;
-        } else {
-            targetX = trackStart;
-        }
-
-        const startX = currentX;
-        const duration = 2000;
-        const startTime = Date.now();
-
-        const animateWall = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const eased = this.easeInOutCubic(progress);
-
-            wall.position.x = startX + (targetX - startX) * eased;
-
-            // Grinding sound effect (visual vibration)
-            if (progress < 1) {
-                wall.rotation.z = Math.sin(elapsed * 0.05) * 0.005;
-                requestAnimationFrame(animateWall);
-            } else {
-                wall.rotation.z = 0;
-                console.log("✅ Wall moved to new position");
-            }
-        };
-
-        animateWall();
-
-        // Show notification
-        this.showWallNotification();
-    }
-
-    showWallNotification() {
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: rgba(139, 69, 19, 0.95);
-        color: white;
-        padding: 15px 25px;
-        border-radius: 8px;
-        z-index: 10000;
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-        animation: slideInRight 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        border: 3px solid #ffd700;
+        box-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+        animation: jukeboxPop 0.5s ease;
     `;
 
         notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 24px;">🚧</span>
-            <span>Wall Panel Repositioning...</span>
+        <div style="text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 10px;">🎵 NOW PLAYING 🎵</div>
+            <div style="font-size: 20px;">"${randomSong}"</div>
         </div>
         <style>
-            @keyframes slideInRight {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
+            @keyframes jukeboxPop {
+                0% { transform: translateX(-50%) scale(0); opacity: 0; }
+                50% { transform: translateX(-50%) scale(1.1); }
+                100% { transform: translateX(-50%) scale(1); opacity: 1; }
             }
         </style>
     `;
 
         document.body.appendChild(notification);
 
+        // Speed up record spinning
+        if (this.jukebox && this.jukebox.userData.record) {
+            this.jukebox.userData.rotationSpeed = 0.1;
+            setTimeout(() => {
+                this.jukebox.userData.rotationSpeed = 0.02;
+            }, 3000);
+        }
+
         setTimeout(() => {
             notification.style.animation = 'fadeOut 0.5s ease';
             setTimeout(() => notification.remove(), 500);
-        }, 2000);
+        }, 3000);
     }
     openSlider(selectedMesh) {
         if (!this.isFocused) {
@@ -4879,12 +4084,45 @@ class ThreeJSApp {
         progressBar.innerHTML = `
         <span id="artworkCounter">0 / 0</span>
         <div style="display: flex; gap: 5px;" id="artworkDots"></div>
-        `;
+    `;
+
         document.body.appendChild(progressBar);
     }
 
+    updateArtworkProgress() {
+        const progressBar = document.getElementById('artworkProgress');
+        const counter = document.getElementById('artworkCounter');
+        const dots = document.getElementById('artworkDots');
+
+        if (!counter || !dots || !this.images.length) return;
+
+        progressBar.style.display = 'flex';
+
+        const current = this.getCurrentArtworkIndex() + 1;
+        const total = this.images.length;
+
+        counter.textContent = `${current} / ${total}`;
+
+        // Create clickable dots
+        dots.innerHTML = '';
+        this.images.forEach((_, index) => {
+            const dot = document.createElement('div');
+            dot.style.cssText = `
+            width: ${index === current - 1 ? '12px' : '8px'};
+            height: ${index === current - 1 ? '12px' : '8px'};
+            border-radius: 50%;
+            background: ${index === current - 1 ? '#4CAF50' : '#666'};
+            transition: all 0.3s ease;
+            cursor: pointer;
+        `;
+            dot.title = this.metadata[index]?.title || `Artwork ${index + 1}`;
+            dot.addEventListener('click', () => this.focusOnArtwork(index));
+            dots.appendChild(dot);
+        });
+    }
+
     getCurrentArtworkIndex() {
-        if (!this.images.length) return -1;
+        if (!this.images.length) return 0;
 
         const direction = new THREE.Vector3();
         this.camera.getWorldDirection(direction);
@@ -4894,7 +4132,7 @@ class ThreeJSApp {
 
         this.images.forEach((img, index) => {
             const toArtwork = new THREE.Vector3()
-                .subVectors(img.mesh.position, this.camera.position)
+                .subVectors(img.mesh.position, this.camera.position) // ✓ FIXED: Access mesh.position
                 .normalize();
             const dot = direction.dot(toArtwork);
             if (dot > maxDot) {
@@ -4906,34 +4144,16 @@ class ThreeJSApp {
         return closestIndex;
     }
 
-    updateArtworkProgress() {
-        const progressBar = document.getElementById('artworkProgress');
-        if (!progressBar) return;
-
-        // Show progress bar only when not in other modes
-        if (this.isSliderActive || this.isRecording) {
-            progressBar.style.display = 'none';
-            return;
-        }
-
-        progressBar.style.display = 'flex';
-
-        const currentIndex = this.getCurrentArtworkIndex();
-        const counter = document.getElementById('artworkCounter');
-        if (counter) {
-            counter.textContent = `${currentIndex + 1} / ${this.images.length}`;
-        }
-    }
-
     focusOnArtwork(index) {
         if (index < 0 || index >= this.images.length) return;
 
-        this.isFocused = true;
+        this.isFocused = true; // ✓ ADD THIS LINE
 
         const artwork = this.images[index];
         const artworkPos = artwork.mesh.position.clone();
         const artworkRotation = artwork.mesh.rotation.y;
 
+        // ✓ FIXED: Properly calculate normal from rotation
         const normal = new THREE.Vector3(
             Math.sin(artworkRotation),
             0,
@@ -5010,20 +4230,20 @@ class ThreeJSApp {
         position: fixed;
         top: 20px;
         left: 20px;
-        background: rgba(0, 0, 0, 0.9);
+        background: rgba(0,0,0,0.9);
         color: white;
         padding: 20px;
-        border - radius: 10px;
-        max - width: 350px;
-        z - index: 1000;
-        font - family: Arial, sans - serif;
-        backdrop - filter: blur(10px);
-        box - shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        border-radius: 10px;
+        max-width: 350px;
+        z-index: 1000;
+        font-family: Arial, sans-serif;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         animation: slideInLeft 0.3s ease;
-        `;
+    `;
 
         info.innerHTML = `
-            < h3 style = "margin: 0 0 10px 0; font-size: 20px; color: #4CAF50;" > ${metadata.title}</h3 >
+        <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #4CAF50;">${metadata.title}</h3>
         <p style="margin: 5px 0; font-size: 14px; opacity: 0.9;">
             <strong>Artist:</strong> ${metadata.artist}
         </p>
@@ -5051,7 +4271,7 @@ class ThreeJSApp {
                 to { opacity: 0; }
             }
         </style>
-        `;
+    `;
 
         document.body.appendChild(info);
 
@@ -5077,13 +4297,13 @@ class ThreeJSApp {
         left: 30px;
         width: 120px;
         height: 120px;
-        background: rgba(255, 255, 255, 0.15);
-        border: 3px solid rgba(255, 255, 255, 0.3);
-        border - radius: 50 %;
-        z - index: 1000;
-        touch - action: none;
-        box - shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        `;
+        background: rgba(255,255,255,0.15);
+        border: 3px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        z-index: 1000;
+        touch-action: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    `;
 
         const joystickKnob = document.createElement('div');
         joystickKnob.style.cssText = `
@@ -5091,14 +4311,14 @@ class ThreeJSApp {
         width: 50px;
         height: 50px;
         background: rgba(76, 175, 80, 0.7);
-        border: 2px solid rgba(255, 255, 255, 0.5);
-        border - radius: 50 %;
-        top: 50 %;
-        left: 50 %;
-        transform: translate(-50 %, -50 %);
+        border: 2px solid rgba(255,255,255,0.5);
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         transition: all 0.1s;
-        box - shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        `;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    `;
 
         joystick.appendChild(joystickKnob);
         document.body.appendChild(joystick);
@@ -5129,7 +4349,7 @@ class ThreeJSApp {
             const clampedDx = Math.max(-maxDistance, Math.min(maxDistance, dx));
             const clampedDy = Math.max(-maxDistance, Math.min(maxDistance, dy));
 
-            joystickKnob.style.transform = `translate(calc(-50 % + ${clampedDx}px), calc(-50 % + ${clampedDy}px))`;
+            joystickKnob.style.transform = `translate(calc(-50% + ${clampedDx}px), calc(-50% + ${clampedDy}px))`;
 
             // Convert to movement
             const threshold = 8;
@@ -5156,16 +4376,16 @@ class ThreeJSApp {
         instructions.style.cssText = "position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:white; background:rgba(0,0,0,0.7); padding:20px; border-radius:5px; z-index:11; text-align:center;";
         if (this.isMobile) {
             instructions.innerHTML = `
-            < h3 > Gallery Controls</h3 >
+                <h3>Gallery Controls</h3>
                 <p>Swipe to look around.</p>
                 <p>Pinch to zoom in/out.</p>
                 <p>Tap an artwork to focus, tap again to reset.</p>
                 <p>Double-tap artwork to open image slider.</p>
                 <button id="closeInstructions" style="margin-top:10px; padding:5px 10px; background:#1e90ff; border:none; color:white; border-radius:5px; cursor:pointer;">Close</button>
-        `;
+            `;
         } else {
             instructions.innerHTML = `
-            < h3 > Gallery Controls</h3 >
+                <h3>Gallery Controls</h3>
                 <p>Click to lock pointer and start exploring.</p>
                 <p>Use W, A, S, D to move.</p>
                 <p>Use Q and E to rotate left/right.</p>
@@ -5173,7 +4393,7 @@ class ThreeJSApp {
                 <p>Double-click an artwork to focus and open slider.</p>
                 <p>Hold Control key to cycle through images in slider.</p>
                 <button id="closeInstructions" style="margin-top:10px; padding:5px 10px; background:#1e90ff; border:none; color:white; border-radius:5px; cursor:pointer;">Close</button>
-        `;
+            `;
         }
         document.body.appendChild(instructions);
 
@@ -5183,5 +4403,5 @@ class ThreeJSApp {
     }
 }
 
-const app = new ThreeJSApp();
+window.app = new ThreeJSApp(); // ✓ Make globally accessible
 app.init();

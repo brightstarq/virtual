@@ -52,10 +52,17 @@ class ThreeJSApp {
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.Fog(0x1a1a1a, 10, 50); // ✓ ADDED: Atmospheric fog
     
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    
- this.roomCameraSettings = [
-    { position: new THREE.Vector3(0, 1.6, 28), lookAt: new THREE.Vector3(0, 1.6, 0) }
+this.camera = new THREE.PerspectiveCamera(
+    70, // Wider FOV for grandeur
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+);    
+   this.roomCameraSettings = [
+    { 
+        position: new THREE.Vector3(0, 1.7, 25),  // Grand entrance view
+        lookAt: new THREE.Vector3(0, 3, 0)  // Looking toward center chandelier
+    }
 ];
 
     const initialSettings = this.roomCameraSettings[0];
@@ -68,13 +75,15 @@ class ThreeJSApp {
         preserveDrawingBuffer: true,
         powerPreference: "high-performance" // ✓ ADDED
     });
-    this.renderer.setClearColor(0x1a1a1a, 1); // ✓ FIXED: Darker background
-    this.renderer.shadowMap.enabled = false;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // ✓ FIXED: Cap pixel ratio
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping; // ✓ ADDED: Better tone mapping
-    this.renderer.toneMappingExposure = 1.0;
+    this.renderer.setClearColor(0xf5e6d3, 1); // Warm cream background
+this.renderer.shadowMap.enabled = true;
+this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+this.renderer.setSize(window.innerWidth, window.innerHeight);
+this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+this.renderer.toneMappingExposure = 1.3; // Brighter for gilded surfaces
+this.renderer.outputEncoding = THREE.sRGBEncoding;
+this.renderer.physicallyCorrectLights = true;
     
     document.body.appendChild(this.renderer.domElement);
         this.isSliderActive = false;
@@ -128,6 +137,7 @@ class ThreeJSApp {
         this.clickDelay = 300;
         this.moveSpeed = 0.15;
         this.rotationSpeed = 0.05;
+        
         this.keys = { w: false, a: false, s: false, d: false, q: false, e: false };
 
         this.time = 0;
@@ -220,7 +230,7 @@ this.setupMobileControls();
         ];
     }
 
-    showPreloader() {
+   showPreloader() {
     const preloader = document.createElement('div');
     preloader.id = 'preloader';
     preloader.style.cssText = `
@@ -229,28 +239,35 @@ this.setupMobileControls();
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #8b2635 0%, #d4af37 50%, #1e3a5f 100%);
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         z-index: 10000;
-        font-family: Arial, sans-serif;
+        font-family: 'Palatino', 'Times New Roman', serif;
     `;
     
     preloader.innerHTML = `
         <div style="text-align: center;">
             <div style="
-                width: 80px;
-                height: 80px;
-                border: 5px solid rgba(255,255,255,0.3);
-                border-top: 5px solid white;
+                width: 100px;
+                height: 100px;
+                border: 4px solid rgba(212,175,55,0.3);
+                border-top: 4px solid #d4af37;
                 border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 30px;
+                animation: spin 1.5s linear infinite;
+                margin: 0 auto 40px;
+                box-shadow: 0 0 30px rgba(212,175,55,0.5);
             "></div>
-            <h2 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">Loading Gallery...</h2>
-            <p style="color: rgba(255,255,255,0.9); margin: 15px 0 0 0; font-size: 16px;">Preparing your virtual exhibition</p>
+            <h2 style="color: #d4af37; margin: 0; font-size: 32px; font-weight: 400; 
+                       letter-spacing: 4px; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">
+                ENTERING THE PALACE
+            </h2>
+            <p style="color: rgba(255,255,255,0.9); margin: 20px 0 0 0; font-size: 16px; 
+                      font-style: italic; letter-spacing: 2px;">
+                Preparing your royal exhibition
+            </p>
         </div>
         <style>
             @keyframes spin {
@@ -274,1540 +291,764 @@ this.setupMobileControls();
             }, 500);
         }
     }
-  addLighting() {
-    // ✓ FIXED: Reduced ambient for more dramatic lighting
-    this.scene.fog = new THREE.FogExp2(0x1a1a1a, 0.008); // Dark fog
-    
-    // Reduced ambient (dramatic shadows)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+ addLighting() {
+    // Warm ambient for candlelit atmosphere
+    const ambientLight = new THREE.AmbientLight(0xfff5e6, 0.3);
     this.scene.add(ambientLight);
-   
 
+    // Primary dramatic key light (simulating sunlight through windows)
+    const keyLight = new THREE.DirectionalLight(0xffe6cc, 1.2);
+    keyLight.position.set(25, 30, 20);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 4096;
+    keyLight.shadow.mapSize.height = 4096;
+    keyLight.shadow.camera.near = 1;
+    keyLight.shadow.camera.far = 80;
+    keyLight.shadow.camera.left = -35;
+    keyLight.shadow.camera.right = 35;
+    keyLight.shadow.camera.top = 35;
+    keyLight.shadow.camera.bottom = -35;
+    keyLight.shadow.bias = -0.0002;
+    keyLight.shadow.radius = 3;
+    this.scene.add(keyLight);
     
-    // ✓ FIXED: Main directional light (softer, more realistic)
-    const mainLight = new THREE.DirectionalLight(0xffffff, 0.8); // was 1.2
-    mainLight.position.set(10, 20, 10);
-    mainLight.castShadow = true;
-    mainLight.shadow.mapSize.width = 2048;
-    mainLight.shadow.mapSize.height = 2048;
-    mainLight.shadow.camera.near = 0.5;
-    mainLight.shadow.camera.far = 50;
-    mainLight.shadow.camera.left = -25;
-    mainLight.shadow.camera.right = 25;
-    mainLight.shadow.camera.top = 25;
-    mainLight.shadow.camera.bottom = -25;
-    mainLight.shadow.bias = -0.0005; // ✓ ADDED
-    this.scene.add(mainLight);
-    
-    // ✓ FIXED: Fill light (warmer tone)
-    const fillLight = new THREE.DirectionalLight(0xfff5e6, 0.3); // was 0xffffff, 0.4
-    fillLight.position.set(-15, 15, -10);
+    // Warm fill light (simulating chandelier glow)
+    const fillLight = new THREE.DirectionalLight(0xffddaa, 0.6);
+    fillLight.position.set(-20, 25, -15);
     this.scene.add(fillLight);
+    
+    // Golden rim light for drama
+    const rimLight = new THREE.DirectionalLight(0xffd700, 0.4);
+    rimLight.position.set(0, 20, -30);
+    this.scene.add(rimLight);
+    
+    // Hemisphere light for rich color palette
+    const hemiLight = new THREE.HemisphereLight(0xffe6cc, 0xd4a574, 0.5);
+    this.scene.add(hemiLight);
+    
+    console.log("💡 Baroque candlelit atmosphere established");
 }
-
 
 
 createGallery() {
     const room1 = new THREE.Group();
+    const roomWidth = 60;
+    const roomDepth = 60;
+    const roomHeight = 14; // Soaring heights for grandeur
     
     // ========================================
-    // MATERIALS LIBRARY - RAW INDUSTRIAL
+    // BAROQUE MATERIAL PALETTE: OPULENCE
     // ========================================
     
-    // 1. Raw board-formed concrete
-    const rawConcreteMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4a4a4a,
-        roughness: 0.9,
+    // Multi-colored marble floor (geometric patterns)
+    const marbleWhiteMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.15,
+        metalness: 0.4,
+        envMapIntensity: 1.5
+    });
+    
+    const marbleBlackMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a2a2a,
+        roughness: 0.12,
+        metalness: 0.45,
+        envMapIntensity: 1.6
+    });
+    
+    const marbleGreenMaterial = new THREE.MeshStandardMaterial({
+        color: 0x1a4d2e,
+        roughness: 0.18,
+        metalness: 0.35,
+        envMapIntensity: 1.4
+    });
+    
+    const marbleRedMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8b2635,
+        roughness: 0.16,
+        metalness: 0.38,
+        envMapIntensity: 1.45
+    });
+    
+    // GOLD - Gilded everything
+    const goldMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffd700,
+        roughness: 0.25,
+        metalness: 0.95,
+        envMapIntensity: 2.0,
+        emissive: 0xaa8800,
+        emissiveIntensity: 0.2
+    });
+    
+    // Aged gold (darker, richer)
+    const agedGoldMaterial = new THREE.MeshStandardMaterial({
+        color: 0xd4af37,
+        roughness: 0.35,
+        metalness: 0.88,
+        envMapIntensity: 1.8,
+        emissive: 0x8b7500,
+        emissiveIntensity: 0.15
+    });
+    
+    // Rich painted walls (Pompeian red, royal blue options)
+    const wallRedMaterial = new THREE.MeshStandardMaterial({
+        color: 0x9b2d30,
+        roughness: 0.85,
         metalness: 0.05,
+        envMapIntensity: 0.4
+    });
+    
+    const wallBlueMaterial = new THREE.MeshStandardMaterial({
+        color: 0x1e3a5f,
+        roughness: 0.82,
+        metalness: 0.06,
+        envMapIntensity: 0.45
+    });
+    
+    const wallCreamMaterial = new THREE.MeshStandardMaterial({
+        color: 0xf5e6d3,
+        roughness: 0.88,
+        metalness: 0.02,
         envMapIntensity: 0.3
     });
     
-    // Generate concrete texture
-    const concreteTexture = this.generateBoardFormedConcrete(2048, 2048);
-    const concreteTextureObj = new THREE.Texture(concreteTexture);
-    concreteTextureObj.needsUpdate = true;
-    concreteTextureObj.wrapS = concreteTextureObj.wrapT = THREE.RepeatWrapping;
-    concreteTextureObj.repeat.set(4, 4);
-    rawConcreteMaterial.map = concreteTextureObj;
-    
-    // 2. Acid-stained polished concrete floor
-    const polishedFloorMaterial = new THREE.MeshStandardMaterial({
-        color: 0x3d2b1f,
-        roughness: 0.3,
-        metalness: 0.2,
-        envMapIntensity: 0.8
+    // Frescoed ceiling material
+    const frescoMaterial = new THREE.MeshStandardMaterial({
+        color: 0xe8d4b8,
+        roughness: 0.9,
+        metalness: 0.0,
+        envMapIntensity: 0.25
     });
     
-    // 3. Weathered rusted steel
-    const rustedSteelMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8b4513,
-        roughness: 0.85,
-        metalness: 0.3,
-        envMapIntensity: 0.5
-    });
-    
-    // 4. Chrome pipes and railings
-    const chromeMaterial = new THREE.MeshStandardMaterial({
-        color: 0xc0c0c0,
-        roughness: 0.1,
-        metalness: 1.0,
-        envMapIntensity: 2.0
-    });
-    
-    // 5. Industrial steel grating (semi-transparent)
-    const gratingMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2a2a2a,
-        roughness: 0.8,
-        metalness: 0.9,
-        transparent: true,
-        opacity: 0.7,
-        side: THREE.DoubleSide
-    });
-    
-    // 6. Exposed steel I-beams
-    const iBeamMaterial = new THREE.MeshStandardMaterial({
-        color: 0x5a5a5a,
-        roughness: 0.7,
-        metalness: 0.8
-    });
-    
- 
-    
-    // 8. Graffiti/street art surface
-    const graffitiMaterial = new THREE.MeshStandardMaterial({
-        color: 0x888888,
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    
-    // 9. Frosted industrial glass
-    const industrialGlassMaterial = new THREE.MeshPhysicalMaterial({
+    // Crystal for chandeliers
+    const crystalMaterial = new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
-        transmission: 0.7,
-        thickness: 0.5,
-        roughness: 0.4,
+        roughness: 0.0,
+        metalness: 0.0,
         transparent: true,
-        opacity: 0.6
+        opacity: 0.95,
+        transmission: 0.98,
+        thickness: 0.5,
+        envMapIntensity: 2.5,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.0,
+        ior: 2.4
+    });
+    
+    // Rich velvet for seating
+    const velvetRedMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8b0000,
+        roughness: 0.95,
+        metalness: 0.0,
+        envMapIntensity: 0.2
+    });
+    
+    // Ornate wood carving
+    const carvedWoodMaterial = new THREE.MeshStandardMaterial({
+        color: 0x5d4037,
+        roughness: 0.7,
+        metalness: 0.0,
+        envMapIntensity: 0.4
     });
     
     // ========================================
-    // MASSIVE CONCRETE SHELL STRUCTURE
+    // GEOMETRIC PARQUET FLOOR (VERSAILLES STYLE)
     // ========================================
     
-    const warehouseWidth = 80;
-    const warehouseDepth = 60;
-    const warehouseHeight = 25;
-    
-    // Main polished concrete floor with acid-stain pattern
+    // Main floor base (white marble)
     const mainFloor = new THREE.Mesh(
-        new THREE.PlaneGeometry(warehouseWidth, warehouseDepth),
-        polishedFloorMaterial
+        new THREE.PlaneGeometry(roomWidth, roomDepth),
+        marbleWhiteMaterial
     );
     mainFloor.rotation.x = -Math.PI / 2;
     mainFloor.receiveShadow = true;
     room1.add(mainFloor);
     
-    // Crack lines and expansion joints
-    const crackPositions = [-20, -10, 0, 10, 20];
-    crackPositions.forEach(pos => {
-        // Longitudinal cracks
-        const crackX = new THREE.Mesh(
-            new THREE.BoxGeometry(warehouseWidth * 0.95, 0.05, 0.1),
-            new THREE.MeshStandardMaterial({
-                color: 0x1a1a1a,
-                roughness: 1.0
-            })
-        );
-        crackX.position.set(0, 0.01, pos);
-        crackX.receiveShadow = true;
-        room1.add(crackX);
+    // Create elaborate geometric pattern
+    const createParquetPattern = () => {
+        const squareSize = 4;
+        const numSquares = Math.floor(roomWidth / squareSize);
         
-        // Lateral cracks
-        const crackZ = new THREE.Mesh(
-            new THREE.BoxGeometry(0.1, 0.05, warehouseDepth * 0.95),
-            new THREE.MeshStandardMaterial({
-                color: 0x1a1a1a,
-                roughness: 1.0
-            })
-        );
-        crackZ.position.set(pos, 0.01, 0);
-        crackZ.receiveShadow = true;
-        room1.add(crackZ);
-    });
+        for (let x = 0; x < numSquares; x++) {
+            for (let z = 0; z < numSquares; z++) {
+                const posX = (x - numSquares / 2) * squareSize + squareSize / 2;
+                const posZ = (z - numSquares / 2) * squareSize + squareSize / 2;
+                
+                // Checkerboard with variations
+                const isEven = (x + z) % 2 === 0;
+                const material = isEven ? marbleBlackMaterial : marbleWhiteMaterial;
+                
+                const square = new THREE.Mesh(
+                    new THREE.PlaneGeometry(squareSize * 0.9, squareSize * 0.9),
+                    material
+                );
+                square.rotation.x = -Math.PI / 2;
+                square.position.set(posX, 0.01, posZ);
+                square.receiveShadow = true;
+                room1.add(square);
+                
+                // Diagonal accent squares
+                if ((x + z) % 4 === 0) {
+                    const accent = new THREE.Mesh(
+                        new THREE.PlaneGeometry(squareSize * 0.4, squareSize * 0.4),
+                        marbleGreenMaterial
+                    );
+                    accent.rotation.x = -Math.PI / 2;
+                    accent.rotation.z = Math.PI / 4;
+                    accent.position.set(posX, 0.02, posZ);
+                    room1.add(accent);
+                }
+            }
+        }
+    };
+    createParquetPattern();
     
-    // Random oil stains and water damage
-    for (let i = 0; i < 15; i++) {
-        const stain = new THREE.Mesh(
-            new THREE.CircleGeometry(Math.random() * 2 + 0.5, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0x2a2a2a,
-                roughness: 0.95,
-                transparent: true,
-                opacity: 0.6
-            })
-        );
-        stain.position.set(
-            (Math.random() - 0.5) * warehouseWidth * 0.9,
-            0.02,
-            (Math.random() - 0.5) * warehouseDepth * 0.9
-        );
-        stain.rotation.x = -Math.PI / 2;
-        room1.add(stain);
-    }
+    // Grand central medallion (circular)
+    const centerMedallion = new THREE.Mesh(
+        new THREE.CylinderGeometry(6, 6, 0.1, 64),
+        new THREE.MeshStandardMaterial({
+            color: 0xdaa520,
+            roughness: 0.2,
+            metalness: 0.9,
+            envMapIntensity: 2.2,
+            emissive: 0xb8860b,
+            emissiveIntensity: 0.3
+        })
+    );
+    centerMedallion.rotation.x = -Math.PI / 2;
+    centerMedallion.position.y = 0.05;
+    room1.add(centerMedallion);
+    
+    // Ornate border around medallion
+    const medallionBorder = new THREE.Mesh(
+        new THREE.TorusGeometry(6.5, 0.3, 16, 64),
+        goldMaterial
+    );
+    medallionBorder.rotation.x = Math.PI / 2;
+    medallionBorder.position.y = 0.05;
+    room1.add(medallionBorder);
     
     // ========================================
-    // MASSIVE CONCRETE COLUMNS (2m diameter)
+    // PAINTED WALLS WITH GILDED MOLDINGS
+    // ========================================
+    
+    // Main walls (alternating colors for richness)
+    const wallConfigs = [
+        { pos: [0, roomHeight / 2, -roomWidth / 2], rot: 0, material: wallRedMaterial },
+        { pos: [-roomWidth / 2, roomHeight / 2, 0], rot: Math.PI / 2, material: wallBlueMaterial },
+        { pos: [roomWidth / 2, roomHeight / 2, 0], rot: -Math.PI / 2, material: wallRedMaterial },
+        { pos: [0, roomHeight / 2, roomWidth / 2], rot: Math.PI, material: wallCreamMaterial }
+    ];
+    
+    wallConfigs.forEach(config => {
+        const wall = new THREE.Mesh(
+            new THREE.BoxGeometry(roomWidth, roomHeight, 0.5),
+            config.material
+        );
+        wall.position.set(...config.pos);
+        wall.rotation.y = config.rot;
+        wall.receiveShadow = true;
+        room1.add(wall);
+        
+        // Gilded base molding (floor level)
+        const baseMolding = new THREE.Mesh(
+            new THREE.BoxGeometry(roomWidth * 0.95, 0.6, 0.3),
+            goldMaterial
+        );
+        baseMolding.position.set(config.pos[0], 0.3, config.pos[2]);
+        baseMolding.rotation.y = config.rot;
+        baseMolding.castShadow = true;
+        room1.add(baseMolding);
+        
+        // Gilded crown molding (ceiling level)
+        const crownMolding = new THREE.Mesh(
+            new THREE.BoxGeometry(roomWidth * 0.95, 0.8, 0.4),
+            agedGoldMaterial
+        );
+        crownMolding.position.set(config.pos[0], roomHeight - 0.4, config.pos[2]);
+        crownMolding.rotation.y = config.rot;
+        crownMolding.castShadow = true;
+        room1.add(crownMolding);
+        
+        // Ornate pilasters (vertical decorative columns) every 8 units
+        for (let offset = -roomWidth / 2 + 8; offset < roomWidth / 2; offset += 8) {
+            const pilasterPos = config.rot === 0 || config.rot === Math.PI
+                ? [offset, roomHeight / 2, config.pos[2]]
+                : [config.pos[0], roomHeight / 2, offset];
+            
+            const pilaster = new THREE.Mesh(
+                new THREE.BoxGeometry(0.6, roomHeight * 0.85, 0.4),
+                goldMaterial
+            );
+            pilaster.position.set(...pilasterPos);
+            pilaster.rotation.y = config.rot;
+            pilaster.castShadow = true;
+            room1.add(pilaster);
+            
+            // Pilaster capital (ornate top)
+            const capital = new THREE.Mesh(
+                new THREE.BoxGeometry(0.9, 0.8, 0.7),
+                agedGoldMaterial
+            );
+            capital.position.set(pilasterPos[0], roomHeight - 1, pilasterPos[2]);
+            capital.rotation.y = config.rot;
+            capital.castShadow = true;
+            room1.add(capital);
+            
+            // Pilaster base
+            const base = new THREE.Mesh(
+                new THREE.BoxGeometry(0.9, 0.6, 0.7),
+                goldMaterial
+            );
+            base.position.set(pilasterPos[0], 0.8, pilasterPos[2]);
+            base.rotation.y = config.rot;
+            room1.add(base);
+        }
+    });
+    
+    // ========================================
+    // FRESCOED CEILING (TROMPE-L'OEIL HEAVEN)
+    // ========================================
+    
+    // Main ceiling with painted fresco effect
+    const ceilingCanvas = document.createElement('canvas');
+    ceilingCanvas.width = 2048;
+    ceilingCanvas.height = 2048;
+    const ctx = ceilingCanvas.getContext('2d');
+    
+    // Sky blue base
+    const gradient = ctx.createRadialGradient(1024, 1024, 0, 1024, 1024, 1400);
+    gradient.addColorStop(0, '#e8f4f8');
+    gradient.addColorStop(0.5, '#b8d4e8');
+    gradient.addColorStop(1, '#7ba8c8');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 2048, 2048);
+    
+    // Painted clouds
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    for (let i = 0; i < 30; i++) {
+        const x = Math.random() * 2048;
+        const y = Math.random() * 2048;
+        const radius = Math.random() * 150 + 100;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Golden sun/divine light at center
+    const sunGradient = ctx.createRadialGradient(1024, 1024, 0, 1024, 1024, 300);
+    sunGradient.addColorStop(0, 'rgba(255, 235, 180, 0.9)');
+    sunGradient.addColorStop(0.5, 'rgba(255, 215, 120, 0.5)');
+    sunGradient.addColorStop(1, 'rgba(255, 200, 100, 0)');
+    ctx.fillStyle = sunGradient;
+    ctx.fillRect(0, 0, 2048, 2048);
+    
+    const ceilingTexture = new THREE.CanvasTexture(ceilingCanvas);
+    ceilingTexture.needsUpdate = true;
+    
+    const frescoCeiling = new THREE.Mesh(
+        new THREE.PlaneGeometry(roomWidth * 0.9, roomDepth * 0.9),
+        new THREE.MeshStandardMaterial({
+            map: ceilingTexture,
+            roughness: 0.9,
+            metalness: 0.0,
+            envMapIntensity: 0.3
+        })
+    );
+    frescoCeiling.rotation.x = Math.PI / 2;
+    frescoCeiling.position.y = roomHeight - 0.5;
+    frescoCeiling.receiveShadow = true;
+    room1.add(frescoCeiling);
+    
+    // Gilded ceiling border
+    const ceilingBorderPositions = [
+        { x: 0, z: -roomDepth / 2 * 0.9, w: roomWidth * 0.9, d: 0.8 },
+        { x: 0, z: roomDepth / 2 * 0.9, w: roomWidth * 0.9, d: 0.8 },
+        { x: -roomWidth / 2 * 0.9, z: 0, w: 0.8, d: roomDepth * 0.9 },
+        { x: roomWidth / 2 * 0.9, z: 0, w: 0.8, d: roomDepth * 0.9 }
+    ];
+    
+    ceilingBorderPositions.forEach(border => {
+        const frame = new THREE.Mesh(
+            new THREE.BoxGeometry(border.w, 0.5, border.d),
+            goldMaterial
+        );
+        frame.position.set(border.x, roomHeight - 0.8, border.z);
+        frame.castShadow = true;
+        room1.add(frame);
+    });
+    
+    // Corner rosettes (ornamental ceiling decorations)
+    const cornerPositions = [
+        { x: -roomWidth / 2 * 0.85, z: -roomDepth / 2 * 0.85 },
+        { x: roomWidth / 2 * 0.85, z: -roomDepth / 2 * 0.85 },
+        { x: -roomWidth / 2 * 0.85, z: roomDepth / 2 * 0.85 },
+        { x: roomWidth / 2 * 0.85, z: roomDepth / 2 * 0.85 }
+    ];
+    
+    cornerPositions.forEach(pos => {
+        const rosette = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.8, 0.8, 0.3, 32),
+            agedGoldMaterial
+        );
+        rosette.rotation.x = Math.PI / 2;
+        rosette.position.set(pos.x, roomHeight - 0.8, pos.z);
+        rosette.castShadow = true;
+        room1.add(rosette);
+    });
+    
+    // ========================================
+    // CRYSTAL CHANDELIERS (MULTIPLE)
+    // ========================================
+    
+    
+    // ========================================
+    // ORNATE CORINTHIAN COLUMNS
     // ========================================
     
     const columnPositions = [
-        { x: -30, z: -20 }, { x: -30, z: 0 }, { x: -30, z: 20 },
-        { x: 0, z: -20 }, { x: 0, z: 20 },
-        { x: 30, z: -20 }, { x: 30, z: 0 }, { x: 30, z: 20 }
+        { x: -20, z: -20 }, { x: 0, z: -20 }, { x: 20, z: -20 },
+        { x: -20, z: 20 }, { x: 0, z: 20 }, { x: 20, z: 20 }
     ];
     
     columnPositions.forEach(pos => {
+        // Column shaft (fluted)
         const column = new THREE.Mesh(
-            new THREE.CylinderGeometry(1.0, 1.2, warehouseHeight, 16),
-            rawConcreteMaterial
+            new THREE.CylinderGeometry(0.8, 0.9, roomHeight * 0.75, 24),
+            marbleWhiteMaterial
         );
-        column.position.set(pos.x, warehouseHeight / 2, pos.z);
+        column.position.set(pos.x, roomHeight * 0.375, pos.z);
         column.castShadow = true;
         column.receiveShadow = true;
         room1.add(column);
         
-        // Rebar exposed at top (weathering damage)
-        for (let i = 0; i < 6; i++) {
-            const angle = (i / 6) * Math.PI * 2;
-            const rebar = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.03, 0.03, 1.5, 8),
-                rustedSteelMaterial
+        // Gilded Corinthian capital
+        const capital = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.3, 0.8, 1.2, 24),
+            goldMaterial
+        );
+        capital.position.set(pos.x, roomHeight * 0.75 + 0.6, pos.z);
+        capital.castShadow = true;
+        room1.add(capital);
+        
+        // Acanthus leaves (ornate decoration on capital)
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const leaf = new THREE.Mesh(
+                new THREE.ConeGeometry(0.2, 0.6, 8),
+                agedGoldMaterial
             );
-            rebar.position.set(
-                pos.x + Math.cos(angle) * 0.9,
-                warehouseHeight - 0.75,
-                pos.z + Math.sin(angle) * 0.9
+            leaf.position.set(
+                pos.x + Math.cos(angle) * 1.1,
+                roomHeight * 0.75 + 0.4,
+                pos.z + Math.sin(angle) * 1.1
             );
-            rebar.castShadow = true;
-            room1.add(rebar);
+            leaf.rotation.z = Math.PI / 4;
+            leaf.rotation.y = angle;
+            room1.add(leaf);
         }
         
-        // Water damage/rust stains running down
-        const stain = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.5, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x8b4513,
-                transparent: true,
-                opacity: 0.4,
-                side: THREE.DoubleSide
-            })
+        // Base with gilded details
+        const base = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.0, 1.2, 0.8, 24),
+            goldMaterial
         );
-        stain.position.set(pos.x, warehouseHeight / 2, pos.z + 1.0);
-        room1.add(stain);
+        base.position.set(pos.x, 0.4, pos.z);
+        room1.add(base);
     });
     
     // ========================================
-    // EXPOSED STEEL I-BEAMS & TRUSSES
+    // MIRRORED WALL SECTIONS (Hall of Mirrors)
     // ========================================
     
-    // Main overhead beams (spanning width)
-    for (let z = -25; z <= 25; z += 10) {
-        const beam = new THREE.Mesh(
-            new THREE.BoxGeometry(warehouseWidth, 0.6, 0.4),
-            iBeamMaterial
-        );
-        beam.position.set(0, warehouseHeight - 2, z);
-        beam.castShadow = true;
-        room1.add(beam);
-        
-        // Cross bracing
-        for (let x = -35; x <= 35; x += 10) {
-            const brace = new THREE.Mesh(
-                new THREE.BoxGeometry(0.2, 0.2, 12),
-                iBeamMaterial
-            );
-            brace.position.set(x, warehouseHeight - 2, z);
-            brace.rotation.x = Math.PI / 6;
-            brace.castShadow = true;
-            room1.add(brace);
-        }
-    }
+    const mirrorMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.05,
+        metalness: 0.98,
+        envMapIntensity: 2.0
+    });
     
-    // Roof trusses
-    for (let x = -30; x <= 30; x += 15) {
-        // Top chord
-        const topChord = new THREE.Mesh(
-            new THREE.BoxGeometry(0.3, 0.3, warehouseDepth),
-            iBeamMaterial
-        );
-        topChord.position.set(x, warehouseHeight - 1, 0);
-        topChord.castShadow = true;
-        room1.add(topChord);
-        
-        // Diagonal web members
-        for (let z = -25; z < 25; z += 10) {
-            const web = new THREE.Mesh(
-                new THREE.BoxGeometry(0.15, 0.15, 12),
-                iBeamMaterial
-            );
-            web.position.set(x, warehouseHeight - 2, z + 5);
-            web.rotation.x = Math.PI / 4;
-            room1.add(web);
-        }
-    }
-    
-    // ========================================
-    // STEEL GRATING CATWALKS (Multi-Level)
-    // ========================================
-    
-    this.catwalks = [];
-    
-    // Mezzanine Level 1 (8m high)
-    const mezzanine1Paths = [
-        { start: [-35, 8, -25], end: [-35, 8, 25] },
-        { start: [35, 8, -25], end: [35, 8, 25] },
-        { start: [-35, 8, -25], end: [35, 8, -25] },
-        { start: [-35, 8, 25], end: [35, 8, 25] }
+    const mirrorPositions = [
+        { x: 0, y: roomHeight / 2, z: -roomWidth / 2 + 0.3, w: 15, h: 8 },
+        { x: 0, y: roomHeight / 2, z: roomWidth / 2 - 0.3, w: 15, h: 8 }
     ];
     
-    mezzanine1Paths.forEach(path => {
-        const length = Math.sqrt(
-            Math.pow(path.end[0] - path.start[0], 2) +
-            Math.pow(path.end[2] - path.start[2], 2)
+    mirrorPositions.forEach(mirror => {
+        const mirrorPanel = new THREE.Mesh(
+            new THREE.PlaneGeometry(mirror.w, mirror.h),
+            mirrorMaterial
         );
+        mirrorPanel.position.set(mirror.x, mirror.y, mirror.z);
+        if (mirror.z > 0) mirrorPanel.rotation.y = Math.PI;
+        mirrorPanel.receiveShadow = true;
+        room1.add(mirrorPanel);
         
-        const catwalk = new THREE.Mesh(
-            new THREE.BoxGeometry(2.0, 0.1, length),
-            gratingMaterial
-        );
+        // Gilded frame around mirror
+        const frameThickness = 0.3;
+        const framePositions = [
+            { w: mirror.w + frameThickness * 2, h: frameThickness, y: mirror.h / 2 },
+            { w: mirror.w + frameThickness * 2, h: frameThickness, y: -mirror.h / 2 },
+            { w: frameThickness, h: mirror.h, x: mirror.w / 2 },
+            { w: frameThickness, h: mirror.h, x: -mirror.w / 2 }
+        ];
         
-        const midX = (path.start[0] + path.end[0]) / 2;
-        const midZ = (path.start[2] + path.end[2]) / 2;
-        
-        catwalk.position.set(midX, 8, midZ);
-        
-        if (path.start[0] !== path.end[0]) {
-            catwalk.rotation.y = 0;
-        } else {
-            catwalk.rotation.y = Math.PI / 2;
-        }
-        
-        catwalk.receiveShadow = true;
-        catwalk.castShadow = true;
-        room1.add(catwalk);
-        this.catwalks.push(catwalk);
-        
-        // Safety railings (chain-link)
-        const railing1 = new THREE.Mesh(
-            new THREE.BoxGeometry(0.05, 1.2, length),
-            chromeMaterial
-        );
-        railing1.position.set(midX + (catwalk.rotation.y === 0 ? 0 : 1.0), 8.6, midZ + (catwalk.rotation.y === 0 ? 1.0 : 0));
-        room1.add(railing1);
-        
-        const railing2 = new THREE.Mesh(
-            new THREE.BoxGeometry(0.05, 1.2, length),
-            chromeMaterial
-        );
-        railing2.position.set(midX - (catwalk.rotation.y === 0 ? 0 : 1.0), 8.6, midZ - (catwalk.rotation.y === 0 ? 1.0 : 0));
-        room1.add(railing2);
-    });
-    
-    // Mezzanine Level 2 (15m high)
-    const mezzanine2Positions = [
-        { x: -25, z: -20, size: 8 },
-        { x: 25, z: -20, size: 8 },
-        { x: -25, z: 20, size: 8 },
-        { x: 25, z: 20, size: 8 }
-    ];
-    
-    mezzanine2Positions.forEach(pos => {
-        const platform = new THREE.Mesh(
-            new THREE.BoxGeometry(pos.size, 0.3, pos.size),
-            rawConcreteMaterial
-        );
-        platform.position.set(pos.x, 15, pos.z);
-        platform.castShadow = true;
-        platform.receiveShadow = true;
-        room1.add(platform);
-        
-        // Cantilevered edge beam
-        const edgeBeam = new THREE.Mesh(
-            new THREE.BoxGeometry(pos.size + 0.4, 0.5, 0.3),
-            iBeamMaterial
-        );
-        edgeBeam.position.set(pos.x, 14.85, pos.z + pos.size / 2);
-        edgeBeam.castShadow = true;
-        room1.add(edgeBeam);
-        
-        // Precarious safety cage (chain-link fencing)
-        for (let side = 0; side < 4; side++) {
-            const fence = new THREE.Mesh(
-                new THREE.PlaneGeometry(pos.size, 2.0),
-                new THREE.MeshStandardMaterial({
-                    color: 0x5a5a5a,
-                    transparent: true,
-                    opacity: 0.5,
-                    side: THREE.DoubleSide
-                })
+        framePositions.forEach(frame => {
+            const framePiece = new THREE.Mesh(
+                new THREE.BoxGeometry(frame.w || frameThickness, frame.h || frameThickness, 0.2),
+                goldMaterial
             );
-            
-            const angle = (side * Math.PI) / 2;
-            fence.position.set(
-                pos.x + Math.cos(angle) * (pos.size / 2),
-                16,
-                pos.z + Math.sin(angle) * (pos.size / 2)
+            framePiece.position.set(
+                mirror.x + (frame.x || 0),
+                mirror.y + (frame.y || 0),
+                mirror.z + (mirror.z > 0 ? 0.15 : -0.15)
             );
-            fence.rotation.y = angle;
-            room1.add(fence);
-        }
-    });
-    
-    // Industrial ladder access to mezzanines
-    const ladderPositions = [
-        { x: -35, z: -25 },
-        { x: 35, z: 25 }
-    ];
-    
-    ladderPositions.forEach(pos => {
-        for (let y = 0; y < 8; y += 0.4) {
-            const rung = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8),
-                chromeMaterial
-            );
-            rung.position.set(pos.x, y, pos.z);
-            rung.rotation.z = Math.PI / 2;
-            rung.castShadow = true;
-            room1.add(rung);
-        }
-        
-        // Side rails
-        const rail1 = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.06, 0.06, 8, 8),
-            chromeMaterial
-        );
-        rail1.position.set(pos.x - 0.4, 4, pos.z);
-        rail1.castShadow = true;
-        room1.add(rail1);
-        
-        const rail2 = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.06, 0.06, 8, 8),
-            chromeMaterial
-        );
-        rail2.position.set(pos.x + 0.4, 4, pos.z);
-        rail2.castShadow = true;
-        room1.add(rail2);
-    });
-    
-    // ========================================
-    // MASSIVE SKYLIGHTS (Grid Pattern)
-    // ========================================
-    
-    const skylightPositions = [
-        { x: -25, z: -15 }, { x: 0, z: -15 }, { x: 25, z: -15 },
-        { x: -25, z: 0 }, { x: 0, z: 0 }, { x: 25, z: 0 },
-        { x: -25, z: 15 }, { x: 0, z: 15 }, { x: 25, z: 15 }
-    ];
-    
-    skylightPositions.forEach((pos, index) => {
-        // Frosted industrial glass panel
-        const skylight = new THREE.Mesh(
-            new THREE.BoxGeometry(12, 0.2, 8),
-            industrialGlassMaterial
-        );
-        skylight.position.set(pos.x, warehouseHeight - 0.1, pos.z);
-        skylight.receiveShadow = true;
-        room1.add(skylight);
-        
-        // Some skylights are "broken" (missing glass)
-        if (index === 2 || index === 7) {
-            skylight.visible = false;
-            
-            // Broken glass shards on floor below
-            for (let i = 0; i < 8; i++) {
-                const shard = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.3 + Math.random() * 0.5, 0.5 + Math.random() * 0.8),
-                    new THREE.MeshStandardMaterial({
-                        color: 0xffffff,
-                        transparent: true,
-                        opacity: 0.7,
-                        side: THREE.DoubleSide
-                    })
-                );
-                shard.position.set(
-                    pos.x + (Math.random() - 0.5) * 10,
-                    0.05,
-                    pos.z + (Math.random() - 0.5) * 6
-                );
-                shard.rotation.x = -Math.PI / 2;
-                shard.rotation.z = Math.random() * Math.PI;
-                room1.add(shard);
-            }
-        }
-        
-        // Metal frame around skylight
-        const frame = new THREE.Mesh(
-            new THREE.BoxGeometry(12.4, 0.3, 8.4),
-            iBeamMaterial
-        );
-        frame.position.set(pos.x, warehouseHeight - 0.25, pos.z);
-        frame.castShadow = true;
-        room1.add(frame);
-        
-        // God rays coming through (especially broken ones)
-        if (index === 2 || index === 7) {
-            const godRay = new THREE.SpotLight(0xffffee, 4.0, 30, Math.PI / 6, 0.8);
-            godRay.position.set(pos.x, warehouseHeight - 0.5, pos.z);
-            godRay.target.position.set(pos.x, 0, pos.z);
-            godRay.castShadow = true;
-            godRay.shadow.mapSize.width = 1024;
-            godRay.shadow.mapSize.height = 1024;
-            room1.add(godRay);
-            room1.add(godRay.target);
-        }
-    });
-    
-    // ========================================
-    // GIANT FREIGHT ELEVATOR (INTERACTIVE)
-    // ========================================
-    
-    const elevatorGroup = new THREE.Group();
-    
-    // Elevator platform (5m × 5m)
-    const elevatorPlatform = new THREE.Mesh(
-        new THREE.BoxGeometry(5, 0.3, 5),
-        gratingMaterial
-    );
-    elevatorPlatform.position.set(0, 0.15, -28);
-    elevatorPlatform.castShadow = true;
-    elevatorPlatform.receiveShadow = true;
-    elevatorGroup.add(elevatorPlatform);
-    
-    // Safety cage (yellow industrial color)
-    const cageMaterial = new THREE.MeshStandardMaterial({
-        color: 0xffcc00,
-        roughness: 0.6,
-        metalness: 0.8
-    });
-    
-    // Cage frame
-    for (let i = 0; i < 4; i++) {
-        const angle = (i * Math.PI) / 2;
-        const post = new THREE.Mesh(
-            new THREE.BoxGeometry(0.1, 3.0, 0.1),
-            cageMaterial
-        );
-        post.position.set(
-            Math.cos(angle) * 2.4,
-            1.5,
-            -28 + Math.sin(angle) * 2.4
-        );
-        elevatorGroup.add(post);
-    }
-    
-    // Cage mesh walls
-    for (let side = 0; side < 4; side++) {
-        const wall = new THREE.Mesh(
-            new THREE.PlaneGeometry(5, 3),
-            new THREE.MeshStandardMaterial({
-                color: 0xffcc00,
-                transparent: true,
-                opacity: 0.3,
-                side: THREE.DoubleSide
-            })
-        );
-        wall.position.set(
-            side % 2 === 0 ? 0 : (side === 1 ? 2.5 : -2.5),
-            1.5,
-            side % 2 === 1 ? -28 : (side === 0 ? -30.5 : -25.5)
-        );
-        wall.rotation.y = side % 2 === 0 ? 0 : Math.PI / 2;
-        elevatorGroup.add(wall);
-    }
-    
-    // Exposed cables (4 corners)
-    for (let i = 0; i < 4; i++) {
-        const angle = (i * Math.PI) / 2 + Math.PI / 4;
-        const cable = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.04, 0.04, warehouseHeight + 5, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x3a3a3a,
-                roughness: 0.8,
-                metalness: 0.7
-            })
-        );
-        cable.position.set(
-            Math.cos(angle) * 2.3,
-            warehouseHeight / 2 + 2.5,
-            -28 + Math.sin(angle) * 2.3
-        );
-        room1.add(cable);
-    }
-    
-    // Control panel on wall
-    const controlPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 0.8, 0.1),
-        new THREE.MeshStandardMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.5,
-            metalness: 0.7
-        })
-    );
-    controlPanel.position.set(-3, 1.6, -30.5);
-    room1.add(controlPanel);
-    
-    // Elevator buttons (3 levels)
-    for (let i = 0; i < 3; i++) {
-        const button = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.08, 0.05, 16),
-            new THREE.MeshStandardMaterial({
-                color: i === 0 ? 0x00ff00 : 0xff0000,
-                emissive: i === 0 ? 0x00ff00 : 0xff0000,
-                emissiveIntensity: 0.5
-            })
-        );
-        button.position.set(-3, 1.8 - i * 0.2, -30.4);
-        button.rotation.x = Math.PI / 2;
-        button.userData.isElevatorButton = true;
-        button.userData.targetLevel = i;
-        room1.add(button);
-        
-        // Label
-        const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 128;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 80px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(['G', 'M1', 'M2'][i], 64, 90);
-        
-        const labelTexture = new THREE.CanvasTexture(canvas);
-        const label = new THREE.Mesh(
-            new THREE.PlaneGeometry(0.15, 0.15),
-            new THREE.MeshBasicMaterial({ map: labelTexture })
-        );
-        label.position.set(-2.8, 1.8 - i * 0.2, -30.4);
-        room1.add(label);
-    }
-    
-    // Warning lights (red, flashing when moving)
-    for (let i = 0; i < 2; i++) {
-        const warningLight = new THREE.Mesh(
-            new THREE.SphereGeometry(0.12, 16, 16),
-            new THREE.MeshStandardMaterial({
-                color: 0xff0000,
-                emissive: 0xff0000,
-                emissiveIntensity: 1.5
-            })
-        );
-        warningLight.position.set(i === 0 ? -2 : 2, 3.2, -28);
-        elevatorGroup.add(warningLight);
-        
-        const light = new THREE.PointLight(0xff0000, 2.0, 8);
-        light.position.copy(warningLight.position);
-        elevatorGroup.add(light);
-    }
-    
-    elevatorGroup.position.y = 0;
-    elevatorGroup.userData.currentLevel = 0;
-    elevatorGroup.userData.isElevator = true;
-    room1.add(elevatorGroup);
-    this.freightElevator = elevatorGroup;
-    
-    // ========================================
-    // ABANDONED MACHINERY AS ART
-    // ========================================
-    
-    // Large rusted turbine (3m diameter)
-    const turbineGroup = new THREE.Group();
-    
-    const turbineBody = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.5, 1.5, 2.0, 32),
-        rustedSteelMaterial
-    );
-    turbineBody.rotation.z = Math.PI / 2;
-    turbineBody.castShadow = true;
-    turbineGroup.add(turbineBody);
-    
-    // Turbine blades
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const blade = new THREE.Mesh(
-            new THREE.BoxGeometry(0.2, 1.8, 0.05),
-            rustedSteelMaterial
-        );
-        blade.position.set(Math.cos(angle) * 0.9, Math.sin(angle) * 0.9, 0);
-        blade.rotation.z = angle + Math.PI / 2;
-        blade.castShadow = true;
-        turbineGroup.add(blade);
-    }
-    
-    turbineGroup.position.set(15, 2, 18);
-    turbineGroup.userData.rotationSpeed = 0.002; // Slow ambient rotation
-    room1.add(turbineGroup);
-    this.turbine = turbineGroup;
-    
-    // Old conveyor belt system
-    const conveyorLength = 20;
-    const conveyor = new THREE.Mesh(
-        new THREE.BoxGeometry(1.5, 0.3, conveyorLength),
-        new THREE.MeshStandardMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.8
-        })
-    );
-    conveyor.position.set(-20, 1.5, 0);
-    conveyor.castShadow = true;
-    room1.add(conveyor);
-    
-    // Conveyor rollers
-    for (let z = -conveyorLength / 2; z < conveyorLength / 2; z += 1) {
-        const roller = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.15, 1.5, 12),
-            chromeMaterial
-        );
-        roller.position.set(-20, 1.65, z);
-        roller.rotation.z = Math.PI / 2;
-        roller.castShadow = true;
-        room1.add(roller);
-    }
-    
-    // Support legs
-    for (let z = -8; z <= 8; z += 8) {
-        const leg = new THREE.Mesh(
-            new THREE.BoxGeometry(0.1, 1.5, 0.1),
-            iBeamMaterial
-        );
-        leg.position.set(-20.6, 0.75, z);
-        leg.castShadow = true;
-        room1.add(leg);
-    }
-    
-    // Vintage control panels with flickering gauges
-    const controlPanelGroup = new THREE.Group();
-    
-    const panelBack = new THREE.Mesh(
-        new THREE.BoxGeometry(2.5, 2.0, 0.2),
-        new THREE.MeshStandardMaterial({
-            color: 0x3a3a3a,
-            roughness: 0.6
-        })
-    );
-    panelBack.castShadow = true;
-    controlPanelGroup.add(panelBack);
-    
-    // Analog gauges (8 circular meters)
-    for (let i = 0; i < 8; i++) {
-        const gauge = new THREE.Mesh(
-            new THREE.CircleGeometry(0.2, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0x1a1a1a,
-                emissive: 0x00ff00,
-                emissiveIntensity: 0.3
-            })
-        );
-        gauge.position.set(
-            -1.0 + (i % 4) * 0.6,
-            0.5 - Math.floor(i / 4) * 0.8,
-            0.11
-        );
-        controlPanelGroup.add(gauge);
-        
-        // Gauge needle
-        const needle = new THREE.Mesh(
-            new THREE.BoxGeometry(0.02, 0.15, 0.01),
-            new THREE.MeshBasicMaterial({ color: 0xff0000 })
-        );
-        needle.position.copy(gauge.position);
-        needle.position.z += 0.01;
-        needle.rotation.z = (Math.random() - 0.5) * Math.PI;
-        controlPanelGroup.add(needle);
-    }
-    
-    this.lightSwitches = [];
-
-const switchPositions = [
-    { x: -38, y: 1.8, z: 0 },
-    { x: 38, y: 1.8, z: 0 },
-    { x: 0, y: 1.8, z: -28 },
-    { x: 0, y: 1.8, z: 28 }
-];
-
-switchPositions.forEach((pos, index) => {
-    const switchBox = new THREE.Mesh(
-        new THREE.BoxGeometry(0.4, 0.6, 0.15),
-        new THREE.MeshStandardMaterial({
-            color: 0x3a3a3a,
-            roughness: 0.6,
-            metalness: 0.7
-        })
-    );
-    switchBox.position.set(pos.x, pos.y, pos.z);
-    switchBox.castShadow = true;
-    room1.add(switchBox);
-    
-    // Flip switches (3 per box)
-    for (let i = 0; i < 3; i++) {
-        const sw = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, 0.15, 0.03),
-            new THREE.MeshStandardMaterial({
-                color: 0xff0000,
-                roughness: 0.5,
-                metalness: 0.6
-            })
-        );
-        sw.position.set(
-            pos.x + (pos.x > 0 ? -0.08 : 0.08),
-            pos.y + 0.15 - i * 0.15,
-            pos.z + (pos.z > 0 ? -0.08 : 0.08)
-        );
-        sw.rotation.x = Math.random() > 0.5 ? 0.3 : -0.3;
-        sw.userData.isLightSwitch = true;
-        sw.userData.zoneIndex = index;
-        sw.userData.isOn = Math.random() > 0.5;
-        room1.add(sw);
-        
-        this.lightSwitches.push(sw);
-    }
-});
-    // Warning labels
-    const labelCanvas = document.createElement('canvas');
-    labelCanvas.width = 512;
-    labelCanvas.height = 256;
-    const labelCtx = labelCanvas.getContext('2d');
-    labelCtx.fillStyle = '#ffcc00';
-    labelCtx.font = 'bold 60px Arial';
-    labelCtx.fillText('DANGER', 20, 80);
-    labelCtx.fillText('HIGH VOLTAGE', 20, 160);
-    const labelTexture = new THREE.CanvasTexture(labelCanvas);
-    
-    const warning = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.5, 0.8),
-        new THREE.MeshBasicMaterial({ map: labelTexture })
-    );
-    warning.position.set(0, -0.8, 0.11);
-    controlPanelGroup.add(warning);
-    
-    controlPanelGroup.position.set(-15, 3, -28);
-    controlPanelGroup.rotation.y = Math.PI;
-    room1.add(controlPanelGroup);
-    
-    // Steam pipes with occasional "steam" vents
-    this.steamVents = [];
-    
-    const pipeConfigs = [
-        { start: [-35, 10, -25], end: [-35, 10, 25], diameter: 0.4 },
-        { start: [35, 12, -25], end: [35, 12, 25], diameter: 0.3 },
-        { start: [-30, warehouseHeight - 3, -25], end: [30, warehouseHeight - 3, -25], diameter: 0.5 }
-    ];
-    
-    pipeConfigs.forEach((config, pipeIndex) => {
-        const length = Math.sqrt(
-            Math.pow(config.end[0] - config.start[0], 2) +
-            Math.pow(config.end[1] - config.start[1], 2) +
-            Math.pow(config.end[2] - config.start[2], 2)
-        );
-        
-        const pipe = new THREE.Mesh(
-            new THREE.CylinderGeometry(config.diameter, config.diameter, length, 16),
-            chromeMaterial
-        );
-        
-        const midX = (config.start[0] + config.end[0]) / 2;
-        const midY = (config.start[1] + config.end[1]) / 2;
-        const midZ = (config.start[2] + config.end[2]) / 2;
-        
-        pipe.position.set(midX, midY, midZ);
-        
-        // Rotate pipe to align with endpoints
-        if (config.start[2] !== config.end[2]) {
-            pipe.rotation.x = Math.PI / 2;
-        } else if (config.start[0] !== config.end[0]) {
-            pipe.rotation.z = Math.PI / 2;
-        }
-        
-        pipe.castShadow = true;
-        room1.add(pipe);
-        
-        // Pipe joints every 10m
-        const numJoints = Math.floor(length / 10);
-        for (let j = 0; j < numJoints; j++) {
-            const t = (j + 1) / (numJoints + 1);
-            const joint = new THREE.Mesh(
-                new THREE.SphereGeometry(config.diameter * 1.3, 16, 16),
-                rustedSteelMaterial
-            );
-            joint.position.set(
-                config.start[0] + (config.end[0] - config.start[0]) * t,
-                config.start[1] + (config.end[1] - config.start[1]) * t,
-                config.start[2] + (config.end[2] - config.start[2]) * t
-            );
-            joint.castShadow = true;
-            room1.add(joint);
-        }
-        
-        // Steam vent (randomly positioned along pipe)
-        const ventPos = new THREE.Vector3(
-            config.start[0] + (config.end[0] - config.start[0]) * 0.3,
-            config.start[1] + (config.end[1] - config.start[1]) * 0.3,
-            config.start[2] + (config.end[2] - config.start[2]) * 0.3
-        );
-        
-        this.steamVents.push({
-            position: ventPos,
-            lastPuff: 0,
-            interval: 3000 + Math.random() * 5000
+            if (mirror.z > 0) framePiece.rotation.y = Math.PI;
+            framePiece.castShadow = true;
+            room1.add(framePiece);
         });
     });
     
     // ========================================
-    // SHIPPING CONTAINER GALLERIES (6 Total)
-    // ========================================
-  
-    // ========================================
-    // MOVABLE WALL PANELS ON TRACKS
+    // BAROQUE FURNITURE & SEATING
     // ========================================
     
-    
-    // ========================================
-    // SUSPENDED WIRE ARTWORK SYSTEM
-    // ========================================
-    
-    this.suspendedArtworks = [];
-    
-    const suspendedPositions = [
-        { x: -15, y: 6, z: -10 },
-        { x: 0, y: 5, z: -15 },
-        { x: 15, y: 7, z: -8 },
-        { x: -10, y: 8, z: 10 },
-        { x: 10, y: 6, z: 12 }
+    const benchPositions = [
+        { x: -12, z: 0, rot: Math.PI / 2 },
+        { x: 12, z: 0, rot: -Math.PI / 2 },
+        { x: 0, z: 12, rot: 0 }
     ];
     
-    suspendedPositions.forEach(pos => {
-        // Steel cable from ceiling
-        const cable = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.02, 0.02, warehouseHeight - pos.y, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x5a5a5a,
-                roughness: 0.7,
-                metalness: 0.8
-            })
+    benchPositions.forEach(bench => {
+        // Gilded carved wood base
+        const base = new THREE.Mesh(
+            new THREE.BoxGeometry(3.5, 0.8, 1.5),
+            goldMaterial
         );
-        cable.position.set(pos.x, (warehouseHeight + pos.y) / 2, pos.z);
-        cable.castShadow = true;
-        room1.add(cable);
+        base.position.set(bench.x, 0.4, bench.z);
+        base.rotation.y = bench.rot;
+        base.castShadow = true;
+        room1.add(base);
         
-        // Pulley mechanism at ceiling
-        const pulley = new THREE.Mesh(
-            new THREE.TorusGeometry(0.15, 0.05, 16, 32),
-            chromeMaterial
+        // Ornate carved legs (cabriolet style)
+        const legPositions = [-1.5, 1.5];
+        legPositions.forEach(legX => {
+            const leg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.15, 0.2, 0.8, 16),
+                agedGoldMaterial
+            );
+            leg.position.set(
+                bench.x + (bench.rot === Math.PI / 2 ? 0 : legX),
+                0.4,
+                bench.z + (bench.rot === Math.PI / 2 ? legX : 0)
+            );
+            leg.rotation.y = bench.rot;
+            leg.castShadow = true;
+            room1.add(leg);
+        });
+        
+        // Rich velvet cushion
+        const cushion = new THREE.Mesh(
+            new THREE.BoxGeometry(3.2, 0.3, 1.3),
+            velvetRedMaterial
         );
-        pulley.position.set(pos.x, warehouseHeight - 0.5, pos.z);
-        pulley.rotation.x = Math.PI / 2;
-        room1.add(pulley);
+        cushion.position.set(bench.x, 0.95, bench.z);
+        cushion.rotation.y = bench.rot;
+        cushion.castShadow = true;
+        room1.add(cushion);
         
-        // Suspended artwork frame (empty frame for now, artwork added later)
-        const frame = new THREE.Mesh(
-            new THREE.BoxGeometry(2.5, 3.5, 0.15),
-            new THREE.MeshStandardMaterial({
-                color: 0x2a2a2a,
-                roughness: 0.6,
-                metalness: 0.7
-            })
+        // Ornate backrest
+        const backrest = new THREE.Mesh(
+            new THREE.BoxGeometry(3.2, 1.5, 0.2),
+            carvedWoodMaterial
         );
-        frame.position.set(pos.x, pos.y, pos.z);
-        frame.castShadow = true;
-        frame.receiveShadow = true;
-        frame.userData.rotationSpeed = 0.001 + Math.random() * 0.002;
-        frame.userData.swayAmount = 0.05 + Math.random() * 0.1;
-        room1.add(frame);
-        
-        this.suspendedArtworks.push(frame);
-        
-        // Clip/hook at top of frame
-        const hook = new THREE.Mesh(
-            new THREE.TorusGeometry(0.08, 0.03, 8, 16),
-            chromeMaterial
+        backrest.position.set(
+            bench.x + (bench.rot === Math.PI / 2 ? -0.65 : 0),
+            1.5,
+            bench.z + (bench.rot === Math.PI / 2 ? 0 : -0.65)
         );
-        hook.position.set(pos.x, pos.y + 1.8, pos.z);
-        room1.add(hook);
+        backrest.rotation.y = bench.rot;
+        backrest.castShadow = true;
+        room1.add(backrest);
+        
+        // Gilded decorative crest
+        const crest = new THREE.Mesh(
+            new THREE.SphereGeometry(0.4, 16, 16),
+            goldMaterial
+        );
+        crest.position.set(
+            bench.x + (bench.rot === Math.PI / 2 ? -0.7 : 0),
+            2.2,
+            bench.z + (bench.rot === Math.PI / 2 ? 0 : -0.7)
+        );
+        crest.castShadow = true;
+        room1.add(crest);
     });
     
     // ========================================
-    // MASSIVE OVERHEAD TRACK LIGHTING GANTRY
+    // SCULPTURAL DECORATIONS
     // ========================================
     
-    this.trackSpotlights = [];
-    
-    // Main lighting gantry (motorized track system)
-    const gantryTracks = [
-        { x: -25, z: 0, length: warehouseDepth },
-        { x: -12, z: 0, length: warehouseDepth },
-        { x: 0, z: 0, length: warehouseDepth },
-        { x: 12, z: 0, length: warehouseDepth },
-        { x: 25, z: 0, length: warehouseDepth }
+    // Cherub/angel sculptures in corners
+    const sculpturePositions = [
+        { x: -22, z: -22 }, { x: 22, z: -22 },
+        { x: -22, z: 22 }, { x: 22, z: 22 }
     ];
     
-    gantryTracks.forEach((track, trackIndex) => {
-        // Aluminum track rail
-        const rail = new THREE.Mesh(
-            new THREE.BoxGeometry(0.15, 0.15, track.length),
-            new THREE.MeshStandardMaterial({
-                color: 0xa8a8a8,
-                roughness: 0.25,
-                metalness: 0.9
-            })
+    sculpturePositions.forEach(pos => {
+        // Pedestal
+        const pedestal = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.8, 1.0, 1.5, 8),
+            marbleWhiteMaterial
         );
-        rail.position.set(track.x, warehouseHeight - 1.5, 0);
-        rail.castShadow = true;
-        room1.add(rail);
+        pedestal.position.set(pos.x, 0.75, pos.z);
+        pedestal.castShadow = true;
+        room1.add(pedestal);
         
-        // Power cables draped along track
-        const cable = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.03, 0.03, track.length, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x1a1a1a,
-                roughness: 0.8
-            })
+        // Gilded base
+        const pedestalTop = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.9, 0.8, 0.2, 8),
+            goldMaterial
         );
-        cable.position.set(track.x + 0.1, warehouseHeight - 1.7, 0);
-        cable.rotation.x = Math.PI / 2;
-        room1.add(cable);
+        pedestalTop.position.set(pos.x, 1.6, pos.z);
+        room1.add(pedestalTop);
         
-        // Theater-style spotlights (8-12 per track)
-        const numLights = 10;
-        for (let i = 0; i < numLights; i++) {
-            const lightGroup = new THREE.Group();
-            
-            // Fixture housing (cylinder)
-            const housing = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.12, 0.18, 0.4, 16),
-                new THREE.MeshStandardMaterial({
-                    color: 0x1a1a1a,
-                    roughness: 0.4,
-                    metalness: 0.8
-                })
-            );
-            housing.castShadow = true;
-            lightGroup.add(housing);
-            
-            // Barn doors (4 flaps)
-            for (let b = 0; b < 4; b++) {
-                const angle = (b * Math.PI) / 2;
-                const door = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.25, 0.08, 0.02),
-                    new THREE.MeshStandardMaterial({
-                        color: 0x1a1a1a,
-                        roughness: 0.5,
-                        metalness: 0.7
-                    })
-                );
-                door.position.set(
-                    Math.cos(angle) * 0.15,
-                    -0.25 + Math.sin(angle) * 0.15,
-                    0
-                );
-                door.rotation.z = angle;
-                lightGroup.add(door);
-            }
-            
-            // LED lens with colored gel (random)
-            const gelColors = [0xffffff, 0xff6b6b, 0x6b9dff, 0xffcc66, 0x66ff66];
-            const lens = new THREE.Mesh(
-                new THREE.CircleGeometry(0.1, 16),
-                new THREE.MeshStandardMaterial({
-                    color: gelColors[trackIndex % gelColors.length],
-                    emissive: gelColors[trackIndex % gelColors.length],
-                    emissiveIntensity: 0.8,
-                    transparent: true,
-                    opacity: 0.7
-                })
-            );
-            lens.position.y = -0.21;
-            lightGroup.add(lens);
-            
-            // Actual spotlight
-            const spotlight = new THREE.SpotLight(
-                gelColors[trackIndex % gelColors.length],
-                3.5,
-                30,
-                Math.PI / 7,
-                0.6
-            );
-            spotlight.position.y = -0.3;
-            spotlight.castShadow = (trackIndex === 2 && i === 5); // Only center track, middle light
-            
-            if (spotlight.castShadow) {
-                spotlight.shadow.mapSize.width = 1024;
-                spotlight.shadow.mapSize.height = 1024;
-                spotlight.shadow.bias = -0.0005;
-            }
-            lightGroup.add(spotlight);
-            
-            // Target (points downward with slight random angle)
-            const target = new THREE.Object3D();
-            target.position.set(
-                (Math.random() - 0.5) * 5,
-                0,
-                (Math.random() - 0.5) * 5
-            );
-            lightGroup.add(target);
-            spotlight.target = target;
-            
-            // Position on track
-            const z = -track.length / 2 + (i / (numLights - 1)) * track.length;
-            lightGroup.position.set(track.x, warehouseHeight - 2.0, z);
-            
-            // Random rotation for dramatic angles
-            lightGroup.rotation.x = Math.random() * 0.3 - 0.15;
-            lightGroup.rotation.z = Math.random() * 0.3 - 0.15;
-            
-            room1.add(lightGroup);
-            this.trackSpotlights.push({
-                group: lightGroup,
-                spotlight: spotlight,
-                lens: lens
-            });
-        }
+        // Simplified cherub (sphere body + smaller head)
+        const body = new THREE.Mesh(
+            new THREE.SphereGeometry(0.5, 16, 16),
+            marbleWhiteMaterial
+        );
+        body.position.set(pos.x, 2.3, pos.z);
+        body.castShadow = true;
+        room1.add(body);
+        
+        const head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.25, 16, 16),
+            marbleWhiteMaterial
+        );
+        head.position.set(pos.x, 2.9, pos.z);
+        head.castShadow = true;
+        room1.add(head);
+        
+        // Wings (simplified as golden cones)
+        const wingLeft = new THREE.Mesh(
+            new THREE.ConeGeometry(0.3, 0.8, 8),
+            goldMaterial
+        );
+        wingLeft.position.set(pos.x - 0.6, 2.5, pos.z);
+        wingLeft.rotation.z = Math.PI / 4;
+        room1.add(wingLeft);
+        
+        const wingRight = new THREE.Mesh(
+            new THREE.ConeGeometry(0.3, 0.8, 8),
+            goldMaterial
+        );
+        wingRight.position.set(pos.x + 0.6, 2.5, pos.z);
+        wingRight.rotation.z = -Math.PI / 4;
+        room1.add(wingRight);
     });
     
     // ========================================
-    // EDISON BULB STRING LIGHTS
+    // DRAMATIC LIGHTING SYSTEM
     // ========================================
     
-    this.edisonBulbs = [];
+    this.wallLights = [];
+    this.glassSpotlights = [];
     
-    const stringConfigs = [
-        { start: [-35, 18, -25], end: [35, 18, -25] },
-        { start: [-35, 18, 25], end: [35, 18, 25] },
-        { start: [-35, 18, -25], end: [-35, 18, 25] },
-        { start: [35, 18, -25], end: [35, 18, 25] }
+    // Wall sconces (candelabra-style)
+    const sconcePositions = [
+        { x: -25, z: -15, rot: Math.PI / 2 },
+        { x: -25, z: 0, rot: Math.PI / 2 },
+        { x: -25, z: 15, rot: Math.PI / 2 },
+        { x: 25, z: -15, rot: -Math.PI / 2 },
+        { x: 25, z: 0, rot: -Math.PI / 2 },
+        { x: 25, z: 15, rot: -Math.PI / 2 }
     ];
     
-    stringConfigs.forEach(config => {
-        const numBulbs = 15;
-        for (let i = 0; i < numBulbs; i++) {
-            const t = i / (numBulbs - 1);
-            const pos = new THREE.Vector3(
-                config.start[0] + (config.end[0] - config.start[0]) * t,
-                config.start[1] + (config.end[1] - config.start[1]) * t - Math.sin(t * Math.PI) * 2,
-                config.start[2] + (config.end[2] - config.start[2]) * t
-            );
-            
-            // Bulb filament (warm glow)
-            const bulb = new THREE.Mesh(
-                new THREE.SphereGeometry(0.08, 16, 16),
-                new THREE.MeshStandardMaterial({
-                    color: 0xffd699,
-                    emissive: 0xffa500,
-                    emissiveIntensity: 1.2,
-                    transparent: true,
-                    opacity: 0.8
-                })
-            );
-            bulb.position.copy(pos);
-            room1.add(bulb);
-            
-            // Warm tungsten light
-            const light = new THREE.PointLight(0xffa500, 1.5, 6);
-            light.position.copy(pos);
-            room1.add(light);
-            
-            this.edisonBulbs.push({ bulb, light });
-            
-            // Power cord segment
-            if (i > 0) {
-                const prevT = (i - 1) / (numBulbs - 1);
-                const prevPos = new THREE.Vector3(
-                    config.start[0] + (config.end[0] - config.start[0]) * prevT,
-                    config.start[1] + (config.end[1] - config.start[1]) * prevT - Math.sin(prevT * Math.PI) * 2,
-                    config.start[2] + (config.end[2] - config.start[2]) * prevT
-                );
-                
-                const cordLength = pos.distanceTo(prevPos);
-                const cord = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.02, 0.02, cordLength, 8),
-                    new THREE.MeshBasicMaterial({ color: 0x1a1a1a })
-                );
-                
-                const midPoint = new THREE.Vector3().addVectors(pos, prevPos).multiplyScalar(0.5);
-                cord.position.copy(midPoint);
-                cord.lookAt(pos);
-                cord.rotation.x += Math.PI / 2;
-                
-                room1.add(cord);
-            }
-        }
+    sconcePositions.forEach(sconce => {
+        // Gilded backplate
+        const backplate = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.3, 0.15, 16),
+            goldMaterial
+        );
+        backplate.rotation.z = Math.PI / 2;
+        backplate.position.set(sconce.x, 3, sconce.z);
+        backplate.rotation.y = sconce.rot;
+        backplate.castShadow = true;
+        room1.add(backplate);
+        
+        // Candle flames (warm point lights)
+        const candleLight = new THREE.PointLight(0xffaa55, 2.0, 10);
+        candleLight.position.set(sconce.x + (sconce.rot === Math.PI / 2 ? 0.5 : -0.5), 3, sconce.z);
+        candleLight.castShadow = true;
+        room1.add(candleLight);
+        
+        this.wallLights.push({ light: candleLight, baseIntensity: 2.0 });
+    });
+    
+    // Artwork spotlights (hidden but dramatic)
+    const artLightPositions = [
+        { x: 0, z: -25 }, { x: -15, z: -25 }, { x: 15, z: -25 },
+        { x: -25, z: -10 }, { x: -25, z: 10 },
+        { x: 25, z: -10 }, { x: 25, z: 10 },
+        { x: 0, z: 25 }, { x: -15, z: 25 }, { x: 15, z: 25 }
+    ];
+    
+    artLightPositions.forEach(pos => {
+        const artSpot = new THREE.SpotLight(0xfff8f0, 3.5, 20, Math.PI / 6, 0.5);
+        artSpot.position.set(pos.x, roomHeight - 2, pos.z);
+        artSpot.target.position.set(pos.x, 3, pos.z);
+        artSpot.castShadow = true;
+        artSpot.shadow.mapSize.width = 1024;
+        artSpot.shadow.mapSize.height = 1024;
+        room1.add(artSpot);
+        room1.add(artSpot.target);
+        
+        this.glassSpotlights.push({
+            spot: artSpot,
+            position: artSpot.position.clone()
+        });
     });
     
     // ========================================
-    // DUST PARTICLE SYSTEM (In God-Rays)
-    // ========================================
-   
-    
-    // ========================================
-    // AMBIENT & ACCENT LIGHTING
+    // ATMOSPHERIC WARMTH
     // ========================================
     
-    // Harsh overhead fluorescents (some flickering)
-    for (let x = -30; x <= 30; x += 15) {
-        for (let z = -20; z <= 20; z += 20) {
-           // ✓ OPTIMIZED: Fewer RectAreaLights (4 instead of 12)
-const fluorescentPositions = [
-    { x: -20, z: -15 },
-    { x: 20, z: -15 },
-    { x: -20, z: 15 },
-    { x: 20, z: 15 }
-];
-
-fluorescentPositions.forEach(pos => {
-    const fluorescentLight = new THREE.RectAreaLight(0xffffee, 3.0, 6, 2); // Larger size
-    fluorescentLight.position.set(pos.x, warehouseHeight - 3, pos.z);
-    fluorescentLight.rotation.x = -Math.PI / 2;
-    room1.add(fluorescentLight);
-    
-    // Visible fixture
-    const fixture = new THREE.Mesh(
-        new THREE.BoxGeometry(6.2, 0.3, 2.2),
-        new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            emissive: 0xffffee,
-            emissiveIntensity: 0.5
-        })
-    );
-    fixture.position.set(pos.x, warehouseHeight - 3, pos.z);
-    room1.add(fixture);
-});
-        }
-    }
-    
-    // Emergency exit signs (red glow)
-    const exitPositions = [
-        { x: -38, y: 3, z: -28 },
-        { x: 38, y: 3, z: -28 },
-        { x: 0, y: 3, z: 28 }
-    ];
-    
-    exitPositions.forEach(pos => {
-        const exitSign = new THREE.Mesh(
-            new THREE.BoxGeometry(1.2, 0.4, 0.1),
-            new THREE.MeshStandardMaterial({
-                color: 0xff0000,
-                emissive: 0xff0000,
-                emissiveIntensity: 2.0
-            })
-        );
-        exitSign.position.set(pos.x, pos.y, pos.z);
-        room1.add(exitSign);
-        
-        const exitLight = new THREE.PointLight(0xff0000, 1.5, 8);
-        exitLight.position.copy(exitSign.position);
-        room1.add(exitLight);
-    });
-    
-    // Ambient warehouse darkness
-    const ambientDark = new THREE.AmbientLight(0x404040, 0.3);
-    room1.add(ambientDark);
-    
-    // Directional "daylight" from broken skylights
- // ✓ OPTIMIZED: Smaller shadow map
-const daylight = new THREE.DirectionalLight(0xffffee, 1.2);
-daylight.position.set(10, warehouseHeight, 5);
-daylight.castShadow = true;
-daylight.shadow.mapSize.width = 1024; // Reduced from 2048
-daylight.shadow.mapSize.height = 1024; // Reduced from 2048
-daylight.shadow.camera.left = -40; // Adjusted bounds
-daylight.shadow.camera.right = 40;
-daylight.shadow.camera.top = 40;
-daylight.shadow.camera.bottom = -40;
-    room1.add(daylight);
-    
-    // ========================================
-    // ABANDONED OFFICE CONTROL ROOM (Side Area)
-    // ========================================
-    
-    const officeGroup = new THREE.Group();
-    
-    // Glass walls (dirty, cracked)
-    for (let side = 0; side < 4; side++) {
-        const wall = new THREE.Mesh(
-            new THREE.BoxGeometry(side % 2 === 0 ? 8 : 6, 3, 0.1),
-            new THREE.MeshPhysicalMaterial({
-                color: 0x888888,
-                transmission: 0.3,
-                thickness: 0.5,
-                roughness: 0.8,
-                transparent: true,
-                opacity: 0.7
-            })
-        );
-        
-        if (side === 0) wall.position.set(0, 1.5, 3);
-        else if (side === 1) wall.position.set(4, 1.5, 0);
-        else if (side === 2) wall.position.set(0, 1.5, -3);
-        else wall.position.set(-4, 1.5, 0);
-        
-        wall.rotation.y = (side % 2 === 0 ? 0 : Math.PI / 2);
-        officeGroup.add(wall);
-    }
-    
-  
-    
-    // Vintage computer monitor (green CRT glow)
-    const monitor = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, 0.4, 0.4),
-        new THREE.MeshStandardMaterial({
-            color: 0x3a3a3a,
-            roughness: 0.6
-        })
-    );
-    monitor.position.set(0, 1.1, 0);
-    monitor.castShadow = true;
-    officeGroup.add(monitor);
-    
-    // CRT screen (glowing)
-    const screen = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.35, 0.28),
-        new THREE.MeshStandardMaterial({
-            color: 0x00ff00,
-            emissive: 0x00ff00,
-            emissiveIntensity: 1.5
-        })
-    );
-    screen.position.set(0, 1.1, 0.21);
-    officeGroup.add(screen);
-    
-    const screenLight = new THREE.PointLight(0x00ff00, 1.5, 4);
-    screenLight.position.set(0, 1.1, 0.3);
-    officeGroup.add(screenLight);
-    
-    // Coffee mug with mold
-    const mug = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.06, 0.06, 0.1, 16),
-        new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.7
-        })
-    );
-    mug.position.set(0.4, 0.9, 0.3);
-    mug.castShadow = true;
-    officeGroup.add(mug);
-    
-    // Moldy liquid inside
-    const mold = new THREE.Mesh(
-        new THREE.CircleGeometry(0.055, 16),
-        new THREE.MeshStandardMaterial({
-            color: 0x2d5016,
-            roughness: 1.0
-        })
-    );
-    mold.position.set(0.4, 0.95, 0.3);
-    mold.rotation.x = -Math.PI / 2;
-    officeGroup.add(mold);
-    
-    // Calendar stuck on old date
-    const calendar = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.3, 0.4),
-        new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.9
-        })
-    );
-    calendar.position.set(-3.9, 1.5, 0);
-    calendar.rotation.y = Math.PI / 2;
-    officeGroup.add(calendar);
-    
-    // Flickering overhead fluorescent
-    const officeLight = new THREE.RectAreaLight(0xffffee, 2.0, 1.5, 1.5);
-    officeLight.position.set(0, 2.8, 0);
-    officeLight.rotation.x = -Math.PI / 2;
-    officeGroup.add(officeLight);
-    this.officeFlicker = officeLight;
-    
-    officeGroup.position.set(30, 0, 0);
-    room1.add(officeGroup);
-    
-    // ========================================
-    // KINETIC SCULPTURE / ART INSTALLATION
-    // ========================================
-    
-    const sculptureGroup = new THREE.Group();
-    
-    // Abstract geometric sculpture (rusted metal)
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const piece = new THREE.Mesh(
-            new THREE.BoxGeometry(0.3, 3 + Math.random() * 2, 0.3),
-            rustedSteelMaterial
-        );
-        piece.position.set(
-            Math.cos(angle) * 2,
-            2.5,
-            Math.sin(angle) * 2
-        );
-        piece.rotation.set(
-            (Math.random() - 0.5) * 0.5,
-            angle,
-            (Math.random() - 0.5) * 0.5
-        );
-        piece.castShadow = true;
-        sculptureGroup.add(piece);
-    }
-    
-    sculptureGroup.position.set(0, 0, 0);
-    sculptureGroup.userData.rotationSpeed = 0.001;
-    room1.add(sculptureGroup);
-    this.centerSculpture = sculptureGroup;
-    
-    // Dramatic spotlight on sculpture
-    const sculptureSpot = new THREE.SpotLight(0xffffff, 5.0, 20, Math.PI / 8, 0.4);
-    sculptureSpot.position.set(0, warehouseHeight - 2, 0);
-    sculptureSpot.target.position.set(0, 2, 0);
-    sculptureSpot.castShadow = true;
-    room1.add(sculptureSpot);
-    room1.add(sculptureSpot.target);
-    
-    // ========================================
-    // FINAL SETUP
-    // ========================================
+    // Warm golden fog for atmospheric depth
+    this.scene.fog = new THREE.Fog(0xf5e6d3, 30, 70);
     
     room1.position.set(0, 0, 0);
     this.rooms.push(room1);
-    this.scene.add(room1);
+    this.rooms.forEach(room => this.scene.add(room));
     
-    console.log("🏭 Brutalist industrial warehouse gallery created!");
+    console.log("👑 Baroque Palace Gallery created - Opulence, Drama, Gilded Splendor!");
 }
-
-toggleLightZone(zoneIndex) {
-    console.log(`💡 Toggling light zone ${zoneIndex}`);
-    
-    // Find all lights in this zone
-    const zoneLights = this.trackSpotlights.filter((_, i) => i % 4 === zoneIndex);
-    
-    zoneLights.forEach(light => {
-        const currentIntensity = light.spotlight.intensity;
-        const targetIntensity = currentIntensity > 1 ? 0 : 3.5;
-        
-        // Animate intensity change
-        const duration = 500;
-        const startTime = Date.now();
-        const startIntensity = currentIntensity;
-        
-        const animateLight = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            
-            light.spotlight.intensity = startIntensity + (targetIntensity - startIntensity) * progress;
-            light.lens.material.emissiveIntensity = light.spotlight.intensity / 3.5 * 0.8;
-            
-            if (progress < 1) {
-                requestAnimationFrame(animateLight);
-            }
-        };
-        
-        animateLight();
-    });
-    
-    // Spark effect
-    if (Math.random() > 0.7) {
-        this.createSparkEffect(this.lightSwitches[zoneIndex].position);
-    }
-}
-
-createSparkEffect(position) {
-    const sparks = new THREE.Group();
-    
-    for (let i = 0; i < 8; i++) {
-        const spark = new THREE.Mesh(
-            new THREE.SphereGeometry(0.02, 4, 4),
-            new THREE.MeshBasicMaterial({
-                color: 0xffaa00,
-                transparent: true,
-                opacity: 1.0
-            })
-        );
-        
-        spark.userData.velocity = new THREE.Vector3(
-            (Math.random() - 0.5) * 0.1,
-            (Math.random() - 0.5) * 0.1,
-            (Math.random() - 0.5) * 0.1
-        );
-        
-        sparks.add(spark);
-    }
-    
-    sparks.position.copy(position);
-    this.scene.add(sparks);
-    
-    // Animate sparks
-    const startTime = Date.now();
-    const duration = 800;
-    
-    const animateSparks = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = elapsed / duration;
-        
-        if (progress >= 1) {
-            this.scene.remove(sparks);
-            sparks.children.forEach(child => {
-                child.geometry.dispose();
-                child.material.dispose();
-            });
-            return;
-        }
-        
-        sparks.children.forEach(spark => {
-            spark.position.add(spark.userData.velocity);
-            spark.userData.velocity.y -= 0.005; // Gravity
-            spark.material.opacity = 1 - progress;
-        });
-        
-        requestAnimationFrame(animateSparks);
-    };
-    
-    animateSparks();
-}
-generateBoardFormedConcrete(width, height) {
+generateConcreteTexture(width, height) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     
-    // Base concrete gray
-    ctx.fillStyle = '#4a4a4a';
+    // Base dark concrete
+    ctx.fillStyle = '#3a3a3a';
     ctx.fillRect(0, 0, width, height);
     
-    // Horizontal wood grain lines (formwork boards)
-    const boardHeight = 120;
-    for (let y = 0; y < height; y += boardHeight) {
-        // Darker seam line
-        ctx.fillStyle = '#3a3a3a';
-        ctx.fillRect(0, y, width, 3);
-        
-        // Wood grain texture
-        for (let i = 0; i < 50; i++) {
-            const grainY = y + Math.random() * boardHeight;
-            ctx.strokeStyle = `rgba(${60 + Math.random() * 20}, ${60 + Math.random() * 20}, ${60 + Math.random() * 20}, ${0.3 + Math.random() * 0.3})`;
-            ctx.lineWidth = 1 + Math.random() * 2;
-            ctx.beginPath();
-            ctx.moveTo(0, grainY);
-            ctx.lineTo(width, grainY + (Math.random() - 0.5) * 10);
-            ctx.stroke();
-        }
-    }
-    
-    // Random concrete imperfections
-    for (let i = 0; i < 200; i++) {
+    // Subtle noise
+    for (let i = 0; i < 8000; i++) {
         const x = Math.random() * width;
         const y = Math.random() * height;
-        const size = Math.random() * 4 + 1;
-        const shade = Math.random() * 40 + 40;
-        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.5)`;
+        const size = Math.random() * 3 + 1;
+        const shade = Math.random() * 30 + 45;
+        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.4)`;
         ctx.fillRect(x, y, size, size);
     }
     
     return canvas;
 }
+
+// ============================================================================
+// HELPER FUNCTION: Generate Carrara Marble Texture
+// Add this function after generateConcreteTexture() (around line 569)
+// ============================================================================
+
 generateCarraraMarble(width, height) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -2262,6 +1503,7 @@ generateMarbleNormalMap(width, height) {
            window.addEventListener("resize", () => this.handleResize());
            this.hidePreloader();
            console.log("🚀 Virtual Gallery loaded");
+           this.scene.fog = new THREE.Fog(0xf5e6d3, 30, 70);
        }
 
 
@@ -2578,225 +1820,57 @@ toggleHelpOverlay() {
     }
 
     updateObjectAnimations() {
-            const time = this.time || Date.now() * 0.001;
         if (this.isAnimatingObjects) {
             this.images.forEach(img => {
                 img.mesh.rotation.y += 0.02 * this.animationSpeed;
             });
-           
-        }
-        if (this.turbine) {
-        this.turbine.rotation.z += this.turbine.userData.rotationSpeed;
-    }
-    
-    // 2. CENTER SCULPTURE ROTATION
-    if (this.centerSculpture) {
-        this.centerSculpture.rotation.y += this.centerSculpture.userData.rotationSpeed;
-    }
-    
-    // 3. SUSPENDED ARTWORKS (rotate + sway)
-    if (this.suspendedArtworks) {
-        this.suspendedArtworks.forEach((artwork, index) => {
-            // Slow rotation
-            artwork.rotation.y += artwork.userData.rotationSpeed;
-            
-            // Swaying motion (like hanging on cables)
-            const sway = Math.sin(time * 0.5 + index) * artwork.userData.swayAmount;
-            artwork.rotation.z = sway;
-        });
-    }
-    
-    // 4. EDISON BULBS (subtle swaying + flicker)
-    if (this.edisonBulbs) {
-        this.edisonBulbs.forEach((bulb, index) => {
-            // Gentle sway
-            const baseY = bulb.bulb.position.y;
-            bulb.bulb.position.y = baseY + Math.sin(time * 0.3 + index * 0.5) * 0.02;
-            bulb.light.position.copy(bulb.bulb.position);
-            
-            // Random flicker
-            if (Math.random() < 0.01) {
-                const flicker = 0.8 + Math.random() * 0.4;
-                bulb.light.intensity = 1.5 * flicker;
-                bulb.bulb.material.emissiveIntensity = 1.2 * flicker;
-            } else {
-                bulb.light.intensity += (1.5 - bulb.light.intensity) * 0.1;
-                bulb.bulb.material.emissiveIntensity += (1.2 - bulb.bulb.material.emissiveIntensity) * 0.1;
-            }
-        });
-    }
-    
-    // 5. TRACK SPOTLIGHTS (subtle movement + flicker)
-    if (this.trackSpotlights) {
-        this.trackSpotlights.forEach((light, index) => {
-            // Subtle rotation (like wind or vibration)
-            light.group.rotation.x += Math.sin(time * 0.2 + index) * 0.0001;
-            light.group.rotation.z += Math.cos(time * 0.3 + index) * 0.0001;
-            
-            // Occasional flicker/spark
-            if (Math.random() < 0.005) {
-                light.spotlight.intensity = 5.0 + Math.random() * 2.0;
-                light.lens.material.emissiveIntensity = 1.5;
-            } else {
-                light.spotlight.intensity += (3.5 - light.spotlight.intensity) * 0.05;
-                light.lens.material.emissiveIntensity += (0.8 - light.lens.material.emissiveIntensity) * 0.05;
-            }
-        });
-    }
-    
-    // 6. OFFICE FLUORESCENT FLICKER
-    if (this.officeFlicker && Math.random() < 0.02) {
-        this.officeFlicker.intensity = Math.random() < 0.5 ? 0.5 : 2.0;
-        setTimeout(() => {
-            if (this.officeFlicker) this.officeFlicker.intensity = 2.0;
-        }, 50 + Math.random() * 100);
-    }
-    
-    // 7. STEAM VENTS (periodic puffs)
-    if (this.steamVents) {
-        this.steamVents.forEach(vent => {
-            const currentTime = Date.now();
-            if (currentTime - vent.lastPuff > vent.interval) {
-                this.createSteamPuff(vent.position);
-                vent.lastPuff = currentTime;
-                vent.interval = 3000 + Math.random() * 5000;
-            }
-        });
-    }
-    
-   
-    
-    // 9. CATWALK RATTLING (if player nearby)
-    if (this.catwalks && this.camera) {
-        this.catwalks.forEach(catwalk => {
-            const distance = this.camera.position.distanceTo(catwalk.position);
-            if (distance < 5) {
-                // Shake when player is nearby
-                catwalk.position.y += Math.sin(time * 10) * 0.002;
-            }
-        });
-    }
-    
-    // 10. FREIGHT ELEVATOR ANIMATION (if moving)
-    if (this.freightElevator && this.freightElevator.userData.isMoving) {
-        const elevator = this.freightElevator;
-        const targetY = elevator.userData.targetY || 0;
-        const currentY = elevator.position.y;
-        const speed = 0.05;
-        
-        if (Math.abs(targetY - currentY) > 0.1) {
-            // Move elevator
-            elevator.position.y += (targetY - currentY) * speed;
-            
-            // Warning lights flash
-            elevator.traverse(child => {
-                if (child.material && child.material.emissive && child.material.emissive.getHex() === 0xff0000) {
-                    child.material.emissiveIntensity = 1.5 + Math.sin(time * 10) * 0.5;
-                }
+            this.wallLights.forEach(light => {
+                light.left.rotation.y += 0.03 * this.animationSpeed;
+                light.right.rotation.y += 0.03 * this.animationSpeed;
             });
-            
-            // Mechanical sound effect (visual cue)
-            if (Math.floor(time * 10) % 2 === 0) {
-                elevator.rotation.z = 0.002;
-            } else {
-                elevator.rotation.z = -0.002;
-            }
-        } else {
-            // Arrived at destination
-            elevator.position.y = targetY;
-            elevator.userData.isMoving = false;
-            elevator.rotation.z = 0;
-            
-            // Turn off warning lights
-            elevator.traverse(child => {
-                if (child.material && child.material.emissive && child.material.emissive.getHex() === 0xff0000) {
-                    child.material.emissiveIntensity = 1.5;
-                }
+            this.glassSpotlights.forEach(light => {
+                light.mesh.rotation.y += 0.01 * this.animationSpeed;
             });
-            
-            console.log("🛗 Elevator arrived at level", elevator.userData.currentLevel);
         }
     }
-    }
-
-    createSteamPuff(position) {
-    const steamGroup = new THREE.Group();
-    
-    // Create multiple steam particles
-    for (let i = 0; i < 10; i++) {
-        const particle = new THREE.Mesh(
-            new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 8, 8),
-            new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.6
-            })
-        );
-        
-        particle.position.set(
-            (Math.random() - 0.5) * 0.5,
-            (Math.random() - 0.5) * 0.5,
-            (Math.random() - 0.5) * 0.5
-        );
-        
-        steamGroup.add(particle);
-    }
-    
-    steamGroup.position.copy(position);
-    this.scene.add(steamGroup);
-    
-    // Animate steam rising and dissipating
-    const startTime = Date.now();
-    const duration = 2000;
-    
-    const animateSteam = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = elapsed / duration;
-        
-        if (progress >= 1) {
-            this.scene.remove(steamGroup);
-            steamGroup.children.forEach(child => {
-                child.geometry.dispose();
-                child.material.dispose();
-            });
-            return;
-        }
-        
-        // Rise and expand
-        steamGroup.position.y += 0.03;
-        steamGroup.scale.setScalar(1 + progress * 2);
-        
-        // Fade out
-        steamGroup.children.forEach(child => {
-            child.material.opacity = 0.6 * (1 - progress);
-        });
-        
-        requestAnimationFrame(animateSteam);
-    };
-    
-    animateSteam();
-}
 
 updateLighting() {
     const time = this.time || 0;
     
-    // Dynamic track spotlights
+    // Flickering candle effect for wall sconces
+    this.wallLights.forEach((light, index) => {
+        const flicker = Math.sin(time * 8 + index * 2.5) * 0.15 + 
+                       Math.sin(time * 12 + index * 1.8) * 0.1;
+        light.light.intensity = light.baseIntensity + flicker;
+    });
+    
+    // Gentle chandelier sway and light variation
+    if (this.chandeliers) {
+        this.chandeliers.forEach((chandelier, index) => {
+            // Subtle swaying motion
+            chandelier.rotation.y = Math.sin(time * 0.5 + index) * 0.03;
+            chandelier.rotation.z = Math.cos(time * 0.4 + index * 1.5) * 0.02;
+            
+            // Crystal sparkle effect (light intensity variation)
+            chandelier.children.forEach(child => {
+                if (child instanceof THREE.PointLight) {
+                    const sparkle = Math.sin(time * 4 + index * 3) * 0.2;
+                    child.intensity = 1.5 + sparkle;
+                }
+            });
+        });
+    }
+    
+    // Dramatic artwork spotlights
     this.glassSpotlights.forEach((light, index) => {
+        if (!light.spot) return;
+        
         const distance = this.camera.position.distanceTo(light.position);
-        const baseIntensity = Math.max(2.5, Math.min(4.5, 6 - distance / 4));
+        const baseIntensity = Math.max(2.8, Math.min(4.5, 7 - distance / 5));
         
-        // Subtle flicker
-        const flicker = Math.sin(time * 4 + index * 1.2) * 0.2;
-        light.spot.intensity = baseIntensity + flicker;
-        
-        // Pulsing lens glow
-        if (light.lens) {
-            light.lens.material.emissiveIntensity = 0.8 + Math.sin(time * 2 + index) * 0.3;
-        }
-        
-        // Warm up when close
-        const proximity = Math.max(0, 1 - distance / 20);
-        light.spot.color.setRGB(1.0, 0.96 + proximity * 0.04, 0.90 + proximity * 0.05);
+        // Gentle pulsing for drama
+        const pulse = Math.sin(time * 1.2 + index * 0.8) * 0.15;
+        light.spot.intensity = baseIntensity + pulse;
     });
     
     // Update artwork shaders
@@ -2806,7 +1880,6 @@ updateLighting() {
         }
     });
 }
-
 
 
     updateImageEffects() {
@@ -3480,20 +2553,24 @@ updateLighting() {
     this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
     this.isFocused = false;
 }
-    checkCollisions() {
+   checkCollisions() {
     if (!this.isMobile) {
-        this.camera.position.y = 1.6;
+        this.camera.position.y = 1.7;
         const roomBounds = this.rooms[this.currentRoom].position;
-        const minX = -38;
-        const maxX = 38;
-        const minZ = -28;
-        const maxZ = 28;
+        
+        // Baroque gallery boundaries
+        const minX = roomBounds.x - 26;
+        const maxX = roomBounds.x + 26;
+        const minZ = roomBounds.z - 26;
+        const maxZ = roomBounds.z + 26;
 
         this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
         this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
         this.controls.getObject().position.copy(this.camera.position);
     }
 }
+
+
 
     async computeImageHash(texture) {
         return new Promise((resolve) => {
@@ -3595,178 +2672,180 @@ updateLighting() {
         console.log("Fallback metadata:", this.metadata);
     }
 
-    async displayImagesInGallery() {
-        if (!this.imagesToLoad) return;
+   async displayImagesInGallery() {
+    if (!this.imagesToLoad) return;
+
+    this.clearScene();
+    const totalImages = this.imagesToLoad.length;
+    let imageIndex = 0;
+    const seenHashes = new Set();
+
+    // Ornate gilded frames
+    const frameMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xd4af37,
+        roughness: 0.3, 
+        metalness: 0.92,
+        envMapIntensity: 2.0,
+        emissive: 0xaa8800,
+        emissiveIntensity: 0.15
+    });
+
+    const room = this.rooms[0];
+    const displayHeight = 4.0; // Large baroque artworks
+    const numImages = Math.min(10, totalImages); // Fewer works, more drama
     
-        this.clearScene();
-        const totalImages = this.imagesToLoad.length;
-        let imageIndex = 0;
-        const seenHashes = new Set();
-    
-        const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.8 });
-        const fallbackMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5, metalness: 0 });
-    
-        const room = this.rooms[0];
-        const wallLength = 30;
-        const displayWidth = 4;
-        const displayHeight = 3;
-        const displayDepth = 0.2;
-        const numImagesPerWall = Math.ceil(this.imagesToLoad.length / 4);
-        const spacing = wallLength / (numImagesPerWall + 1);
-        const backWallOffset = 0.5;
-        const maxImagesInRoom = Math.min(16, numImagesPerWall * 4);
-    
-        const wallConfigs = [
-            { basePos: new THREE.Vector3(0, 2.5, -wallLength / 2 + backWallOffset), rot: 0, dir: 'x' },
-            { basePos: new THREE.Vector3(-wallLength / 2 + backWallOffset, 2.5, 0), rot: Math.PI / 2, dir: 'z' },
-            { basePos: new THREE.Vector3(wallLength / 2 - backWallOffset, 2.5, 0), rot: -Math.PI / 2, dir: 'z' },
-            { basePos: new THREE.Vector3(0, 2.5, wallLength / 2 - backWallOffset), rot: Math.PI, dir: 'x' }
-        ];
-    
-        for (let wall of wallConfigs) {
-            if (imageIndex >= totalImages || this.images.length >= maxImagesInRoom) break;
-    
-            const wallPositions = [];
-            for (let i = 0; i < numImagesPerWall && imageIndex < totalImages && this.images.length < maxImagesInRoom; i++) {
-                const offset = -wallLength / 2 + (i + 0.5) * (wallLength / numImagesPerWall);
-                const pos = wall.basePos.clone();
-                if (wall.dir === 'x') pos.x += offset;
-                else pos.z += offset;
-                wallPositions.push({ pos, rot: wall.rot });
+    // Wall positions for artwork (on the painted walls)
+    const wallPositions = [
+        // Back wall
+        { x: -15, y: 3.5, z: -28, rot: 0 },
+        { x: 0, y: 3.5, z: -28, rot: 0 },
+        { x: 15, y: 3.5, z: -28, rot: 0 },
+        // Left wall
+        { x: -28, y: 3.5, z: -10, rot: Math.PI / 2 },
+        { x: -28, y: 3.5, z: 10, rot: Math.PI / 2 },
+        // Right wall
+        { x: 28, y: 3.5, z: -10, rot: -Math.PI / 2 },
+        { x: 28, y: 3.5, z: 10, rot: -Math.PI / 2 },
+        // Front wall
+        { x: -15, y: 3.5, z: 28, rot: Math.PI },
+        { x: 0, y: 3.5, z: 28, rot: Math.PI },
+        { x: 15, y: 3.5, z: 28, rot: Math.PI }
+    ];
+
+    for (let i = 0; i < Math.min(numImages, wallPositions.length) && imageIndex < totalImages; i++) {
+        const pos = wallPositions[i];
+        const filename = this.imagesToLoad[imageIndex];
+        const meta = this.metadata.find(m => m.filename === filename.split('/').pop()) || {
+            title: 'Untitled',
+            description: '',
+            artist: 'Unknown'
+        };
+
+        try {
+            const texture = await this.loadTexture(filename);
+            const hash = await this.computeImageHash(texture);
+
+            if (seenHashes.has(hash)) {
+                console.warn(`Duplicate detected: ${filename}`);
+                imageIndex++;
+                continue;
             }
-    
-            for (let { pos, rot } of wallPositions) {
-                if (imageIndex >= totalImages) break;
-    
-                const filename = this.imagesToLoad[imageIndex];
-                const meta = this.metadata.find(m => m.filename === filename.split('/').pop()) || {
-                    title: 'Untitled',
-                    description: '',
-                    artist: 'Unknown'
-                };
-                console.log(`Assigning metadata to ${filename}:`, meta);
-    
-                try {
-                    const texture = await this.loadTexture(filename);
-                    const hash = await this.computeImageHash(texture);
-    
-                    if (seenHashes.has(hash)) {
-                        console.warn(`Duplicate image content detected for ${filename} with hash ${hash}, skipping`);
-                        imageIndex++;
-                        continue;
-                    }
-                    seenHashes.add(hash);
-    
-                    let material;
-                    if (texture.image) {
-                        material = new THREE.ShaderMaterial({
-                            uniforms: {
-                                map: { value: texture },
-                                opacity: { value: 1.0 },
-                                time: { value: 0.0 }
-                            },
-                            vertexShader: `
-                                varying vec2 vUv;
-                                varying vec3 vNormal;
-                                void main() {
-                                    vUv = uv;
-                                    vNormal = normalMatrix * normal;
-                                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                                }
-                            `,
-                            fragmentShader: `
-                                uniform sampler2D map;
-                                uniform float opacity;
-                                uniform float time;
-                                varying vec2 vUv;
-                                varying vec3 vNormal;
-                                void main() {
-                                    vec4 color = texture2D(map, vUv);
-                                    if (color.a < 0.5) discard;
-                                    gl_FragColor = vec4(color.rgb, color.a * opacity);
-                                }
-                            `,
-                            transparent: true,
-                            side: THREE.DoubleSide
-                        });
-                    } else {
-                        material = fallbackMaterial;
-                    }
-    
-                    const aspectRatio = texture.image ? texture.image.width / texture.image.height : 1;
-                    const maxWidth = 4;
-                    const adjustedWidth = Math.min(displayHeight * aspectRatio, maxWidth);
-    
-                    const geometry = new THREE.BoxGeometry(adjustedWidth, displayHeight, displayDepth);
-                    const mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.copy(pos).add(room.position);
-                    mesh.rotation.y = rot;
-                    mesh.castShadow = true;
-                    mesh.receiveShadow = true;
-                    mesh.userData = {
-                        filename,
-                        hash,
-                        baseScale: mesh.scale.clone(),
-                        metadata: {
-                            title: meta.title,
-                            description: meta.description,
-                            artist: meta.artist
-                        }
-                    };
-                    room.add(mesh);
-                    this.images.push({ mesh, filename, hash, metadata: meta }); // Also store metadata directly in images array
-    
-                    // Frame and spotlight code remains unchanged...
-                    const frameThickness = 0.1;
-                    const frameShape = new THREE.Shape();
-                    frameShape.moveTo(-adjustedWidth / 2 - frameThickness, -displayHeight / 2 - frameThickness);
-                    frameShape.lineTo(adjustedWidth / 2 + frameThickness, -displayHeight / 2 - frameThickness);
-                    frameShape.lineTo(adjustedWidth / 2 + frameThickness, displayHeight / 2 + frameThickness);
-                    frameShape.lineTo(-adjustedWidth / 2 - frameThickness, displayHeight / 2 + frameThickness);
-                    frameShape.lineTo(-adjustedWidth / 2 - frameThickness, -displayHeight / 2 - frameThickness);
-    
-                    const hole = new THREE.Path();
-                    hole.moveTo(-adjustedWidth / 2, -displayHeight / 2);
-                    hole.lineTo(adjustedWidth / 2, -displayHeight / 2);
-                    hole.lineTo(adjustedWidth / 2, displayHeight / 2);
-                    hole.lineTo(-adjustedWidth / 2, displayHeight / 2);
-                    hole.lineTo(-adjustedWidth / 2, -displayHeight / 2);
-                    frameShape.holes.push(hole);
-    
-                    const extrudeSettings = { depth: frameThickness, bevelEnabled: false };
-                    const frameGeometry = new THREE.ExtrudeGeometry(frameShape, extrudeSettings);
-                    const frame = new THREE.Mesh(frameGeometry, frameMaterial);
-                    frame.position.copy(mesh.position);
-                    frame.position.z += (rot === 0 ? -displayDepth / 2 : (rot === Math.PI ? displayDepth / 2 : 0));
-                    frame.position.x += (rot === Math.PI / 2 ? -displayDepth / 2 : (rot === -Math.PI / 2 ? displayDepth / 2 : 0));
-                    frame.rotation.y = rot;
-                    frame.castShadow = true;
-                    frame.receiveShadow = true;
-                    room.add(frame);
-    
-                    const spotlight = new THREE.SpotLight(0xffffff, 2.0, 20, Math.PI / 6, 0.7);
-                    const lightOffset = 2;
-                    spotlight.position.set(
-                        pos.x + (Math.abs(rot) === Math.PI / 2 ? (rot > 0 ? lightOffset : -lightOffset) : 0),
-                        6,
-                        pos.z + (Math.abs(rot) === Math.PI / 2 ? 0 : (rot === 0 ? -lightOffset : lightOffset))
-                    ).add(room.position);
-                    spotlight.target = mesh;
-                    spotlight.castShadow = true;
-                    spotlight.shadow.mapSize.width = 1024;
-                    spotlight.shadow.mapSize.height = 1024;
-                    spotlight.shadow.bias = -0.0001;
-                    room.add(spotlight);
-    
-                    imageIndex++;
-                } catch (error) {
-                    console.error(`Error loading image ${this.imagesToLoad[imageIndex]}:`, error);
-                    imageIndex++;
-                }
-            }
-        }
-        console.log(`🎨 Images rendered in room ${this.currentRoom}:`, this.images.length, "Unique hashes:", seenHashes.size);
+            seenHashes.add(hash);
+
+            // Create baroque shader material
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    map: { value: texture },
+                    opacity: { value: 1.0 },
+                    time: { value: 0.0 }
+                },
+             vertexShader: `
+    varying vec2 vUv;
+    void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
+`,
+fragmentShader: `
+    uniform sampler2D map;
+    uniform float opacity;
+    uniform float time;
+    varying vec2 vUv;
+    void main() {
+        vec4 color = texture2D(map, vUv);
+        if (color.a < 0.5) discard;
+        color.r *= 1.05;
+        color.g *= 1.02;
+        gl_FragColor = vec4(color.rgb, color.a * opacity);
+    }
+`,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+
+            const aspectRatio = texture.image ? texture.image.width / texture.image.height : 1;
+            const adjustedWidth = Math.min(displayHeight * aspectRatio, 6);
+
+            const geometry = new THREE.BoxGeometry(adjustedWidth, displayHeight, 0.12);
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(pos.x, pos.y, pos.z);
+            mesh.rotation.y = pos.rot;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = {
+                filename,
+                hash,
+                baseScale: mesh.scale.clone(),
+                metadata: meta
+            };
+            room.add(mesh);
+            this.images.push({ mesh, filename, hash, metadata: meta });
+
+            // ORNATE BAROQUE FRAME (thick, gilded)
+            const frameThickness = 0.25; // Much thicker than minimalist
+            const frameDepth = 0.15;
+            
+            // Create elaborate frame with multiple layers
+            const frameShape = new THREE.Shape();
+            frameShape.moveTo(-adjustedWidth / 2 - frameThickness, -displayHeight / 2 - frameThickness);
+            frameShape.lineTo(adjustedWidth / 2 + frameThickness, -displayHeight / 2 - frameThickness);
+            frameShape.lineTo(adjustedWidth / 2 + frameThickness, displayHeight / 2 + frameThickness);
+            frameShape.lineTo(-adjustedWidth / 2 - frameThickness, displayHeight / 2 + frameThickness);
+            frameShape.lineTo(-adjustedWidth / 2 - frameThickness, -displayHeight / 2 - frameThickness);
+
+            const hole = new THREE.Path();
+            hole.moveTo(-adjustedWidth / 2, -displayHeight / 2);
+            hole.lineTo(adjustedWidth / 2, -displayHeight / 2);
+            hole.lineTo(adjustedWidth / 2, displayHeight / 2);
+            hole.lineTo(-adjustedWidth / 2, displayHeight / 2);
+            hole.lineTo(-adjustedWidth / 2, -displayHeight / 2);
+            frameShape.holes.push(hole);
+
+            const extrudeSettings = { depth: frameDepth, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02 };
+            const frameGeometry = new THREE.ExtrudeGeometry(frameShape, extrudeSettings);
+            const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+            frame.position.copy(mesh.position);
+            frame.rotation.y = pos.rot;
+            frame.castShadow = true;
+            frame.receiveShadow = true;
+            room.add(frame);
+            
+            // Corner ornaments (rosettes)
+            const cornerOffsets = [
+                { x: -adjustedWidth / 2 - frameThickness / 2, y: displayHeight / 2 + frameThickness / 2 },
+                { x: adjustedWidth / 2 + frameThickness / 2, y: displayHeight / 2 + frameThickness / 2 },
+                { x: -adjustedWidth / 2 - frameThickness / 2, y: -displayHeight / 2 - frameThickness / 2 },
+                { x: adjustedWidth / 2 + frameThickness / 2, y: -displayHeight / 2 - frameThickness / 2 }
+            ];
+            
+            cornerOffsets.forEach(offset => {
+                const rosette = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.12, 16, 16),
+                    new THREE.MeshStandardMaterial({
+                        color: 0xffd700,
+                        roughness: 0.2,
+                        metalness: 0.95,
+                        envMapIntensity: 2.2
+                    })
+                );
+                rosette.position.set(
+                    pos.x + (pos.rot === Math.PI / 2 ? 0 : offset.x),
+                    pos.y + offset.y,
+                    pos.z + (pos.rot === Math.PI / 2 ? offset.x : 0)
+                );
+                rosette.rotation.y = pos.rot;
+                room.add(rosette);
+            });
+
+            imageIndex++;
+        } catch (error) {
+            console.error(`Error loading ${filename}:`, error);
+            imageIndex++;
+        }
+    }
+
+    console.log(`👑 ${this.images.length} masterpieces displayed in ornate gilded frames`);
+}
 
     clearScene() {
         this.images.forEach(img => {
@@ -3836,189 +2915,10 @@ updateLighting() {
                     this.openSlider(obj);
                 }
             }
-            else {
-            // ========================================
-            // NEW: ELEVATOR BUTTON INTERACTION
-            // ========================================
-            
-            // Get all clickable objects in scene
-            const clickableObjects = [];
-            this.scene.traverse(child => {
-                if (child.userData.isElevatorButton || 
-                    child.userData.canMove || 
-                    child.userData.isLightSwitch) {
-                    clickableObjects.push(child);
-                }
-            });
-            
-            const clickIntersects = this.raycaster.intersectObjects(clickableObjects, true);
-            
-            if (clickIntersects.length > 0) {
-                const clicked = clickIntersects[0].object;
-                
-                // ELEVATOR BUTTON CLICKED
-                if (clicked.userData.isElevatorButton) {
-                    this.callElevator(clicked.userData.targetLevel);
-                    if (!this.clickSound.isPlaying) this.clickSound.play();
-                }
-                
-                // MOVABLE WALL CLICKED
-                else if (clicked.parent && clicked.parent.userData.canMove) {
-                    this.moveWall(clicked.parent);
-                    if (!this.clickSound.isPlaying) this.clickSound.play();
-                }
-            }
-        }
         }
         this.lastClickTime = currentTime;
     }
 
-
-callElevator(targetLevel) {
-    if (!this.freightElevator) return;
-    
-    console.log(`🛗 Calling elevator to level ${targetLevel}`);
-    
-    const elevator = this.freightElevator;
-    
-    // Prevent multiple calls while moving
-    if (elevator.userData.isMoving) {
-        console.log("⏳ Elevator is already moving");
-        return;
-    }
-    
-    // Set target height based on level
-    const levels = [0, 8, 15]; // Ground, Mezzanine 1, Mezzanine 2
-    elevator.userData.targetY = levels[targetLevel];
-    elevator.userData.currentLevel = targetLevel;
-    elevator.userData.isMoving = true;
-    
-    // Show elevator UI
-    this.showElevatorUI(targetLevel);
-}
-
-showElevatorUI(level) {
-    const existing = document.getElementById('elevatorUI');
-    if (existing) existing.remove();
-    
-    const ui = document.createElement('div');
-    ui.id = 'elevatorUI';
-    ui.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,0.9);
-        color: #ffcc00;
-        padding: 15px 30px;
-        border-radius: 8px;
-        z-index: 10000;
-        font-family: 'Courier New', monospace;
-        font-size: 18px;
-        font-weight: bold;
-        border: 2px solid #ffcc00;
-        animation: slideDown 0.3s ease;
-    `;
-    
-    ui.innerHTML = `
-        🛗 FREIGHT ELEVATOR: ${['GROUND FLOOR', 'MEZZANINE 1', 'MEZZANINE 2'][level]}
-        <style>
-            @keyframes slideDown {
-                from { transform: translate(-50%, -100%); opacity: 0; }
-                to { transform: translate(-50%, 0); opacity: 1; }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(ui);
-    
-    setTimeout(() => {
-        ui.style.animation = 'fadeOut 0.5s ease';
-        setTimeout(() => ui.remove(), 500);
-    }, 3000);
-}
-moveWall(wall) {
-    if (!wall.userData.canMove) return;
-    
-    console.log("🚧 Moving wall panel...");
-    
-    // Animate wall sliding along track
-    const currentX = wall.position.x;
-    const trackStart = wall.userData.trackStart;
-    const trackEnd = wall.userData.trackEnd;
-    
-    // Toggle between start and end positions
-    let targetX;
-    if (Math.abs(currentX - trackStart) < 1) {
-        targetX = trackEnd;
-    } else {
-        targetX = trackStart;
-    }
-    
-    const startX = currentX;
-    const duration = 2000;
-    const startTime = Date.now();
-    
-    const animateWall = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const eased = this.easeInOutCubic(progress);
-        
-        wall.position.x = startX + (targetX - startX) * eased;
-        
-        // Grinding sound effect (visual vibration)
-        if (progress < 1) {
-            wall.rotation.z = Math.sin(elapsed * 0.05) * 0.005;
-            requestAnimationFrame(animateWall);
-        } else {
-            wall.rotation.z = 0;
-            console.log("✅ Wall moved to new position");
-        }
-    };
-    
-    animateWall();
-    
-    // Show notification
-    this.showWallNotification();
-}
-
-showWallNotification() {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: rgba(139, 69, 19, 0.95);
-        color: white;
-        padding: 15px 25px;
-        border-radius: 8px;
-        z-index: 10000;
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-        animation: slideInRight 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    `;
-    
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 24px;">🚧</span>
-            <span>Wall Panel Repositioning...</span>
-        </div>
-        <style>
-            @keyframes slideInRight {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'fadeOut 0.5s ease';
-        setTimeout(() => notification.remove(), 500);
-    }, 2000);
-}
     openSlider(selectedMesh) {
        if (!this.isFocused) {
     this.updateCameraState(); // Only save if not already focused

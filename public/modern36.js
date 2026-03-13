@@ -54,8 +54,11 @@ class ThreeJSApp {
     
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
-   this.roomCameraSettings = [
-    { position: new THREE.Vector3(-25, 0, 5), lookAt: new THREE.Vector3(0, 0, -5) }
+this.roomCameraSettings = [
+    { 
+        position: new THREE.Vector3(0, 2.5, 35), // ✓ CHANGE: was 1.6, now 2.5
+        lookAt: new THREE.Vector3(0, 2.5, 0)     // ✓ CHANGE: was 1.6, now 2.5
+    }
 ];
 
     const initialSettings = this.roomCameraSettings[0];
@@ -69,7 +72,7 @@ class ThreeJSApp {
         powerPreference: "high-performance" // ✓ ADDED
     });
     this.renderer.setClearColor(0x1a1a1a, 1); // ✓ FIXED: Darker background
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // ✓ FIXED: Cap pixel ratio
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -98,8 +101,7 @@ class ThreeJSApp {
             this.controls = new CustomPointerLockControls(this.camera, this.renderer.domElement);
             this.controls.getObject().position.copy(initialSettings.position);
         }
-    document.getElementById("feedFishBtn")?.addEventListener("click", () => this.feedFish());
-    document.getElementById("submarineDiveBtn")?.addEventListener("click", () => this.startSubmarineDive());
+
         this.images = [];
         this.sessionId = localStorage.getItem('sessionId');
         this.textureLoader = new THREE.TextureLoader();
@@ -127,9 +129,10 @@ class ThreeJSApp {
 
         this.lastClickTime = 0;
         this.clickDelay = 300;
-        this.moveSpeed = 0.15;
-        this.rotationSpeed = 0.05;
-        this.keys = { w: false, a: false, s: false, d: false, q: false, e: false };
+       this.moveSpeed = 0.15;
+    this.rotationSpeed = 0.05;
+    this.cameraHeight = 1.6; // ✓ ADD THIS LINE
+    this.keys = { w: false, a: false, s: false, d: false, q: false, e: false };
 
         this.time = 0;
         this.wallLights = [];
@@ -275,936 +278,2201 @@ this.setupMobileControls();
             }, 500);
         }
     }
-  addLighting() {
-    // ✓ FIXED: Reduced ambient for more dramatic lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); // was 0.3
-    this.scene.add(ambientLight);
 
-    // ✓ FIXED: Main directional light (softer, more realistic)
-    const mainLight = new THREE.DirectionalLight(0xffffff, 0.8); // was 1.2
-    mainLight.position.set(10, 20, 10);
-    mainLight.castShadow = true;
-    mainLight.shadow.mapSize.width = 2048;
-    mainLight.shadow.mapSize.height = 2048;
-    mainLight.shadow.camera.near = 0.5;
-    mainLight.shadow.camera.far = 50;
-    mainLight.shadow.camera.left = -25;
-    mainLight.shadow.camera.right = 25;
-    mainLight.shadow.camera.top = 25;
-    mainLight.shadow.camera.bottom = -25;
-    mainLight.shadow.bias = -0.0005; // ✓ ADDED
-    this.scene.add(mainLight);
+ addLighting() {
+    // ✓ REALISTIC AMBIENT (very low - underground feel)
+    const ambientLight = new THREE.AmbientLight(0xffeedd, 0.08); // Reduced from 0.15
+    this.scene.add(ambientLight);
     
-    // ✓ FIXED: Fill light (warmer tone)
-    const fillLight = new THREE.DirectionalLight(0xfff5e6, 0.3); // was 0xffffff, 0.4
-    fillLight.position.set(-15, 15, -10);
+    // ✓ REALISTIC FOG (denser, more atmospheric)
+    this.scene.fog = new THREE.FogExp2(0x1a1612, 0.015); // Warmer, denser
+    
+    // ✓ MAIN SUNLIGHT (from entrance - realistic fall-off)
+    const sunlight = new THREE.DirectionalLight(0xfff5e6, 0.6);
+    sunlight.position.set(0, 25, -55); // From entrance
+    sunlight.castShadow = true;
+    sunlight.shadow.mapSize.width = 4096; // Higher quality shadows
+    sunlight.shadow.mapSize.height = 4096;
+    sunlight.shadow.camera.near = 0.5;
+    sunlight.shadow.camera.far = 100;
+    sunlight.shadow.camera.left = -50;
+    sunlight.shadow.camera.right = 50;
+    sunlight.shadow.camera.top = 50;
+    sunlight.shadow.camera.bottom = -50;
+    sunlight.shadow.bias = -0.001;
+    sunlight.shadow.radius = 2; // Softer shadows
+    this.scene.add(sunlight);
+    
+    // ✓ REALISTIC FILL LIGHT (bounced light from tiles)
+    const fillLight = new THREE.DirectionalLight(0xffe8d6, 0.15);
+    fillLight.position.set(-20, 10, 20);
     this.scene.add(fillLight);
-    // Underwater haze
-this.scene.fog = new THREE.FogExp2(0x1a4d7a, 0.015); // Blue-green fog
+    
+    // ✓ UNDERGROUND AMBIENT (bluish from outside)
+    const skyLight = new THREE.HemisphereLight(0xb8d4e8, 0x3a2a1a, 0.2);
+    this.scene.add(skyLight);
 }
 
-
 createGallery() {
-    const room1 = new THREE.Group();
-    
     // ========================================
-    // MATERIALS LIBRARY
+    // ART NOUVEAU METRO STATION SYSTEM
     // ========================================
     
-    // Thick acrylic glass tunnel material
-    const acrylicGlassMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        transmission: 0.98,
-        thickness: 0.8,
-        roughness: 0.05,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
-        ior: 1.49, // Acrylic IOR
-        envMapIntensity: 1.2,
-        transparent: true,
-        opacity: 0.95,
-        side: THREE.DoubleSide
+    this.trains = [];
+    this.lamps = [];
+    this.stainedGlass = [];
+    this.ironwork = [];
+    this.performers = [];
+    this.advertisements = [];
+    this.trainCars = [];
+    this.passengers = [];
+    
+    this.createMetroStructure();
+    this.createOrnateIronwork();
+    this.createStainedGlass();
+    this.createArtNouveauLamps();
+    this.createPlatform();
+    this.createTicketBooth();
+    this.createTrainSystem();
+    this.createPeriodAdvertisements();
+    this.createBenches();
+    this.createPerformers();
+  
+    
+    console.log("🎨 Art Nouveau Metro Station created!");
+}
+
+// ========================================
+// METRO STRUCTURE (curved organic architecture)
+// ========================================
+
+// Replace the addLighting() method with this enhanced version:
+
+addLighting() {
+    // ✓ REALISTIC AMBIENT (very low - underground feel)
+    const ambientLight = new THREE.AmbientLight(0xffeedd, 0.08); // Reduced from 0.15
+    this.scene.add(ambientLight);
+    
+    // ✓ REALISTIC FOG (denser, more atmospheric)
+    this.scene.fog = new THREE.FogExp2(0x1a1612, 0.015); // Warmer, denser
+    
+    // ✓ MAIN SUNLIGHT (from entrance - realistic fall-off)
+    const sunlight = new THREE.DirectionalLight(0xfff5e6, 0.6);
+    sunlight.position.set(0, 25, -55); // From entrance
+    sunlight.castShadow = true;
+    sunlight.shadow.mapSize.width = 4096; // Higher quality shadows
+    sunlight.shadow.mapSize.height = 4096;
+    sunlight.shadow.camera.near = 0.5;
+    sunlight.shadow.camera.far = 100;
+    sunlight.shadow.camera.left = -50;
+    sunlight.shadow.camera.right = 50;
+    sunlight.shadow.camera.top = 50;
+    sunlight.shadow.camera.bottom = -50;
+    sunlight.shadow.bias = -0.001;
+    sunlight.shadow.radius = 2; // Softer shadows
+    this.scene.add(sunlight);
+    
+    // ✓ REALISTIC FILL LIGHT (bounced light from tiles)
+    const fillLight = new THREE.DirectionalLight(0xffe8d6, 0.15);
+    fillLight.position.set(-20, 10, 20);
+    this.scene.add(fillLight);
+    
+    // ✓ UNDERGROUND AMBIENT (bluish from outside)
+    const skyLight = new THREE.HemisphereLight(0xb8d4e8, 0x3a2a1a, 0.2);
+    this.scene.add(skyLight);
+}
+
+// Replace createMetroStructure() with enhanced materials and details:
+
+createMetroStructure() {
+    const metroRoom = new THREE.Group();
+    metroRoom.visible = true;
+    
+    const stationWidth = 40;
+    const stationLength = 100;
+    const stationHeight = 15;
+    
+    // ========================================
+    // ✓ ENHANCED REALISTIC MATERIALS
+    // ========================================
+    
+    const creamTileMaterial = new THREE.MeshStandardMaterial({
+        color: 0xf5f0e8, // Slightly warmer cream
+        roughness: 0.6, // More matte (realistic ceramic)
+        metalness: 0.0,
+        envMapIntensity: 0.3
     });
     
-    // Brass submarine metal
-    const brassMaterial = new THREE.MeshStandardMaterial({
-        color: 0xb87333,
-        roughness: 0.4,
-        metalness: 0.9,
-        envMapIntensity: 1.5
+    const darkTileMaterial = new THREE.MeshStandardMaterial({
+        color: 0x6b5a48, // More realistic brown
+        roughness: 0.65,
+        metalness: 0.0,
+        envMapIntensity: 0.2
     });
     
-    // Dark ocean floor sand
-    const sandFloorMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2c2416,
+    const ironMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2d3a2d, // Aged dark green iron
+        roughness: 0.5, // Slightly worn
+        metalness: 0.7,
+        envMapIntensity: 0.8
+    });
+    
+    const groutMaterial = new THREE.MeshStandardMaterial({
+        color: 0xa89584, // Dirty grout
         roughness: 0.95,
         metalness: 0.0
     });
     
-    // Bioluminescent glow material
-    const biolumMaterial = new THREE.MeshStandardMaterial({
-        color: 0x00ffff,
-        emissive: 0x00ffff,
-        emissiveIntensity: 2.0,
-        transparent: true,
-        opacity: 0.6
-    });
+    // ========================================
+    // ✓ REALISTIC PLATFORM FLOOR (with grout lines)
+    // ========================================
     
-    // Coral material
-    const coralMaterial = new THREE.MeshStandardMaterial({
-        color: 0xff6b9d,
-        roughness: 0.8,
-        metalness: 0.0
-    });
+    const platformGeometry = new THREE.PlaneGeometry(stationWidth, stationLength);
+    const platform = new THREE.Mesh(platformGeometry, creamTileMaterial);
+    platform.rotation.x = -Math.PI / 2;
+    platform.receiveShadow = true;
+    metroRoom.add(platform);
     
-    // Weathered metal hull
-    const hullMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4a5f6b,
+    // ✓ GROUT LINES (realistic tile separation)
+    const groutSize = 0.02;
+    for (let x = -stationWidth/2; x <= stationWidth/2; x += 1) {
+        const groutLine = new THREE.Mesh(
+            new THREE.PlaneGeometry(groutSize, stationLength),
+            groutMaterial
+        );
+        groutLine.rotation.x = -Math.PI / 2;
+        groutLine.position.set(x, 0.005, 0);
+        metroRoom.add(groutLine);
+    }
+    
+    for (let z = -stationLength/2; z <= stationLength/2; z += 1) {
+        const groutLine = new THREE.Mesh(
+            new THREE.PlaneGeometry(stationWidth, groutSize),
+            groutMaterial
+        );
+        groutLine.rotation.x = -Math.PI / 2;
+        groutLine.position.set(0, 0.005, z);
+        metroRoom.add(groutLine);
+    }
+    
+    // ✓ WORN FLOOR AREAS (darker near walls)
+    for (let i = 0; i < 30; i++) {
+        const wornPatch = new THREE.Mesh(
+            new THREE.CircleGeometry(0.3 + Math.random() * 0.5, 16),
+            new THREE.MeshStandardMaterial({
+                color: 0xd5cfc5,
+                roughness: 0.8,
+                metalness: 0.0,
+                transparent: true,
+                opacity: 0.4
+            })
+        );
+        wornPatch.rotation.x = -Math.PI / 2;
+        wornPatch.position.set(
+            (Math.random() - 0.5) * stationWidth * 0.9,
+            0.01,
+            (Math.random() - 0.5) * stationLength * 0.9
+        );
+        metroRoom.add(wornPatch);
+    }
+    
+    // ✓ REALISTIC BORDER TILES (with depth)
+    const tileSize = 1;
+    for (let i = 0; i < stationLength; i += tileSize) {
+        [-stationWidth/2 + 1, stationWidth/2 - 1].forEach(x => {
+            // Main tile
+            const tile = new THREE.Mesh(
+                new THREE.BoxGeometry(tileSize - 0.02, 0.05, tileSize - 0.02),
+                darkTileMaterial
+            );
+            tile.position.set(x, 0.025, -stationLength/2 + i + tileSize/2);
+            tile.castShadow = true;
+            tile.receiveShadow = true;
+            metroRoom.add(tile);
+            
+            // Grout around it
+            const grout = new THREE.Mesh(
+                new THREE.BoxGeometry(tileSize, 0.02, tileSize),
+                groutMaterial
+            );
+            grout.position.set(x, 0.01, -stationLength/2 + i + tileSize/2);
+            grout.receiveShadow = true;
+            metroRoom.add(grout);
+        });
+    }
+    
+    // ========================================
+    // ✓ REALISTIC VAULTED CEILING
+    // ========================================
+    
+    const ceilingMaterial = new THREE.MeshStandardMaterial({
+        color: 0xe8e0d8,
         roughness: 0.7,
+        metalness: 0.0,
+        side: THREE.BackSide
+    });
+    
+    const numArches = 10;
+    for (let i = 0; i < numArches; i++) {
+        const z = -stationLength/2 + (i / (numArches - 1)) * stationLength;
+        
+        // Enhanced arch with more realistic curve
+        const archPoints = [];
+        const segments = 40;
+        
+        for (let j = 0; j <= segments; j++) {
+            const t = j / segments;
+            const angle = t * Math.PI;
+            
+            // More realistic catenary curve
+            let x = Math.cos(angle) * stationWidth / 2;
+            let y = stationHeight * 0.3 + Math.sin(angle) * stationHeight * 0.7;
+            
+            // Subtle Art Nouveau curve
+            if (t > 0.15 && t < 0.85) {
+                const curveInfluence = Math.sin((t - 0.15) / 0.7 * Math.PI);
+                y += curveInfluence * 0.8;
+            }
+            
+            archPoints.push(new THREE.Vector3(x, y, z));
+        }
+        
+        const archCurve = new THREE.CatmullRomCurve3(archPoints);
+        const archGeometry = new THREE.TubeGeometry(archCurve, segments, 0.25, 12, false);
+        const arch = new THREE.Mesh(archGeometry, ironMaterial);
+        arch.castShadow = true;
+        arch.receiveShadow = true;
+        metroRoom.add(arch);
+        
+        // Decorative rivets on arch
+        for (let k = 0; k < segments; k += 4) {
+            const point = archCurve.getPoint(k / segments);
+            const rivet = new THREE.Mesh(
+                new THREE.SphereGeometry(0.04, 8, 8),
+                new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    roughness: 0.3,
+                    metalness: 0.9
+                })
+            );
+            rivet.position.copy(point);
+            rivet.castShadow = true;
+            metroRoom.add(rivet);
+        }
+    }
+    
+    // Ceiling panels (aged, slightly discolored)
+    for (let i = 0; i < numArches - 1; i++) {
+        const z = -stationLength/2 + ((i + 0.5) / (numArches - 1)) * stationLength;
+        
+        const ceilingPanel = new THREE.Mesh(
+            new THREE.PlaneGeometry(stationWidth * 0.92, stationLength / numArches * 0.85),
+            ceilingMaterial
+        );
+        ceilingPanel.rotation.x = Math.PI / 2;
+        ceilingPanel.position.set(0, stationHeight - 0.5, z);
+        ceilingPanel.receiveShadow = true;
+        metroRoom.add(ceilingPanel);
+        
+        // ✓ WATER STAINS (realistic aging)
+        if (Math.random() < 0.4) {
+            const stain = new THREE.Mesh(
+                new THREE.CircleGeometry(1 + Math.random() * 2, 16),
+                new THREE.MeshStandardMaterial({
+                    color: 0xb8b0a8,
+                    roughness: 0.9,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                })
+            );
+            stain.rotation.x = Math.PI / 2;
+            stain.position.set(
+                (Math.random() - 0.5) * stationWidth * 0.8,
+                stationHeight - 0.48,
+                z + (Math.random() - 0.5) * 3
+            );
+            metroRoom.add(stain);
+        }
+    }
+    
+    // ========================================
+    // ✓ REALISTIC PLATFORM WALLS (beveled tiles with depth)
+    // ========================================
+    
+    [-stationWidth/2, stationWidth/2].forEach((x, wallIndex) => {
+        const wallHeight = 8;
+        const tileRows = 16; // More tiles for realism
+        const tileCols = 100;
+        
+        for (let row = 0; row < tileRows; row++) {
+            for (let col = 0; col < tileCols; col++) {
+                // Realistic tile pattern (some darker for variety)
+                const isDark = (row + col) % 17 === 0 || Math.random() < 0.05;
+                const isWorn = Math.random() < 0.15;
+                
+                let tileMat = isDark ? darkTileMaterial : creamTileMaterial;
+                if (isWorn) {
+                    tileMat = new THREE.MeshStandardMaterial({
+                        color: isDark ? 0x5a4a38 : 0xe5dfd5,
+                        roughness: 0.75,
+                        metalness: 0.0
+                    });
+                }
+                
+                // Beveled tile (realistic 3D depth)
+                const tileGroup = new THREE.Group();
+                
+                // Main tile face
+                const tileFace = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.92, 0.46),
+                    tileMat
+                );
+                tileGroup.add(tileFace);
+                
+                // Bevel edges (4 sides)
+                const bevelMat = new THREE.MeshStandardMaterial({
+                    color: isDark ? 0x6b5a48 : 0xeae4dc,
+                    roughness: 0.65
+                });
+                
+                // Top bevel
+                const bevelTop = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.92, 0.03),
+                    bevelMat
+                );
+                bevelTop.position.y = 0.23;
+                bevelTop.rotation.x = -Math.PI / 12;
+                tileGroup.add(bevelTop);
+                
+                // Bottom bevel
+                const bevelBottom = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.92, 0.03),
+                    bevelMat
+                );
+                bevelBottom.position.y = -0.23;
+                bevelBottom.rotation.x = Math.PI / 12;
+                tileGroup.add(bevelBottom);
+                
+                tileGroup.position.set(
+                    x,
+                    0.25 + row * 0.5,
+                    -stationLength/2 + (col / tileCols) * stationLength
+                );
+                tileGroup.rotation.y = wallIndex === 0 ? Math.PI/2 : -Math.PI/2;
+                
+                tileGroup.traverse(child => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+                
+                metroRoom.add(tileGroup);
+            }
+        }
+    });
+    
+    // ========================================
+    // ✓ REALISTIC ORNATE PILLARS
+    // ========================================
+    
+    const pillarPositions = [
+        { x: -12, z: -40 }, { x: 12, z: -40 },
+        { x: -12, z: -20 }, { x: 12, z: -20 },
+        { x: -12, z: 0 }, { x: 12, z: 0 },
+        { x: -12, z: 20 }, { x: 12, z: 20 },
+        { x: -12, z: 40 }, { x: 12, z: 40 }
+    ];
+    
+    pillarPositions.forEach(pos => {
+        const pillar = this.createRealisticPillar();
+        pillar.position.set(pos.x, 0, pos.z);
+        metroRoom.add(pillar);
+    });
+    
+    // ========================================
+    // ✓ ENHANCED LIGHTING (realistic metro ambience)
+    // ========================================
+    
+    // Warm overhead lights (realistic spacing and intensity)
+    for (let i = 0; i < 10; i++) {
+        const light = new THREE.PointLight(0xffdda8, 2.5, 18, 2);
+        light.position.set(
+            (i % 2 === 0 ? -6 : 6),
+            11,
+            -45 + i * 10
+        );
+        light.castShadow = true;
+        light.shadow.mapSize.width = 1024;
+        light.shadow.mapSize.height = 1024;
+        light.shadow.bias = -0.001;
+        light.shadow.radius = 3; // Soft shadows
+        metroRoom.add(light);
+        
+        // ✓ REALISTIC LIGHT FIXTURES
+        const fixture = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.3, 0.6, 12),
+            new THREE.MeshStandardMaterial({
+                color: 0x3a3a3a,
+                roughness: 0.4,
+                metalness: 0.8,
+                emissive: 0xffaa66,
+                emissiveIntensity: 0.2
+            })
+        );
+        fixture.position.copy(light.position);
+        fixture.position.y -= 0.5;
+        fixture.castShadow = true;
+        metroRoom.add(fixture);
+    }
+    
+    // ✓ REALISTIC FOG (warm underground atmosphere)
+    this.scene.fog = new THREE.Fog(0x2a2622, 40, 90);
+    
+    // ========================================
+    // ✓ ARTWORK DISPLAY LOCATIONS
+    // ========================================
+    
+    this.metroArtworkSpots = [];
+    for (let i = 0; i < 9; i++) {
+        const side = i % 2 === 0 ? -1 : 1;
+        const z = -40 + Math.floor(i / 2) * 20;
+        
+        this.metroArtworkSpots.push({
+            x: side * 17,
+            y: 4,
+            z: z,
+            rot: side === -1 ? Math.PI/2 : -Math.PI/2
+        });
+    }
+    
+    metroRoom.position.set(0, 0, 0);
+    this.rooms.push(metroRoom);
+    this.scene.add(metroRoom);
+}
+
+// ✓ ADD THIS NEW METHOD for realistic pillars:
+
+createRealisticPillar() {
+    const pillarGroup = new THREE.Group();
+    
+    const ironMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2d3a2d,
+        roughness: 0.5,
+        metalness: 0.75,
+        envMapIntensity: 0.8
+    });
+    
+    const brassMaterial = new THREE.MeshStandardMaterial({
+        color: 0xb8942f, // Aged brass
+        roughness: 0.35,
+        metalness: 0.85,
+        envMapIntensity: 1.0
+    });
+    
+    const verdigrismaterial = new THREE.MeshStandardMaterial({
+        color: 0x5a7a5a, // Green patina
+        roughness: 0.7,
+        metalness: 0.3
+    });
+    
+    // Main pillar (with realistic wear)
+    const pillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.38, 0.48, 12, 16),
+        ironMaterial
+    );
+    pillar.position.y = 6;
+    pillar.castShadow = true;
+    pillar.receiveShadow = true;
+    pillarGroup.add(pillar);
+    
+    // ✓ VERTICAL FLUTING (realistic Art Nouveau detail)
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const flute = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 11.5, 0.15),
+            new THREE.MeshStandardMaterial({
+                color: 0x252a25,
+                roughness: 0.6,
+                metalness: 0.7
+            })
+        );
+        flute.position.set(
+            Math.cos(angle) * 0.42,
+            6,
+            Math.sin(angle) * 0.42
+        );
+        flute.castShadow = true;
+        pillarGroup.add(flute);
+    }
+    
+    // Ornate capital (aged brass with verdigris)
+    const capital = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.7, 0.5, 0.8, 12),
+        brassMaterial
+    );
+    capital.position.y = 12.4;
+    capital.castShadow = true;
+    pillarGroup.add(capital);
+    
+    // ✓ VERDIGRIS PATCHES (realistic aging)
+    for (let i = 0; i < 4; i++) {
+        const patch = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15, 8, 8),
+            verdigrismaterial
+        );
+        const angle = (i / 4) * Math.PI * 2;
+        patch.position.set(
+            Math.cos(angle) * 0.6,
+            12.4,
+            Math.sin(angle) * 0.6
+        );
+        patch.scale.y = 0.3;
+        pillarGroup.add(patch);
+    }
+    
+    // Flowing acanthus leaves
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const leaf = new THREE.Mesh(
+            new THREE.ConeGeometry(0.25, 1.2, 4),
+            brassMaterial
+        );
+        leaf.position.set(
+            Math.cos(angle) * 0.65,
+            11.8,
+            Math.sin(angle) * 0.65
+        );
+        leaf.rotation.z = -Math.PI / 3;
+        leaf.rotation.y = angle;
+        leaf.castShadow = true;
+        pillarGroup.add(leaf);
+    }
+    
+    // Decorative base (multi-tiered)
+    const baseTiers = [
+        { r1: 0.75, r2: 0.8, h: 0.3, y: 0.15 },
+        { r1: 0.65, r2: 0.7, h: 0.4, y: 0.55 },
+        { r1: 0.55, r2: 0.6, h: 0.3, y: 0.95 }
+    ];
+    
+    baseTiers.forEach(tier => {
+        const baseTier = new THREE.Mesh(
+            new THREE.CylinderGeometry(tier.r1, tier.r2, tier.h, 12),
+            brassMaterial
+        );
+        baseTier.position.y = tier.y;
+        baseTier.castShadow = true;
+        baseTier.receiveShadow = true;
+        pillarGroup.add(baseTier);
+    });
+    
+    // ✓ REALISTIC VINE WITH DEPTH
+    const vinePoints = [];
+    for (let i = 0; i <= 30; i++) {
+        const t = i / 30;
+        const angle = t * Math.PI * 5;
+        const height = t * 10 + 1.2;
+        const radius = 0.46 + Math.sin(t * Math.PI * 3) * 0.04;
+        
+        vinePoints.push(new THREE.Vector3(
+            Math.cos(angle) * radius,
+            height,
+            Math.sin(angle) * radius
+        ));
+    }
+    
+    const vineCurve = new THREE.CatmullRomCurve3(vinePoints);
+    const vineGeometry = new THREE.TubeGeometry(vineCurve, 30, 0.05, 8, false);
+    const vine = new THREE.Mesh(vineGeometry, verdigrismaterial);
+    vine.castShadow = true;
+    pillarGroup.add(vine);
+    
+    // ✓ REALISTIC RUST STREAKS
+    for (let i = 0; i < 5; i++) {
+        const rust = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.08, 2 + Math.random() * 3),
+            new THREE.MeshStandardMaterial({
+                color: 0x8b4513,
+                roughness: 0.95,
+                transparent: true,
+                opacity: 0.4
+            })
+        );
+        const angle = Math.random() * Math.PI * 2;
+        rust.position.set(
+            Math.cos(angle) * 0.48,
+            4 + Math.random() * 6,
+            Math.sin(angle) * 0.48
+        );
+        rust.lookAt(0, rust.position.y, 0);
+        pillarGroup.add(rust);
+    }
+    
+    return pillarGroup;
+}
+
+createArtNouveauPillar() {
+    const pillarGroup = new THREE.Group();
+    
+    const ironMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a3a2a,
+        roughness: 0.4,
         metalness: 0.8
     });
     
-    // ========================================
-    // MAIN CURVED TUNNEL STRUCTURE
-    // ========================================
-    
-    // Create curved path for tunnel
-    const tunnelCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-25, 0, 0),
-        new THREE.Vector3(-15, 0, -8),
-        new THREE.Vector3(0, 0, -10),
-        new THREE.Vector3(15, 0, -8),
-        new THREE.Vector3(25, 0, 0)
-    ]);
-    
-    // Tunnel tube geometry
-    const tunnelGeometry = new THREE.TubeGeometry(
-        tunnelCurve,
-        100, // path segments
-        3.5, // radius
-        16, // radial segments
-        false // closed
-    );
-    
-    const tunnel = new THREE.Mesh(tunnelGeometry, acrylicGlassMaterial);
-    tunnel.receiveShadow = true;
-    room1.add(tunnel);
-    
-    // Chrome support rings every 5m
-    for (let i = 0; i <= 10; i++) {
-        const t = i / 10;
-        const pos = tunnelCurve.getPoint(t);
-        const tangent = tunnelCurve.getTangent(t);
-        
-        const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(3.6, 0.15, 16, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0xc0c0c0,
-                roughness: 0.2,
-                metalness: 1.0,
-                envMapIntensity: 2.0
-            })
-        );
-        
-        ring.position.copy(pos);
-        ring.lookAt(pos.clone().add(tangent));
-        ring.castShadow = true;
-        room1.add(ring);
-        
-        // Rivets on rings
-        for (let j = 0; j < 24; j++) {
-            const angle = (j / 24) * Math.PI * 2;
-            const rivet = new THREE.Mesh(
-                new THREE.SphereGeometry(0.08, 8, 8),
-                brassMaterial
-            );
-            rivet.position.copy(pos);
-            rivet.position.x += Math.cos(angle) * 3.6;
-            rivet.position.y += Math.sin(angle) * 3.6;
-            room1.add(rivet);
-        }
-    }
-    
-    // ========================================
-    // FLOOR SYSTEM
-    // ========================================
-    
-    // Main walkway floor (metal grating)
-    const walkwayPath = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-25, -2.5, 0),
-        new THREE.Vector3(-15, -2.5, -8),
-        new THREE.Vector3(0, -2.5, -10),
-        new THREE.Vector3(15, -2.5, -8),
-        new THREE.Vector3(25, -2.5, 0)
-    ]);
-    
-    const walkwayGeometry = new THREE.TubeGeometry(
-        walkwayPath,
-        100,
-        2.0, // narrower floor
-        8,
-        false
-    );
-    
-    const walkway = new THREE.Mesh(
-        walkwayGeometry,
-        new THREE.MeshStandardMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.8,
-            metalness: 0.9,
-            transparent: true,
-            opacity: 0.8
-        })
-    );
-    walkway.receiveShadow = true;
-    room1.add(walkway);
-    
-    // Glass floor sections (see fish below)
-    for (let i = 1; i < 10; i += 2) {
-        const t = i / 10;
-        const pos = walkwayPath.getPoint(t);
-        
-        const glassFloor = new THREE.Mesh(
-            new THREE.CircleGeometry(1.5, 32),
-            acrylicGlassMaterial
-        );
-        glassFloor.position.copy(pos);
-        glassFloor.position.y += 0.05;
-        glassFloor.rotation.x = -Math.PI / 2;
-        glassFloor.receiveShadow = true;
-        room1.add(glassFloor);
-    }
-    
-    // ========================================
-    // VIEWING PODS (6 Spherical Domes)
-    // ========================================
-    
-    const podPositions = [
-        { x: -20, y: 0, z: 5 },
-        { x: -10, y: 0, z: -12 },
-        { x: 0, y: 0, z: -15 },
-        { x: 10, y: 0, z: -12 },
-        { x: 20, y: 0, z: 5 },
-        { x: 0, y: 5, z: -10 } // Elevated pod
-    ];
-    
-    podPositions.forEach((podPos, index) => {
-        // Glass dome (hemisphere)
-        const dome = new THREE.Mesh(
-            new THREE.SphereGeometry(4, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
-            acrylicGlassMaterial
-        );
-        dome.position.set(podPos.x, podPos.y, podPos.z);
-        dome.receiveShadow = true;
-        dome.castShadow = true;
-        room1.add(dome);
-        
-        // Metal base ring
-        const baseRing = new THREE.Mesh(
-            new THREE.CylinderGeometry(4.1, 4.1, 0.3, 32),
-            hullMaterial
-        );
-        baseRing.position.set(podPos.x, podPos.y - 0.15, podPos.z);
-        baseRing.castShadow = true;
-        room1.add(baseRing);
-        
-        // Interior floor platform
-        const platform = new THREE.Mesh(
-            new THREE.CircleGeometry(3.5, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0x3a3a3a,
-                roughness: 0.6,
-                metalness: 0.8
-            })
-        );
-        platform.position.set(podPos.x, podPos.y - 2, podPos.z);
-        platform.rotation.x = -Math.PI / 2;
-        platform.receiveShadow = true;
-        room1.add(platform);
-        
-        // Brass observation seat
-        const seat = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.4, 0.5, 0.8, 16),
-            brassMaterial
-        );
-        seat.position.set(podPos.x, podPos.y - 1.6, podPos.z);
-        seat.castShadow = true;
-        room1.add(seat);
-        
-        // Ambient pod lighting (blue-green)
-        const podLight = new THREE.PointLight(0x00ccff, 2.0, 10);
-        podLight.position.set(podPos.x, podPos.y + 3, podPos.z);
-        room1.add(podLight);
+    const goldMaterial = new THREE.MeshStandardMaterial({
+        color: 0xd4af37,
+        roughness: 0.3,
+        metalness: 0.9
     });
     
-    // ========================================
-    // PORTHOLE WINDOWS (Along Tunnel)
-    // ========================================
-    
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const t = (i / 8);
-        const pos = tunnelCurve.getPoint(t);
-        
-        // Brass porthole frame
-        const frame = new THREE.Mesh(
-            new THREE.TorusGeometry(0.8, 0.1, 16, 32),
-            brassMaterial
-        );
-        frame.position.set(
-            pos.x + Math.cos(angle) * 3.3,
-            pos.y + Math.sin(angle) * 3.3,
-            pos.z
-        );
-        frame.lookAt(pos);
-        frame.castShadow = true;
-        room1.add(frame);
-        
-        // Glass porthole
-        const glass = new THREE.Mesh(
-            new THREE.CircleGeometry(0.75, 32),
-            acrylicGlassMaterial
-        );
-        glass.position.copy(frame.position);
-        glass.lookAt(pos);
-        room1.add(glass);
-        
-        // Locking wheel mechanism
-        for (let j = 0; j < 6; j++) {
-            const spokeAngle = (j / 6) * Math.PI * 2;
-            const spoke = new THREE.Mesh(
-                new THREE.BoxGeometry(0.08, 0.08, 0.4),
-                brassMaterial
-            );
-            spoke.position.copy(frame.position);
-            spoke.position.x += Math.cos(spokeAngle) * 0.5 + Math.cos(angle) * 0.1;
-            spoke.position.y += Math.sin(spokeAngle) * 0.5 + Math.sin(angle) * 0.1;
-            spoke.rotation.z = spokeAngle;
-            room1.add(spoke);
-        }
-    }
-    
-    // ========================================
-    // SUBMARINE ENTRANCE AIRLOCK
-    // ========================================
-    
-    const airlockGroup = new THREE.Group();
-    
-    // Circular door
-    const door = new THREE.Mesh(
-        new THREE.CylinderGeometry(2.5, 2.5, 0.5, 32),
-        hullMaterial
+    // Main pillar (slightly tapered)
+    const pillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 0.5, 12, 12),
+        ironMaterial
     );
-    door.rotation.z = Math.PI / 2;
-    door.position.set(-28, 0, 0);
-    door.castShadow = true;
-    airlockGroup.add(door);
+    pillar.position.y = 6;
+    pillar.castShadow = true;
+    pillarGroup.add(pillar);
     
-    // Spinning wheel handle
-    const wheel = new THREE.Mesh(
-        new THREE.TorusGeometry(0.8, 0.08, 16, 32),
-        brassMaterial
+    // Organic floral capital at top
+    const capital = new THREE.Mesh(
+        new THREE.SphereGeometry(0.8, 12, 12, 0, Math.PI * 2, 0, Math.PI / 3),
+        goldMaterial
     );
-    wheel.position.set(-27.5, 0, 0);
-    wheel.rotation.y = Math.PI / 2;
-    airlockGroup.add(wheel);
+    capital.position.y = 12;
+    pillarGroup.add(capital);
     
-    // Wheel spokes
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const spoke = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, 0.08, 1.4),
-            brassMaterial
+    // Flowing leaves around capital
+    for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const leaf = new THREE.Mesh(
+            new THREE.ConeGeometry(0.3, 1, 4),
+            goldMaterial
         );
-        spoke.position.copy(wheel.position);
-        spoke.rotation.copy(wheel.rotation);
-        spoke.rotation.z = angle;
-        airlockGroup.add(spoke);
+        leaf.position.set(
+            Math.cos(angle) * 0.7,
+            11.5,
+            Math.sin(angle) * 0.7
+        );
+        leaf.rotation.z = -Math.PI / 4;
+        leaf.rotation.y = angle;
+        pillarGroup.add(leaf);
     }
     
-  
+    // Decorative base
+    const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.7, 0.8, 1, 12),
+        goldMaterial
+    );
+    base.position.y = 0.5;
+    pillarGroup.add(base);
     
-    room1.add(airlockGroup);
-    this.airlockWheel = wheel; // Store for animation
-    
-    // ========================================
-    // MARINE LIFE - SWIMMING FISH
-    // ========================================
-    
-    this.fishSchools = [];
-    
-    // Tropical fish (small, colorful)
-    for (let i = 0; i < 30; i++) {
-        const fish = new THREE.Mesh(
-            new THREE.ConeGeometry(0.1, 0.3, 8),
-            new THREE.MeshStandardMaterial({
-                color: [0xff6b35, 0xf7931e, 0xfdc82f, 0x00a8e8][Math.floor(Math.random() * 4)],
-                roughness: 0.4,
-                metalness: 0.3
-            })
-        );
-        
-        fish.rotation.x = Math.PI / 2;
-        fish.position.set(
-            (Math.random() - 0.5) * 50,
-            Math.random() * 8 - 2,
-            (Math.random() - 0.5) * 30
-        );
-        
-        // Add tail fin
-        const tail = new THREE.Mesh(
-            new THREE.ConeGeometry(0.08, 0.15, 3),
-            fish.material
-        );
-        tail.position.z = -0.15;
-        fish.add(tail);
-        
-        fish.userData = {
-            speed: 0.02 + Math.random() * 0.03,
-            amplitude: 0.5 + Math.random() * 1.0,
-            phase: Math.random() * Math.PI * 2,
-            orbitRadius: 10 + Math.random() * 15,
-            orbitSpeed: 0.001 + Math.random() * 0.002,
-            orbitAngle: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(fish);
-        this.fishSchools.push(fish);
-    }
-    
-    // Large rays (gliding)
-    for (let i = 0; i < 5; i++) {
-        const ray = new THREE.Mesh(
-            new THREE.SphereGeometry(1.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-            new THREE.MeshStandardMaterial({
-                color: 0x5a7d9a,
-                roughness: 0.6,
-                metalness: 0.2
-            })
-        );
-        
-        ray.scale.set(2, 0.2, 1);
-        ray.position.set(
-            (Math.random() - 0.5) * 40,
-            Math.random() * 6,
-            (Math.random() - 0.5) * 25
-        );
-        
-        ray.userData = {
-            speed: 0.01,
-            amplitude: 2.0,
-            phase: Math.random() * Math.PI * 2,
-            orbitRadius: 20,
-            orbitSpeed: 0.0008,
-            orbitAngle: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(ray);
-        this.fishSchools.push(ray);
-    }
-    
-    // ========================================
-    // BIOLUMINESCENT JELLYFISH
-    // ========================================
-    
-    this.jellyfish = [];
-    
-    for (let i = 0; i < 15; i++) {
-        const jellyfishGroup = new THREE.Group();
-        
-        // Bell (dome)
-        const bell = new THREE.Mesh(
-            new THREE.SphereGeometry(0.4, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-            new THREE.MeshStandardMaterial({
-                color: 0x00ffff,
-                emissive: 0x00ffff,
-                emissiveIntensity: 0.8,
-                transparent: true,
-                opacity: 0.6,
-                roughness: 0.3
-            })
-        );
-        bell.rotation.x = Math.PI;
-        jellyfishGroup.add(bell);
-        
-        // Tentacles (6-8 per jellyfish)
-        const numTentacles = 6 + Math.floor(Math.random() * 3);
-        for (let j = 0; j < numTentacles; j++) {
-            const angle = (j / numTentacles) * Math.PI * 2;
-            const tentacle = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.02, 0.01, 1.5, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x00ccff,
-                    emissive: 0x0088cc,
-                    emissiveIntensity: 0.5,
-                    transparent: true,
-                    opacity: 0.4
-                })
-            );
-            tentacle.position.set(
-                Math.cos(angle) * 0.3,
-                -0.75,
-                Math.sin(angle) * 0.3
-            );
-            jellyfishGroup.add(tentacle);
-        }
-        
-        // Glow light
-        const glowLight = new THREE.PointLight(0x00ffff, 2.0, 5);
-        glowLight.position.set(0, 0, 0);
-        jellyfishGroup.add(glowLight);
-        
-        jellyfishGroup.position.set(
-            (Math.random() - 0.5) * 45,
-            Math.random() * 8 + 2,
-            (Math.random() - 0.5) * 28
-        );
-        
-        jellyfishGroup.userData = {
-            floatSpeed: 0.0005 + Math.random() * 0.001,
-            floatAmplitude: 1.5 + Math.random() * 1.0,
-            floatPhase: Math.random() * Math.PI * 2,
-            pulseSpeed: 1.0 + Math.random() * 2.0
-        };
-        
-        room1.add(jellyfishGroup);
-        this.jellyfish.push(jellyfishGroup);
-    }
-    
-    // ========================================
-    // CORAL REEF STRUCTURES
-    // ========================================
-    
-    const coralPositions = [
-        { x: -18, z: 8 }, { x: -12, z: -14 }, { x: 0, z: -18 },
-        { x: 12, z: -14 }, { x: 18, z: 8 }, { x: -8, z: 0 },
-        { x: 8, z: -5 }, { x: 0, z: 10 }
-    ];
-    
-    coralPositions.forEach(pos => {
-        const coralGroup = new THREE.Group();
-        
-        // Brain coral
-        const brainCoral = new THREE.Mesh(
-            new THREE.SphereGeometry(0.8, 16, 16),
-            new THREE.MeshStandardMaterial({
-                color: 0xff6b9d,
-                roughness: 0.9,
-                metalness: 0.0
-            })
-        );
-        brainCoral.scale.set(1, 0.6, 1);
-        brainCoral.position.y = -2.5;
-        coralGroup.add(brainCoral);
-        
-        // Branch coral (random height)
-        for (let i = 0; i < 5 + Math.floor(Math.random() * 5); i++) {
-            const branch = new THREE.Mesh(
-                new THREE.CylinderGeometry(
-                    0.05 + Math.random() * 0.05,
-                    0.08 + Math.random() * 0.07,
-                    0.5 + Math.random() * 1.0,
-                    8
-                ),
-                new THREE.MeshStandardMaterial({
-                    color: [0xff6b9d, 0xffa07a, 0xee82ee, 0xdda0dd][Math.floor(Math.random() * 4)],
-                    roughness: 0.85
-                })
-            );
-            branch.position.set(
-                (Math.random() - 0.5) * 1.5,
-                -2.5 + Math.random() * 0.8,
-                (Math.random() - 0.5) * 1.5
-            );
-            branch.rotation.set(
-                (Math.random() - 0.5) * 0.4,
-                Math.random() * Math.PI * 2,
-                (Math.random() - 0.5) * 0.4
-            );
-            coralGroup.add(branch);
-        }
-        
-        // Sea anemone (swaying)
-        const anemone = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.2, 0.6, 12),
-            new THREE.MeshStandardMaterial({
-                color: 0xee82ee,
-                roughness: 0.7
-            })
-        );
-        anemone.position.set(
-            (Math.random() - 0.5) * 2,
-            -2.2,
-            (Math.random() - 0.5) * 2
-        );
-        coralGroup.add(anemone);
-        
-        coralGroup.position.set(pos.x, 0, pos.z);
-        room1.add(coralGroup);
-    });
-    
-    // ========================================
-    // KELP FOREST (Swaying Seaweed)
-    // ========================================
-    
-    this.kelpStrands = [];
-    
+    // Organic vine pattern wrapping around pillar
     for (let i = 0; i < 20; i++) {
-        const kelpGroup = new THREE.Group();
+        const angle = (i / 20) * Math.PI * 4;
+        const height = (i / 20) * 10 + 1;
         
-        const segments = 8;
-        for (let j = 0; j < segments; j++) {
-            const segment = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.08, 0.1, 0.8, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x2d5016,
-                    roughness: 0.8
-                })
+        const vine = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08, 6, 6),
+            goldMaterial
+        );
+        vine.position.set(
+            Math.cos(angle) * 0.45,
+            height,
+            Math.sin(angle) * 0.45
+        );
+        pillarGroup.add(vine);
+    }
+    
+    return pillarGroup;
+}
+
+// ========================================
+// ORNATE IRONWORK (Guimard-style entrance)
+// ========================================
+
+createOrnateIronwork() {
+    // Entrance archway (Art Nouveau style)
+    const entrance = this.createMetroEntrance();
+    entrance.position.set(0, 0, -48);
+    this.rooms[0].add(entrance);
+    
+    // Platform railings (organic curves)
+    this.createPlatformRailings();
+}
+
+createMetroEntrance() {
+    const entranceGroup = new THREE.Group();
+    
+    const ironMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a4a2a,
+        roughness: 0.3,
+        metalness: 0.9
+    });
+    
+    const glassMaterial = new THREE.MeshStandardMaterial({
+        color: 0x88ff88,
+        transparent: true,
+        opacity: 0.6,
+        emissive: 0x44aa44,
+        emissiveIntensity: 0.3
+    });
+    
+    // Two curved support pillars (Guimard style)
+    [-3, 3].forEach(x => {
+        const points = [];
+        for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            const y = t * 8;
+            const curve = Math.sin(t * Math.PI) * 0.5;
+            points.push(new THREE.Vector3(x + curve, y, 0));
+        }
+        
+        const curve = new THREE.CatmullRomCurve3(points);
+        const tubeGeometry = new THREE.TubeGeometry(curve, 20, 0.15, 8, false);
+        const support = new THREE.Mesh(tubeGeometry, ironMaterial);
+        entranceGroup.add(support);
+    });
+    
+    // Top arch with organic curves
+    const archPoints = [];
+    for (let i = 0; i <= 30; i++) {
+        const t = i / 30;
+        const angle = Math.PI * t;
+        const x = Math.cos(angle) * 4;
+        const y = 8 + Math.sin(angle) * 2;
+        
+        // Add Art Nouveau flourish
+        const flourish = Math.sin(t * Math.PI * 3) * 0.2;
+        
+        archPoints.push(new THREE.Vector3(x, y + flourish, 0));
+    }
+    
+    const archCurve = new THREE.CatmullRomCurve3(archPoints);
+    const archGeometry = new THREE.TubeGeometry(archCurve, 30, 0.15, 8, false);
+    const arch = new THREE.Mesh(archGeometry, ironMaterial);
+    entranceGroup.add(arch);
+    
+    // "MÉTROPOLITAIN" sign
+    const signGeometry = new THREE.PlaneGeometry(5, 0.8);
+    const signMaterial = new THREE.MeshStandardMaterial({
+        color: 0xf5f5dc,
+        emissive: 0xffeecc,
+        emissiveIntensity: 0.3
+    });
+    const sign = new THREE.Mesh(signGeometry, signMaterial);
+    sign.position.set(0, 9, 0.2);
+    entranceGroup.add(sign);
+    
+    // Glass panels with floral pattern
+    for (let i = 0; i < 4; i++) {
+        const glass = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.2, 6),
+            glassMaterial
+        );
+        glass.position.set(-2 + i * 1.3, 4, 0.1);
+        entranceGroup.add(glass);
+    }
+    
+    // Lamp globes on top
+    [-2, 2].forEach(x => {
+        const globe = new THREE.Mesh(
+            new THREE.SphereGeometry(0.4, 16, 16),
+            new THREE.MeshStandardMaterial({
+                color: 0xffffcc,
+                transparent: true,
+                opacity: 0.8,
+                emissive: 0xffffaa,
+                emissiveIntensity: 1
+            })
+        );
+        globe.position.set(x, 10, 0);
+        entranceGroup.add(globe);
+        
+        const light = new THREE.PointLight(0xffffaa, 2, 15);
+        light.position.copy(globe.position);
+        entranceGroup.add(light);
+    });
+    
+    return entranceGroup;
+}
+
+createPlatformRailings() {
+    const ironMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a3a2a,
+        roughness: 0.4,
+        metalness: 0.8
+    });
+    
+    // Railings along platform edge
+    const railingPositions = [
+        { x: -8, z: 0, length: 80 },
+        { x: 8, z: 0, length: 80 }
+    ];
+    
+    railingPositions.forEach(pos => {
+        // Top rail (curved organic line)
+        const points = [];
+        for (let i = 0; i <= 40; i++) {
+            const z = -40 + (i / 40) * pos.length;
+            const wave = Math.sin(i * 0.3) * 0.1;
+            points.push(new THREE.Vector3(pos.x + wave, 1.2, z));
+        }
+        
+        const railCurve = new THREE.CatmullRomCurve3(points);
+        const railGeometry = new THREE.TubeGeometry(railCurve, 40, 0.05, 8, false);
+        const rail = new THREE.Mesh(railGeometry, ironMaterial);
+        this.rooms[0].add(rail);
+        
+        // Decorative posts
+        for (let i = 0; i < 20; i++) {
+            const post = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.04, 0.05, 1.2, 8),
+                ironMaterial
             );
-            segment.position.y = j * 0.75;
-            kelpGroup.add(segment);
+            post.position.set(
+                pos.x,
+                0.6,
+                -40 + (i / 19) * pos.length
+            );
+            this.rooms[0].add(post);
             
-            // Leaves
-            if (j % 2 === 0) {
-                const leaf = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.3, 0.6),
+            // Floral decoration on posts
+            if (i % 3 === 0) {
+                const flower = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.1, 6, 6),
                     new THREE.MeshStandardMaterial({
-                        color: 0x3d7c2f,
-                        side: THREE.DoubleSide,
-                        roughness: 0.7
+                        color: 0xd4af37,
+                        roughness: 0.3,
+                        metalness: 0.9
                     })
                 );
-                leaf.position.set(0.15, j * 0.75, 0);
-                kelpGroup.add(leaf);
+                flower.position.set(pos.x, 1, -40 + (i / 19) * pos.length);
+                this.rooms[0].add(flower);
             }
         }
-        
-        kelpGroup.position.set(
-            (Math.random() - 0.5) * 40,
-            -2.5,
-            (Math.random() - 0.5) * 25
-        );
-        
-        kelpGroup.userData = {
-            swaySpeed: 0.5 + Math.random() * 1.0,
-            swayAmount: 0.1 + Math.random() * 0.15,
-            phaseOffset: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(kelpGroup);
-        this.kelpStrands.push(kelpGroup);
-    }
-    
-    // ========================================
-    // WATER CAUSTICS LIGHTING
-    // ========================================
-    
-    // Main overhead "sunlight" with caustic effect
-    const causticsLight = new THREE.DirectionalLight(0x4da6ff, 1.5);
-    causticsLight.position.set(0, 15, -5);
-    causticsLight.castShadow = true;
-    causticsLight.shadow.mapSize.width = 2048;
-    causticsLight.shadow.mapSize.height = 2048;
-    causticsLight.shadow.camera.left = -30;
-    causticsLight.shadow.camera.right = 30;
-    causticsLight.shadow.camera.top = 30;
-    causticsLight.shadow.camera.bottom = -30;
-    room1.add(causticsLight);
-    
-    this.causticsLight = causticsLight; // Store for animation
-    
-    // Ambient underwater glow
-    const ambientOcean = new THREE.AmbientLight(0x1a4d7a, 0.4);
-    room1.add(ambientOcean);
-    
-    // Interior pod lights (warm research station feel)
-    const podLightPositions = [
-        { x: 0, y: 3, z: -10 },
-        { x: -15, y: 3, z: -8 },
-        { x: 15, y: 3, z: -8 }
+    });
+}
+
+// ========================================
+// STAINED GLASS PANELS
+// ========================================
+
+createStainedGlass() {
+    const glassPositions = [
+        { x: -19, z: -30 },
+        { x: 19, z: -30 },
+        { x: -19, z: 0 },
+        { x: 19, z: 0 },
+        { x: -19, z: 30 },
+        { x: 19, z: 30 }
     ];
     
-    podLightPositions.forEach(pos => {
-        const light = new THREE.SpotLight(0xffffcc, 2.0, 15, Math.PI / 6, 0.5);
-        light.position.set(pos.x, pos.y, pos.z);
-        light.target.position.set(pos.x, pos.y - 5, pos.z);
-        light.castShadow = true;
-        room1.add(light);
-        room1.add(light.target);
+    glassPositions.forEach(pos => {
+        const panel = this.createStainedGlassPanel();
+        panel.position.set(pos.x, 5, pos.z);
+        panel.rotation.y = pos.x < 0 ? Math.PI/2 : -Math.PI/2;
+        
+        this.rooms[0].add(panel);
+        this.stainedGlass.push(panel);
     });
+}
+
+createStainedGlassPanel() {
+    const panelGroup = new THREE.Group();
     
-    // Emergency red lights (on ceiling)
-    for (let i = 0; i < 6; i++) {
-        const t = i / 6;
-        const pos = tunnelCurve.getPoint(t);
-        
-        const emergencyLight = new THREE.PointLight(0xff0000, 0.5, 8);
-        emergencyLight.position.set(pos.x, pos.y + 3, pos.z);
-        room1.add(emergencyLight);
-        
-        const bulb = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 8, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0xff0000,
-                emissive: 0xff0000,
-                emissiveIntensity: 1.0
-            })
-        );
-        bulb.position.copy(emergencyLight.position);
-        room1.add(bulb);
-    }
-    
-    // ========================================
-    // BUBBLE PARTICLE SYSTEM
-    // ========================================
-    
-    this.bubbles = [];
-    
-    for (let i = 0; i < 50; i++) {
-        const bubble = new THREE.Mesh(
-            new THREE.SphereGeometry(0.05 + Math.random() * 0.1, 8, 8),
-            new THREE.MeshPhysicalMaterial({
-                color: 0xffffff,
-                transmission: 0.95,
-                thickness: 0.5,
-                roughness: 0.0,
-                transparent: true,
-                opacity: 0.3
-            })
-        );
-        
-        bubble.position.set(
-            (Math.random() - 0.5) * 50,
-            Math.random() * 10 - 3,
-            (Math.random() - 0.5) * 30
-        );
-        
-        bubble.userData = {
-            riseSpeed: 0.01 + Math.random() * 0.02,
-            wobbleSpeed: 1.0 + Math.random() * 2.0,
-            wobbleAmount: 0.2 + Math.random() * 0.3,
-            phaseOffset: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(bubble);
-        this.bubbles.push(bubble);
-    }
-    
-    // ========================================
-    // DEEP SEA FEATURES
-    // ========================================
-    
-    // Sunken treasure chest (easter egg)
-    const chest = new THREE.Mesh(
-        new THREE.BoxGeometry(1.5, 1.0, 1.0),
+    // Frame (iron)
+    const frame = new THREE.Mesh(
+        new THREE.BoxGeometry(0.1, 4, 3),
         new THREE.MeshStandardMaterial({
-            color: 0x8b4513,
-            roughness: 0.9,
-            metalness: 0.1
+            color: 0x2a2a2a,
+            roughness: 0.5,
+            metalness: 0.8
         })
     );
-    chest.position.set(12, -2.3, -15);
-    chest.rotation.y = 0.3;
-    chest.castShadow = true;
-    room1.add(chest);
+    panelGroup.add(frame);
     
-    // Gold glow from chest
-    const chestGlow = new THREE.PointLight(0xffd700, 1.5, 5);
-    chestGlow.position.set(12, -2.0, -15);
-    room1.add(chestGlow);
+    // Glass segments (Art Nouveau floral pattern)
+    const glassColors = [
+        0xff6633, // Orange
+        0x3366ff, // Blue
+        0x33ff66, // Green
+        0xffcc33, // Yellow
+        0xff33cc  // Magenta
+    ];
     
-    // Ancient ruins (stone pillars)
-    for (let i = 0; i < 4; i++) {
-        const pillar = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.5, 0.6, 3 + Math.random() * 2, 8),
+    // Central flower
+    const centerFlower = new THREE.Mesh(
+        new THREE.CircleGeometry(0.5, 8),
+        new THREE.MeshStandardMaterial({
+            color: glassColors[0],
+            transparent: true,
+            opacity: 0.7,
+            emissive: glassColors[0],
+            emissiveIntensity: 0.4,
+            side: THREE.DoubleSide
+        })
+    );
+    centerFlower.position.z = 0.06;
+    panelGroup.add(centerFlower);
+    
+    // Petals around center
+    for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const petal = new THREE.Mesh(
+            new THREE.CircleGeometry(0.4, 4),
             new THREE.MeshStandardMaterial({
-                color: 0x5a5a5a,
-                roughness: 0.95
+                color: glassColors[(i + 1) % glassColors.length],
+                transparent: true,
+                opacity: 0.7,
+                emissive: glassColors[(i + 1) % glassColors.length],
+                emissiveIntensity: 0.4,
+                side: THREE.DoubleSide
             })
         );
-        pillar.position.set(
-            (Math.random() - 0.5) * 35,
-            -2.5 + pillar.geometry.parameters.height / 2,
-            (Math.random() - 0.5) * 22
+        petal.position.set(
+            Math.cos(angle) * 0.7,
+            Math.sin(angle) * 0.7,
+            0.06
         );
-        pillar.rotation.set(
-            (Math.random() - 0.5) * 0.3,
-            Math.random() * Math.PI,
-            (Math.random() - 0.5) * 0.3
-        );
-        pillar.castShadow = true;
-        room1.add(pillar);
+        petal.rotation.z = angle;
+        panelGroup.add(petal);
     }
     
-    // Bioluminescent floor plants
-    for (let i = 0; i < 30; i++) {
-        const plant = new THREE.Mesh(
-            new THREE.ConeGeometry(0.15, 0.5, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x00ff88,
-                emissive: 0x00ff88,
-                emissiveIntensity: 1.0
-            })
-        );
-        plant.position.set(
-            (Math.random() - 0.5) * 45,
-            -2.5,
-            (Math.random() - 0.5) * 28
-        );
-        room1.add(plant);
+    // Flowing stems (bottom)
+    for (let i = 0; i < 3; i++) {
+        const stemPoints = [];
+        for (let j = 0; j <= 10; j++) {
+            const t = j / 10;
+            const x = -0.5 + i * 0.5;
+            const y = -2 + t * 2;
+            const curve = Math.sin(t * Math.PI * 2) * 0.2;
+            stemPoints.push(new THREE.Vector3(x + curve, y, 0.06));
+        }
         
-        const plantLight = new THREE.PointLight(0x00ff88, 0.8, 3);
-        plantLight.position.copy(plant.position);
-        plantLight.position.y += 0.25;
-        room1.add(plantLight);
-    }
-    
-    // ========================================
-    // SUBMARINE WINDOW VIEWS
-    // ========================================
-    
-    // Research equipment inside pods
-    podPositions.slice(0, 3).forEach(pos => {
-        // Computer terminal
-        const terminal = new THREE.Mesh(
-            new THREE.BoxGeometry(0.8, 0.6, 0.1),
+        const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+        const stemGeometry = new THREE.TubeGeometry(stemCurve, 10, 0.05, 6, false);
+        const stem = new THREE.Mesh(
+            stemGeometry,
             new THREE.MeshStandardMaterial({
-                color: 0x1a1a1a,
-                emissive: 0x00ff00,
+                color: glassColors[2],
+                transparent: true,
+                opacity: 0.7,
+                emissive: glassColors[2],
                 emissiveIntensity: 0.3
             })
         );
-        terminal.position.set(pos.x + 1.5, pos.y - 0.5, pos.z);
-        room1.add(terminal);
+        panelGroup.add(stem);
+    }
+    
+    // Backlight
+    const light = new THREE.PointLight(0xffaa66, 0.8, 10);
+    light.position.z = -0.5;
+    panelGroup.add(light);
+    panelGroup.userData.light = light;
+    
+    return panelGroup;
+}
+
+// ========================================
+// ART NOUVEAU LAMPS (Tiffany-style)
+// ========================================
+
+createArtNouveauLamps() {
+    // Platform lamps (every 10 units along platform)
+    for (let i = 0; i < 9; i++) {
+        const lamp = this.createTiffanyLamp();
+        lamp.position.set(
+            i % 2 === 0 ? -10 : 10,
+            0,
+            -40 + i * 10
+        );
         
-        // Control panel buttons
-        for (let i = 0; i < 6; i++) {
-            const button = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.05, 0.05, 0.05, 16),
+        this.rooms[0].add(lamp);
+        this.lamps.push(lamp);
+    }
+    
+    // Wall-mounted sconces
+    for (let i = 0; i < 12; i++) {
+        const sconce = this.createWallSconce();
+        sconce.position.set(
+            i % 2 === 0 ? -18 : 18,
+            4,
+            -50 + i * 8
+        );
+        sconce.rotation.y = i % 2 === 0 ? Math.PI/2 : -Math.PI/2;
+        
+        this.rooms[0].add(sconce);
+        this.lamps.push(sconce);
+    }
+}
+
+createTiffanyLamp() {
+    const lampGroup = new THREE.Group();
+    
+    const ironMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a3a2a,
+        roughness: 0.4,
+        metalness: 0.8
+    });
+    
+    // Base (ornate cast iron)
+    const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.6, 0.3, 8),
+        ironMaterial
+    );
+    base.position.y = 0.15;
+    lampGroup.add(base);
+    
+    // Stem with organic curves
+    const stemPoints = [];
+    for (let i = 0; i <= 15; i++) {
+        const t = i / 15;
+        const y = t * 4;
+        const curve = Math.sin(t * Math.PI * 2) * 0.15;
+        stemPoints.push(new THREE.Vector3(curve, y, 0));
+    }
+    
+    const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+    const stemGeometry = new THREE.TubeGeometry(stemCurve, 15, 0.08, 8, false);
+    const stem = new THREE.Mesh(stemGeometry, ironMaterial);
+    stem.position.y = 0.3;
+    lampGroup.add(stem);
+    
+    // Decorative nodes on stem
+    for (let i = 1; i <= 3; i++) {
+        const node = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 8, 8),
+            new THREE.MeshStandardMaterial({
+                color: 0xd4af37,
+                roughness: 0.3,
+                metalness: 0.9
+            })
+        );
+        node.position.y = i * 1.3;
+        lampGroup.add(node);
+    }
+    
+    // Shade (Tiffany glass dome)
+    const shadeColors = [0xff6633, 0xffcc33, 0x33ff66, 0x3366ff, 0xff33cc];
+    
+    // Main dome
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const segment = new THREE.Mesh(
+            new THREE.SphereGeometry(1, 8, 8, angle, Math.PI / 4, 0, Math.PI / 2),
+            new THREE.MeshStandardMaterial({
+                color: shadeColors[i % shadeColors.length],
+                transparent: true,
+                opacity: 0.8,
+                emissive: shadeColors[i % shadeColors.length],
+                emissiveIntensity: 0.4,
+                side: THREE.DoubleSide
+            })
+        );
+        segment.position.y = 4.5;
+        lampGroup.add(segment);
+    }
+    
+    // Decorative bronze rim
+    const rim = new THREE.Mesh(
+        new THREE.TorusGeometry(1, 0.08, 8, 16),
+        new THREE.MeshStandardMaterial({
+            color: 0xd4af37,
+            roughness: 0.3,
+            metalness: 0.9
+        })
+    );
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 4.5;
+    lampGroup.add(rim);
+    
+    // Light source
+    const bulb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2, 8, 8),
+        new THREE.MeshBasicMaterial({
+            color: 0xffffaa,
+            transparent: true,
+            opacity: 0.9
+        })
+    );
+    bulb.position.y = 4.3;
+    lampGroup.add(bulb);
+    lampGroup.userData.bulb = bulb;
+    
+    const light = new THREE.PointLight(0xffddaa, 2, 12);
+    light.position.y = 4.3;
+    light.castShadow = true;
+    light.shadow.mapSize.width = 512;
+    light.shadow.mapSize.height = 512;
+    lampGroup.add(light);
+    lampGroup.userData.light = light;
+    
+    return lampGroup;
+}
+
+createWallSconce() {
+    const sconceGroup = new THREE.Group();
+    
+    const ironMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a3a2a,
+        roughness: 0.4,
+        metalness: 0.8
+    });
+    
+    // Wall mount (organic flowing design)
+    const mount = new THREE.Mesh(
+        new THREE.BoxGeometry(0.3, 0.8, 0.2),
+        ironMaterial
+    );
+    sconceGroup.add(mount);
+    
+    // Curved arm
+    const armPoints = [
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0.3, 0.2, 0.2),
+        new THREE.Vector3(0.5, 0.3, 0.5)
+    ];
+    const armCurve = new THREE.CatmullRomCurve3(armPoints);
+    const armGeometry = new THREE.TubeGeometry(armCurve, 10, 0.06, 8, false);
+    const arm = new THREE.Mesh(armGeometry, ironMaterial);
+    sconceGroup.add(arm);
+    
+    // Glass shade (tulip shape)
+    const shade = new THREE.Mesh(
+        new THREE.SphereGeometry(0.4, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshStandardMaterial({
+            color: 0xffaa66,
+            transparent: true,
+            opacity: 0.7,
+            emissive: 0xff8844,
+            emissiveIntensity: 0.5,
+            side: THREE.DoubleSide
+        })
+    );
+    shade.position.set(0.5, 0.3, 0.5);
+    shade.rotation.x = Math.PI;
+    sconceGroup.add(shade);
+    
+    // Light
+    const light = new THREE.PointLight(0xffaa66, 1.5, 10);
+    light.position.set(0.5, 0.3, 0.5);
+    sconceGroup.add(light);
+    sconceGroup.userData.light = light;
+    
+    return sconceGroup;
+}
+
+// ========================================
+// PLATFORM
+// ========================================
+
+createPlatform() {
+    // ✓ PLATFORM EDGE LINES (both sides)
+    [-8, 8].forEach(x => {
+        const edgeLine = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.3, 90),
+            new THREE.MeshBasicMaterial({
+                color: 0xffff00,
+                emissive: 0xffff00,
+                emissiveIntensity: 0.5
+            })
+        );
+        edgeLine.rotation.x = -Math.PI / 2;
+        edgeLine.position.set(x, 0.01, 0);
+        this.rooms[0].add(edgeLine);
+    });
+    
+    // ✓ CREATE LEFT AND RIGHT TRACKS
+    [-17, 17].forEach(trackX => {
+        // Track bed
+        const trackBed = new THREE.Mesh(
+            new THREE.PlaneGeometry(10, 100),
+            new THREE.MeshStandardMaterial({
+                color: 0x3a3a3a,
+                roughness: 0.9
+            })
+        );
+        trackBed.rotation.x = -Math.PI / 2;
+        trackBed.position.set(trackX, -0.5, 0);
+        this.rooms[0].add(trackBed);
+        
+        // Rails (two per track)
+        [-2, 2].forEach(offset => {
+            const rail = new THREE.Mesh(
+                new THREE.BoxGeometry(0.15, 0.2, 100),
                 new THREE.MeshStandardMaterial({
-                    color: [0xff0000, 0x00ff00, 0xffff00][i % 3],
-                    emissive: [0xff0000, 0x00ff00, 0xffff00][i % 3],
-                    emissiveIntensity: 0.5
+                    color: 0x8a8a8a,
+                    roughness: 0.3,
+                    metalness: 0.9
                 })
             );
-            button.position.set(
-                pos.x + 1.5 + (i % 3 - 1) * 0.2,
-                pos.y - 0.8,
-                pos.z + Math.floor(i / 3) * 0.2
+            rail.position.set(trackX + offset, -0.4, 0);
+            this.rooms[0].add(rail);
+        });
+        
+        // Wooden sleepers
+        for (let i = 0; i < 50; i++) {
+            const sleeper = new THREE.Mesh(
+                new THREE.BoxGeometry(4, 0.3, 0.3),
+                new THREE.MeshStandardMaterial({
+                    color: 0x4a3a2a,
+                    roughness: 0.9
+                })
             );
-            button.rotation.x = Math.PI / 2;
-            room1.add(button);
+            sleeper.position.set(trackX, -0.5, -48 + i * 2);
+            this.rooms[0].add(sleeper);
+        }
+    });
+}
+
+// ========================================
+// TICKET BOOTH (vintage style)
+// ========================================
+
+createTicketBooth() {
+    const boothGroup = new THREE.Group();
+    
+    const woodMaterial = new THREE.MeshStandardMaterial({
+        color: 0x5a3a1a,
+        roughness: 0.8
+    });
+    
+    const brassMaterial = new THREE.MeshStandardMaterial({
+        color: 0xd4af37,
+        roughness: 0.3,
+        metalness: 0.9
+    });
+    
+    // Main booth structure
+    const booth = new THREE.Mesh(
+        new THREE.BoxGeometry(3, 3, 2),
+        woodMaterial
+    );
+    booth.position.y = 1.5;
+    boothGroup.add(booth);
+    
+    // Ornate top
+    const top = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.8, 1.6, 0.5, 8),
+        brassMaterial
+    );
+    top.position.y = 3.25;
+    boothGroup.add(top);
+    
+    // Window (brass frame)
+    const windowFrame = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 1, 0.1),
+        brassMaterial
+    );
+    windowFrame.position.set(0, 2, 1.01);
+    boothGroup.add(windowFrame);
+    
+    // Glass
+    const glass = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.3, 0.8),
+        new THREE.MeshStandardMaterial({
+            color: 0xccffff,
+            transparent: true,
+            opacity: 0.5
+        })
+    );
+    glass.position.set(0, 2, 1.02);
+    boothGroup.add(glass);
+    
+    // "BILLETS" (Tickets) sign
+    const sign = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8, 0.4, 0.1),
+        new THREE.MeshStandardMaterial({
+            color: 0xf5f5dc,
+            emissive: 0xffeecc,
+            emissiveIntensity: 0.3
+        })
+    );
+    sign.position.set(0, 3.2, 1.05);
+    boothGroup.add(sign);
+    
+    // Ticket slot
+    const slot = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.1, 0.3),
+        new THREE.MeshStandardMaterial({
+            color: 0x2a2a2a,
+            roughness: 0.7
+        })
+    );
+    slot.position.set(0, 1.3, 1.1);
+    boothGroup.add(slot);
+    
+    // Decorative Art Nouveau panels on sides
+    [-1.5, 1.5].forEach(x => {
+        const panel = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 2, 1.5),
+            new THREE.MeshStandardMaterial({
+                color: 0x6a8a6a,
+                roughness: 0.6
+            })
+        );
+        panel.position.set(x, 2, 0);
+        boothGroup.add(panel);
+    });
+    
+    boothGroup.position.set(15, 0, -45);
+    this.rooms[0].add(boothGroup);
+}
+
+// ========================================
+// TRAIN SYSTEM (arriving/departing)
+// ========================================
+
+createTrainSystem() {
+    // Create two trains (one arriving, one departing)
+    const train1 = this.createMetroTrain();
+    train1.position.set(-17, -0.3, -80); // ✓ CHANGED: -13 → -17
+    train1.userData.direction = 1; // Moving forward
+    train1.userData.speed = 0.3;
+    train1.userData.state = 'arriving';
+    train1.userData.stopPosition = -20;
+    train1.userData.departPosition = 80;
+    this.rooms[0].add(train1);
+    this.trains.push(train1);
+    
+    const train2 = this.createMetroTrain();
+    train2.position.set(-17, -0.3, 80); // ✓ CHANGED: -13 → -17
+    train2.userData.direction = -1; // Moving backward
+    train2.userData.speed = 0;
+    train2.userData.state = 'waiting';
+    train2.userData.waitTime = 10;
+    this.rooms[0].add(train2);
+    this.trains.push(train2);
+}
+
+createMetroTrain() {
+    const trainGroup = new THREE.Group();
+    
+    const trainMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a4a2a,
+        roughness: 0.4,
+        metalness: 0.8
+    });
+    
+    const windowMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffcc,
+        transparent: true,
+        opacity: 0.6,
+        emissive: 0xffffaa,
+        emissiveIntensity: 0.4
+    });
+    
+    // Create 3 train cars
+    for (let carIndex = 0; carIndex < 3; carIndex++) {
+        const carGroup = new THREE.Group();
+        
+        // Car body
+        const body = new THREE.Mesh(
+            new THREE.BoxGeometry(3, 3, 15),
+            trainMaterial
+        );
+        body.position.y = 1.5;
+        body.castShadow = true;
+        carGroup.add(body);
+        
+        // Rounded roof
+        const roof = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.5, 1.5, 15, 16, 1, false, 0, Math.PI),
+            trainMaterial
+        );
+        roof.rotation.z = Math.PI / 2;
+        roof.position.y = 3;
+        carGroup.add(roof);
+        
+        // Windows (8 per car)
+        for (let i = 0; i < 8; i++) {
+            [-1.51, 1.51].forEach(x => {
+                const window = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.8, 1.2),
+                    windowMaterial
+                );
+                window.position.set(x, 1.8, -6 + i * 1.7);
+                window.rotation.y = x < 0 ? Math.PI/2 : -Math.PI/2;
+                carGroup.add(window);
+            });
+        }
+        
+        // Doors (2 per car)
+        [-4, 4].forEach(z => {
+            [-1.52, 1.52].forEach(x => {
+                const door = new THREE.Mesh(
+                    new THREE.PlaneGeometry(1.2, 2.2),
+                    new THREE.MeshStandardMaterial({
+                        color: 0x4a4a4a,
+                        roughness: 0.5,
+                        metalness: 0.6
+                    })
+                );
+                door.position.set(x, 1.1, z);
+                door.rotation.y = x < 0 ? Math.PI/2 : -Math.PI/2;
+                carGroup.add(door);
+            });
+        });
+        
+        // Undercarriage
+        const undercarriage = new THREE.Mesh(
+            new THREE.BoxGeometry(2.5, 0.4, 14),
+            new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.8,
+                metalness: 0.7
+            })
+        );
+        undercarriage.position.y = 0.2;
+        carGroup.add(undercarriage);
+        
+        // Wheels (4 per car)
+        [-5, 5].forEach(z => {
+            [-1.3, 1.3].forEach(x => {
+                const wheel = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16),
+                    new THREE.MeshStandardMaterial({
+                        color: 0x3a3a3a,
+                        roughness: 0.6,
+                        metalness: 0.9
+                    })
+                );
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.set(x, 0, z);
+                carGroup.add(wheel);
+            });
+        });
+        
+        // Position car in train
+        carGroup.position.z = carIndex * 16;
+        trainGroup.add(carGroup);
+        
+        // Store for animation
+        this.trainCars.push(carGroup);
+    }
+    
+    // Front headlights
+    const headlight1 = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2, 8, 8),
+        new THREE.MeshBasicMaterial({
+            color: 0xffffaa,
+            emissive: 0xffffaa,
+            emissiveIntensity: 1
+        })
+    );
+    headlight1.position.set(-1, 2, -7.5);
+    trainGroup.children[0].add(headlight1);
+    
+    const headlight2 = headlight1.clone();
+    headlight2.position.x = 1;
+    trainGroup.children[0].add(headlight2);
+    
+    const frontLight = new THREE.SpotLight(0xffffaa, 2, 30, Math.PI/6, 0.5);
+    frontLight.position.set(0, 2, -8);
+    frontLight.target.position.set(0, 0, -20);
+    trainGroup.children[0].add(frontLight);
+    trainGroup.children[0].add(frontLight.target);
+    
+    return trainGroup;
+}
+
+// ========================================
+// PERIOD ADVERTISEMENTS (1900s posters)
+// ========================================
+
+createPeriodAdvertisements() {
+    const adPositions = [
+        { x: -18.5, z: -35 },
+        { x: 18.5, z: -35 },
+        { x: -18.5, z: -15 },
+        { x: 18.5, z: -15 },
+        { x: -18.5, z: 5 },
+        { x: 18.5, z: 5 },
+        { x: -18.5, z: 25 },
+        { x: 18.5, z: 25 }
+    ];
+    
+    const adTypes = [
+        { color: 0xff6633, text: 'ABSINTHE' },
+        { color: 0x3366ff, text: 'CHOCOLAT MENIER' },
+        { color: 0xffcc33, text: 'MOULIN ROUGE' },
+        { color: 0x33cc33, text: 'CHEMINS DE FER' }
+    ];
+    
+    adPositions.forEach((pos, index) => {
+        const ad = this.createAdvertisement(adTypes[index % adTypes.length]);
+        ad.position.set(pos.x, 3, pos.z);
+        ad.rotation.y = pos.x < 0 ? Math.PI/2 : -Math.PI/2;
+        
+        this.rooms[0].add(ad);
+        this.advertisements.push(ad);
+    });
+}
+
+createAdvertisement(type) {
+    const adGroup = new THREE.Group();
+    
+    // Ornate frame (gilded)
+    const frame = new THREE.Mesh(
+        new THREE.BoxGeometry(2.5, 3.5, 0.2),
+        new THREE.MeshStandardMaterial({
+            color: 0xd4af37,
+            roughness: 0.3,
+            metalness: 0.9
+        })
+    );
+    adGroup.add(frame);
+    
+    // Poster
+    const poster = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.2, 3.2),
+        new THREE.MeshStandardMaterial({
+            color: type.color,
+            roughness: 0.7,
+            emissive: type.color,
+            emissiveIntensity: 0.2
+        })
+    );
+    poster.position.z = 0.11;
+    adGroup.add(poster);
+    
+    // Decorative Art Nouveau border
+    const borderMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a2a2a,
+        roughness: 0.5
+    });
+    
+    // Top flourish
+    const flourish = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 0.3, 0.05),
+        borderMaterial
+    );
+    flourish.position.set(0, 1.5, 0.12);
+    adGroup.add(flourish);
+    
+    return adGroup;
+}
+
+// ========================================
+// BENCHES (period style)
+// ========================================
+
+createBenches() {
+    const benchPositions = [
+        { x: 5, z: -30 },
+        { x: 5, z: -10 },
+        { x: 5, z: 10 },
+        { x: 5, z: 30 }
+    ];
+    
+    benchPositions.forEach(pos => {
+        const bench = this.createPeriodBench();
+        bench.position.set(pos.x, 0, pos.z);
+        this.rooms[0].add(bench);
+    });
+}
+
+createPeriodBench() {
+    const benchGroup = new THREE.Group();
+    
+    const woodMaterial = new THREE.MeshStandardMaterial({
+        color: 0x5a3a1a,
+        roughness: 0.8
+    });
+    
+    const ironMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a3a2a,
+        roughness: 0.5,
+        metalness: 0.8
+    });
+    
+    // Seat
+    const seat = new THREE.Mesh(
+        new THREE.BoxGeometry(3, 0.2, 1),
+        woodMaterial
+    );
+    seat.position.y = 1;
+    benchGroup.add(seat);
+    
+    // Backrest
+    const backrest = new THREE.Mesh(
+        new THREE.BoxGeometry(3, 1.5, 0.2),
+        woodMaterial
+    );
+    backrest.position.set(0, 1.5, -0.4);
+    benchGroup.add(backrest);
+    
+    // Ornate iron legs (Art Nouveau curves)
+    [-1.2, 1.2].forEach(x => {
+        const legPoints = [
+            new THREE.Vector3(x, 0, 0),
+            new THREE.Vector3(x + 0.1, 0.3, 0),
+            new THREE.Vector3(x, 0.7, -0.2),
+            new THREE.Vector3(x, 1, -0.3)
+        ];
+        
+        const legCurve = new THREE.CatmullRomCurve3(legPoints);
+        const legGeometry = new THREE.TubeGeometry(legCurve, 10, 0.05, 8, false);
+        const leg = new THREE.Mesh(legGeometry, ironMaterial);
+        benchGroup.add(leg);
+    });
+    
+    return benchGroup;
+}
+
+// ========================================
+// PLATFORM PERFORMERS (musicians/artists)
+// ========================================
+
+createPerformers() {
+    // Violinist
+    const violinist = this.createPerformer('violin');
+    violinist.position.set(3, 0, 20);
+    violinist.rotation.y = Math.PI / 4;
+    violinist.userData.animationType = 'violin';
+    this.rooms[0].add(violinist);
+    this.performers.push(violinist);
+    
+    // Accordion player
+    const accordionist = this.createPerformer('accordion');
+    accordionist.position.set(-3, 0, -20);
+    accordionist.rotation.y = -Math.PI / 4;
+    accordionist.userData.animationType = 'accordion';
+    this.rooms[0].add(accordionist);
+    this.performers.push(accordionist);
+}
+
+createPerformer(type) {
+    const performerGroup = new THREE.Group();
+    
+    const clothMaterial = new THREE.MeshStandardMaterial({
+        color: type === 'violin' ? 0x2a2a2a : 0x4a3a2a,
+        roughness: 0.8
+    });
+    
+    const skinMaterial = new THREE.MeshStandardMaterial({
+        color: 0xf5deb3,
+        roughness: 0.7
+    });
+    
+    // Body
+    const body = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 0.5, 1.5, 8),
+        clothMaterial
+    );
+    body.position.y = 2;
+    performerGroup.add(body);
+    
+    // Head
+    const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3, 12, 12),
+        skinMaterial
+    );
+    head.position.y = 3;
+    performerGroup.add(head);
+    performerGroup.userData.head = head;
+    
+    // Hat (bowler)
+    const hat = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.3, 0.3, 0.3, 16),
+        new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            roughness: 0.6
+        })
+    );
+    hat.position.y = 3.4;
+    performerGroup.add(hat);
+    
+    const brim = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.35, 0.35, 0.05, 16),
+        hat.material
+    );
+    brim.position.y = 3.25;
+    performerGroup.add(brim);
+    
+    // Arms
+    [-0.5, 0.5].forEach((x, index) => {
+        const arm = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.1, 0.12, 1.2, 8),
+            clothMaterial
+        );
+        arm.position.set(x, 2, 0.3);
+        arm.rotation.z = x < 0 ? 0.5 : -0.5;
+        arm.rotation.x = -0.5;
+        performerGroup.add(arm);
+        
+        if (index === 1) {
+            performerGroup.userData.rightArm = arm;
         }
     });
     
-    // ========================================
-    // FINAL SETUP
-    // ========================================
+    // Legs
+    [-0.2, 0.2].forEach(x => {
+        const leg = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.12, 0.15, 1.8, 8),
+            new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.8
+            })
+        );
+        leg.position.set(x, 0.9, 0);
+        performerGroup.add(leg);
+    });
     
-    room1.position.set(0, 0, 0);
-    this.rooms.push(room1);
-    this.scene.add(room1);
+    // Instrument
+    if (type === 'violin') {
+        const violin = new THREE.Mesh(
+            new THREE.BoxGeometry(0.15, 0.6, 0.08),
+            new THREE.MeshStandardMaterial({
+                color: 0x8b4513,
+                roughness: 0.4
+            })
+        );
+        violin.position.set(0.4, 2.3, 0.3);
+        violin.rotation.y = -Math.PI / 4;
+        performerGroup.add(violin);
+        
+        // Bow
+        const bow = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.01, 0.01, 0.8, 6),
+            new THREE.MeshStandardMaterial({ color: 0x3a2a1a })
+        );
+        bow.position.set(0.5, 2.2, 0.4);
+        bow.rotation.z = Math.PI / 6;
+        performerGroup.add(bow);
+        performerGroup.userData.bow = bow;
+    } else if (type === 'accordion') {
+        const accordion = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 0.4, 0.3),
+            new THREE.MeshStandardMaterial({
+                color: 0xcc0000,
+                roughness: 0.5,
+                metalness: 0.3
+            })
+        );
+        accordion.position.set(0, 2.2, 0.4);
+        performerGroup.add(accordion);
+        performerGroup.userData.accordion = accordion;
+    }
     
-    console.log("🌊 Underwater aquarium gallery created with marine life!");
+    // Instrument case at feet
+    const case_ = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 0.15, 1),
+        new THREE.MeshStandardMaterial({
+            color: 0x2a2a2a,
+            roughness: 0.7
+        })
+    );
+    case_.position.set(0.8, 0.08, 0);
+    performerGroup.add(case_);
+    
+    // Coins in case
+    for (let i = 0; i < 5; i++) {
+        const coin = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.05, 0.05, 0.02, 16),
+            new THREE.MeshStandardMaterial({
+                color: 0xffd700,
+                roughness: 0.3,
+                metalness: 0.9
+            })
+        );
+        coin.position.set(
+            0.8 + (Math.random() - 0.5) * 0.3,
+            0.16,
+            (Math.random() - 0.5) * 0.8
+        );
+        coin.rotation.x = Math.PI / 2;
+        performerGroup.add(coin);
+    }
+    
+    return performerGroup;
 }
 
 
 
 
 
+// Continue with animations in next message...
 
+// ========================================
+// COMPLETE METRO ANIMATIONS
+// ========================================
 
+updateMetroAnimations() {
+    const time = Date.now() * 0.001;
+    
+    // 1. TRAIN SYSTEM (arriving/departing)
+    if (this.trains) {
+        this.trains.forEach(train => {
+            if (train.userData.state === 'arriving') {
+                // Train approaching station
+                train.position.z += train.userData.speed * train.userData.direction;
+                
+                // Slow down as approaching stop
+                const distanceToStop = Math.abs(train.position.z - train.userData.stopPosition);
+                if (distanceToStop < 10) {
+                    train.userData.speed = Math.max(0.05, train.userData.speed * 0.98);
+                }
+                
+                // Stop at platform
+                if (Math.abs(train.position.z - train.userData.stopPosition) < 0.5) {
+                    train.userData.state = 'stopped';
+                    train.userData.speed = 0;
+                    train.userData.stopTime = time;
+                }
+            } else if (train.userData.state === 'stopped') {
+                // Wait at platform for 8 seconds
+                if (time - train.userData.stopTime > 8) {
+                    train.userData.state = 'departing';
+                    train.userData.speed = 0.05;
+                }
+            } else if (train.userData.state === 'departing') {
+                // Train leaving station
+                train.position.z += train.userData.speed * train.userData.direction;
+                
+                // Accelerate
+                train.userData.speed = Math.min(0.4, train.userData.speed * 1.02);
+                
+                // Reset when far enough
+                if (Math.abs(train.position.z) > 80) {
+                    train.position.z = train.userData.direction > 0 ? -80 : 80;
+                    train.userData.state = 'arriving';
+                    train.userData.speed = 0.3;
+                }
+            } else if (train.userData.state === 'waiting') {
+                // Second train waiting to depart
+                train.userData.waitTime -= 0.016;
+                if (train.userData.waitTime <= 0) {
+                    train.userData.state = 'departing';
+                    train.userData.speed = 0.05;
+                }
+            }
+        });
+    }
+    
+    // 2. LAMP FLICKERING (Art Nouveau lamps)
+    if (this.lamps) {
+        this.lamps.forEach((lamp, index) => {
+            // Subtle warm flicker
+            if (lamp.userData.light) {
+                const flicker = 1.8 + Math.sin(time * 4 + index) * 0.2 +
+                               Math.sin(time * 7.3 + index * 2) * 0.1;
+                lamp.userData.light.intensity = flicker;
+                
+                // Color temperature variation (more orange to more yellow)
+                const colorTemp = 0.9 + Math.sin(time * 3 + index) * 0.05;
+                lamp.userData.light.color.setRGB(1, colorTemp, 0.6);
+            }
+            
+            // Bulb glow pulse
+            if (lamp.userData.bulb) {
+                const pulse = 0.85 + Math.sin(time * 5 + index * 1.5) * 0.15;
+                lamp.userData.bulb.material.opacity = pulse;
+            }
+        });
+    }
+    
+    // 3. STAINED GLASS BACKLIGHT PULSING
+    if (this.stainedGlass) {
+        this.stainedGlass.forEach((panel, index) => {
+            if (panel.userData.light) {
+                const pulse = 0.6 + Math.sin(time * 1.5 + index * 0.7) * 0.2;
+                panel.userData.light.intensity = pulse;
+            }
+            
+            // Individual glass segments shimmer
+            panel.children.forEach(child => {
+                if (child.material && child.material.emissiveIntensity !== undefined) {
+                    const shimmer = 0.3 + Math.sin(time * 2 + index + child.position.x) * 0.15;
+                    child.material.emissiveIntensity = shimmer;
+                }
+            });
+        });
+    }
+    
+    // 4. PERFORMERS PLAYING INSTRUMENTS
+    if (this.performers) {
+        this.performers.forEach(performer => {
+            const animPhase = time * 2;
+            
+            if (performer.userData.animationType === 'violin') {
+                // Violin bow movement
+                if (performer.userData.bow) {
+                    const bowMotion = Math.sin(animPhase * 1.5) * 0.15;
+                    performer.userData.bow.rotation.z = Math.PI / 6 + bowMotion;
+                    performer.userData.bow.position.y = 2.2 + Math.sin(animPhase * 1.5) * 0.05;
+                }
+                
+                // Head sway
+                if (performer.userData.head) {
+                    performer.userData.head.rotation.z = Math.sin(animPhase * 0.8) * 0.1;
+                    performer.userData.head.rotation.x = Math.sin(animPhase * 0.5) * 0.05;
+                }
+                
+                // Arm movement
+                if (performer.userData.rightArm) {
+                    performer.userData.rightArm.rotation.z = -0.5 + Math.sin(animPhase * 1.5) * 0.2;
+                }
+            } else if (performer.userData.animationType === 'accordion') {
+                // Accordion squeeze
+                if (performer.userData.accordion) {
+                    const squeeze = 0.3 + Math.sin(animPhase) * 0.1;
+                    performer.userData.accordion.scale.z = squeeze;
+                }
+                
+                // Head bob
+                if (performer.userData.head) {
+                    performer.userData.head.position.y = 3 + Math.sin(animPhase * 0.6) * 0.05;
+                    performer.userData.head.rotation.y = Math.sin(animPhase * 0.4) * 0.08;
+                }
+                
+                // Body sway
+                performer.rotation.z = Math.sin(animPhase * 0.7) * 0.03;
+            }
+        });
+    }
+    
+    // 5. IRONWORK SUBTLE SWAY (organic movement)
+    if (this.ironwork) {
+        this.ironwork.forEach((element, index) => {
+            const sway = Math.sin(time * 0.5 + index * 0.3) * 0.002;
+            element.rotation.z = sway;
+        });
+    }
+    
+    // 6. ADVERTISEMENTS SUBTLE GLOW
+    if (this.advertisements) {
+        this.advertisements.forEach((ad, index) => {
+            ad.children.forEach(child => {
+                if (child.material && child.material.emissiveIntensity !== undefined) {
+                    const glow = 0.2 + Math.sin(time * 0.8 + index) * 0.08;
+                    child.material.emissiveIntensity = glow;
+                }
+            });
+        });
+    }
+    
+    // 7. TRAIN CAR WINDOWS FLICKERING
+    if (this.trainCars) {
+        this.trainCars.forEach((car, index) => {
+            car.children.forEach(child => {
+                if (child.material && child.material.emissive && 
+                    child.material.emissive.getHex() === 0xffffaa) {
+                    const flicker = 0.3 + Math.sin(time * 6 + index * 2) * 0.1;
+                    child.material.emissiveIntensity = flicker;
+                }
+            });
+        });
+    }
+    
+    // 8. PLATFORM EDGE LINE PULSING (safety warning)
+    // Find yellow platform edge line
+    this.rooms[0].children.forEach(child => {
+        if (child.material && child.material.color && 
+            child.material.color.getHex() === 0xffff00) {
+            const pulse = 0.4 + Math.sin(time * 3) * 0.15;
+            child.material.emissiveIntensity = pulse;
+        }
+    });
+    
+    // 9. ATMOSPHERIC DUST PARTICLES (subtle)
+    // Create floating dust in light rays
+    if (!this.dustParticles) {
+        this.dustParticles = [];
+        
+        for (let i = 0; i < 30; i++) {
+            const dust = new THREE.Mesh(
+                new THREE.SphereGeometry(0.02, 4, 4),
+                new THREE.MeshBasicMaterial({
+                    color: 0xffffee,
+                    transparent: true,
+                    opacity: 0.3
+                })
+            );
+            
+            dust.position.set(
+                (Math.random() - 0.5) * 30,
+                Math.random() * 12,
+                (Math.random() - 0.5) * 80
+            );
+            
+            dust.userData.velocity = {
+                x: (Math.random() - 0.5) * 0.01,
+                y: Math.random() * 0.02 + 0.01,
+                z: (Math.random() - 0.5) * 0.01
+            };
+            
+            this.rooms[0].add(dust);
+            this.dustParticles.push(dust);
+        }
+    }
+    
+  
+    
+    // 10. ENTRANCE ARCH LAMPS GLOW
+    // The entrance archway globes should pulse gently
+    this.rooms[0].traverse(child => {
+        if (child.material && child.material.emissive && 
+            child.material.emissive.getHex() === 0xffffaa &&
+            child.geometry && child.geometry.type === 'SphereGeometry' &&
+            child.position.y > 9) {
+            const glow = 0.9 + Math.sin(time * 2) * 0.15;
+            child.material.emissiveIntensity = glow;
+        }
+    });
+    
+    // 11. CEILING SHADOWS (simulate passing lights)
+    // Subtle lighting variations to simulate atmospheric depth
+    if (Math.random() < 0.01) { // Occasional flicker
+        this.rooms[0].children.forEach(child => {
+            if (child.type === 'PointLight' && child.position.y > 10) {
+                const randomFlicker = 0.95 + Math.random() * 0.1;
+                child.intensity *= randomFlicker;
+            }
+        });
+    }
+    
+    // 12. ORGANIC PILLAR VINE SHIMMER
+    // The gold vine decorations on pillars should subtly shimmer
+    this.rooms[0].traverse(child => {
+        if (child.material && child.material.color && 
+            child.material.color.getHex() === 0xd4af37 &&
+            child.geometry && child.geometry.type === 'SphereGeometry' &&
+            child.geometry.parameters && child.geometry.parameters.radius < 0.1) {
+            // These are the small vine decorations
+            if (!child.userData.shimmerPhase) {
+                child.userData.shimmerPhase = Math.random() * Math.PI * 2;
+            }
+            
+            const shimmer = 0.5 + Math.sin(time * 1.5 + child.userData.shimmerPhase) * 0.3;
+            
+            if (!child.material.emissive) {
+                child.material.emissive = new THREE.Color(0xaa8800);
+            }
+            child.material.emissiveIntensity = shimmer * 0.2;
+        }
+    });
+}
 
+// ========================================
+// COLLISION BOUNDARIES
+// ========================================
 
-//   createAvatar() {
-//     this.avatarGroup = new THREE.Group();
-//     const avatarMaterial = new THREE.MeshBasicMaterial({
-//         color: 0xffffff,
-//         transparent: true,
-//         opacity: 0.1 // ✓ FIXED: Much less visible (was 0.3)
-//     });
+checkCollisions() {
+    if (!this.isMobile) {
+        this.camera.position.y = this.cameraHeight || 1.6;
+        
+        // Bazaar bounds
+        const minX = -27;
+        const maxX = 27;
+        const minZ = -37;
+        const maxZ = 37;
 
-//     const clickablePlane = new THREE.Mesh(
-//         new THREE.PlaneGeometry(0.5, 0.5),
-//         new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
-//     );
-//     clickablePlane.position.set(2, 1.7, 2);
-//     this.avatarGroup.add(clickablePlane);
+        this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
+        this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
+        this.controls.getObject().position.copy(this.camera.position);
+    }
+}
 
-//     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
-//     body.position.set(2, 0.5, 2);
-//     this.avatarGroup.add(body);
+// ========================================
+// HELPER: Get Spawn Position
+// ========================================
 
-//     const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
-//     head.position.set(2, 1.2, 2);
-//     this.avatarGroup.add(head);
+getSpawnPosition() {
+    // Spawn on platform near entrance
+    return {
+        x: 0,
+        y: this.cameraHeight || 1.6,
+        z: -40
+    };
+}
 
-//     const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-//     const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
-//     leftArm.position.set(1.7, 0.7, 2);
-//     leftArm.rotation.z = Math.PI / 4;
-//     this.avatarGroup.add(leftArm);
+// ========================================
+// OPTIONAL: Sound System (Framework)
+// ========================================
 
-//     const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
-//     rightArm.position.set(2.3, 0.7, 2);
-//     rightArm.rotation.z = -Math.PI / 4;
-//     this.avatarGroup.add(rightArm);
+playMetroAmbience() {
+    // Could add:
+    // - Train arrival/departure sounds
+    // - Platform announcements in French
+    // - Violin music from performer
+    // - Accordion music
+    // - Distant crowd murmur
+    // - Echoing footsteps
+    console.log("🎵 Metro ambience (audio not implemented)");
+}
 
-//     const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-//     const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-//     leftLeg.position.set(1.8, 0.25, 2);
-//     this.avatarGroup.add(leftLeg);
+// ========================================
+// TRAIN ANNOUNCEMENT SYSTEM (Visual)
+// ========================================
 
-//     const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-//     rightLeg.position.set(2.2, 0.25, 2);
-//     this.avatarGroup.add(rightLeg);
+showTrainAnnouncement(message) {
+    const announcement = document.createElement('div');
+    announcement.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #2a4a2a 0%, #1a3a1a 100%);
+        color: #ffff00;
+        padding: 20px 40px;
+        border-radius: 10px;
+        font-family: 'Georgia', serif;
+        font-size: 24px;
+        z-index: 1001;
+        border: 3px solid #d4af37;
+        box-shadow: 0 0 40px rgba(212, 175, 55, 0.8);
+        text-align: center;
+        animation: fadeInOut 4s ease-in-out;
+    `;
+    
+    announcement.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 10px;">🚇 MÉTROPOLITAIN 🚇</div>
+        <div style="font-size: 18px;">${message}</div>
+    `;
+    
+    // Add CSS animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(announcement);
+    
+    setTimeout(() => {
+        announcement.remove();
+    }, 4000);
+}
 
-//     this.avatarGroup.userData = { isAvatar: true };
-//     this.scene.add(this.avatarGroup);
+// Call this when trains arrive/depart
+updateTrainAnnouncements() {
+    if (this.trains) {
+        this.trains.forEach((train, index) => {
+            // Show announcement when train stops
+            if (train.userData.state === 'stopped' && !train.userData.announcementShown) {
+                const direction = index === 0 ? 'Direction Porte de Vincennes' : 'Direction Château de Vincennes';
+                this.showTrainAnnouncement(`Train à quai • ${direction}`);
+                train.userData.announcementShown = true;
+            }
+            
+            // Reset flag when departing
+            if (train.userData.state === 'departing') {
+                train.userData.announcementShown = false;
+            }
+        });
+    }
+}
 
-//     this.setupAvatarAnimation();
-//     this.updateAvatarPosition();
-// }
-
-//     setupAvatarAnimation() {
-//         const times = [0, 1, 2];
-//         const armValues = [
-//             [Math.PI / 4, -Math.PI / 4],
-//             [-Math.PI / 4, Math.PI / 4],
-//             [Math.PI / 4, -Math.PI / 4]
-//         ];
-
-//         const leftArmTrack = new THREE.NumberKeyframeTrack(
-//             '.children[3].rotation[z]',
-//             times,
-//             armValues.map(v => v[0])
-//         );
-//         const rightArmTrack = new THREE.NumberKeyframeTrack(
-//             '.children[4].rotation[z]',
-//             times,
-//             armValues.map(v => v[1])
-//         );
-
-//         const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
-//         const action = this.animationMixer.clipAction(clip, this.avatarGroup);
-//         action.setLoop(THREE.LoopRepeat);
-//         action.play();
-//     }
-
-//     updateAvatarPosition() {
-//         if (this.isMobile) {
-//             const roomCenter = this.rooms[this.currentRoom].position.clone();
-//             this.avatarGroup.position.copy(roomCenter);
-//             this.avatarGroup.position.y = 0.5;
-//         } else {
-//             const direction = new THREE.Vector3();
-//             this.camera.getWorldDirection(direction);
-//             direction.y = 0;
-//             direction.normalize().multiplyScalar(3);
-//             this.avatarGroup.position.copy(this.camera.position).add(direction);
-//             this.avatarGroup.position.y = 0.5;
-//         }
-//     }
 
     async setupAudio() {
             try {
@@ -1257,38 +2525,24 @@ createGallery() {
            console.log("🚀 Virtual Gallery loaded");
        }
 
-
-
-   animate() {
+       animate() {
     requestAnimationFrame(() => this.animate());
     const delta = 0.016;
     this.time += delta;
-    
     this.update();
     this.updateImageEffects();
     this.updateLighting();
-    this.updateFoodParticles();
-    this.updateAttractedFish();
-    
-    // ✨ NEW: Update fish follow camera
-    if (this.followingFish) {
-        this.updateFishFollowCamera();
-    }
-    
+    this.updateMetroAnimations();       // ✓ ADD THIS LINE
+    this.updateTrainAnnouncements();    // ✓ ADD THIS LINE (optional)
+   
     this.renderer.render(this.scene, this.camera);
     this.updateArtworkProgress();
     if (this.isMobile) this.controls.update();
-    // this.updateAvatarPosition();
     
-    if (this.isRecording) {
-        // Frame capture handled by MediaRecorder
-    }
-      if (this.isDiving) {
-        this.updateSubmarineDive();
-    }
     this.animationMixer.update(delta * this.animationSpeed);
     this.updateObjectAnimations();
 }
+
 showArtworkInfo(index) {
     const metadata = this.metadata[index];
     if (!metadata) return;
@@ -1382,28 +2636,30 @@ toggleHelpOverlay() {
         animation: scaleIn 0.3s ease;
     `;
     
-    const shortcuts = this.isMobile ? `
-        <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">📱 Mobile Controls</h2>
-        <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
-            <strong>👆 Swipe</strong><span>Look around</span>
-            <strong>🤏 Pinch</strong><span>Zoom in/out</span>
-            <strong>👆 Tap</strong><span>Focus artwork</span>
-            <strong>👆👆 Double-tap</strong><span>Open slider</span>
-            <strong>🕹️ Joystick</strong><span>Move (bottom-left)</span>
-        </div>
-    ` : `
-        <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">⌨️ Keyboard Shortcuts</h2>
-        <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
-            <strong>W A S D</strong><span>Move around</span>
-            <strong>Q / E</strong><span>Rotate left/right</span>
-            <strong>1-9</strong><span>Jump to artwork</span>
-            <strong>← →</strong><span>Prev/Next artwork</span>
-            <strong>Mouse</strong><span>Look around</span>
-            <strong>ESC</strong><span>Unlock/Exit</span>
-            <strong>?</strong><span>Toggle help</span>
-            <strong>Double-click</strong><span>Focus artwork</span>
-        </div>
-    `;
+const shortcuts = this.isMobile ? `
+    <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">📱 Mobile Controls</h2>
+    <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
+        <strong>👆 Swipe</strong><span>Look around</span>
+        <strong>🤏 Pinch</strong><span>Zoom in/out</span>
+        <strong>👆 Tap</strong><span>Focus artwork</span>
+        <strong>👆👆 Double-tap</strong><span>Open slider</span>
+        <strong>🕹️ Joystick</strong><span>Move (bottom-left)</span>
+    </div>
+` : `
+    <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">⌨️ Keyboard Shortcuts</h2>
+    <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
+        <strong>W A S D</strong><span>Move around</span>
+        <strong>Q / E</strong><span>Rotate left/right</span>
+        <strong>[ / ]</strong><span>Lower/Raise camera</span>
+        <strong>PgUp / PgDn</strong><span>Adjust height</span>
+        <strong>1-9</strong><span>Jump to artwork</span>
+        <strong>← →</strong><span>Prev/Next artwork</span>
+        <strong>Mouse</strong><span>Look around</span>
+        <strong>ESC</strong><span>Unlock/Exit</span>
+        <strong>?</strong><span>Toggle help</span>
+        <strong>Double-click</strong><span>Focus artwork</span>
+    </div>
+`;
     
     help.innerHTML = `
         ${shortcuts}
@@ -1540,261 +2796,7 @@ toggleHelpOverlay() {
         this.showMessage('recordStatus', 'Recording stopped', 'success');
         console.log("🎥 Recording stopped");
     }
-feedFish() {
-    console.log("🍽️ Releasing food particles...");
-    
-    // Get click position or use camera forward
-    const foodPosition = this.camera.position.clone();
-    const direction = new THREE.Vector3();
-    this.camera.getWorldDirection(direction);
-    foodPosition.add(direction.multiplyScalar(5));
-    
-    // Create food particle system
-    const foodGroup = new THREE.Group();
-    
-    // Create 20 food particles
-    for (let i = 0; i < 20; i++) {
-        const particle = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 8, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0xffa500, // Orange food pellets
-                emissive: 0xff8800,
-                emissiveIntensity: 0.5
-            })
-        );
-        
-        // Random spread
-        particle.position.set(
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2
-        );
-        
-        particle.userData = {
-            velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.02,
-                -0.02 - Math.random() * 0.03, // Sink downward
-                (Math.random() - 0.5) * 0.02
-            ),
-            lifespan: 5000 + Math.random() * 3000, // 5-8 seconds
-            createdTime: Date.now()
-        };
-        
-        foodGroup.add(particle);
-    }
-    
-    foodGroup.position.copy(foodPosition);
-    this.scene.add(foodGroup);
-    
-    // Store for animation
-    if (!this.foodParticles) this.foodParticles = [];
-    this.foodParticles.push(foodGroup);
-    
-    // Attract nearby fish
-    this.attractFishToFood(foodPosition);
-    
-    // Show feeding notification
-    this.showFeedingNotification();
-}
 
-attractFishToFood(foodPosition) {
-    if (!this.fishSchools) return;
-    
-    const attractionRadius = 8;
-    
-    this.fishSchools.forEach(fish => {
-        const distance = fish.position.distanceTo(foodPosition);
-        
-        if (distance < attractionRadius) {
-            // Store original data
-            if (!fish.userData.originalOrbitRadius) {
-                fish.userData.originalOrbitRadius = fish.userData.orbitRadius;
-                fish.userData.originalSpeed = fish.userData.speed;
-            }
-            
-            // Make fish swim toward food
-            fish.userData.attractedToFood = true;
-            fish.userData.foodTarget = foodPosition.clone();
-            fish.userData.attractionStartTime = Date.now();
-            
-            console.log("Fish attracted to food!");
-        }
-    });
-}
-
-updateFoodParticles() {
-    if (!this.foodParticles || this.foodParticles.length === 0) return;
-    
-    const currentTime = Date.now();
-    
-    this.foodParticles.forEach((foodGroup, groupIndex) => {
-        const particlesToRemove = [];
-        
-        foodGroup.children.forEach((particle, index) => {
-            const data = particle.userData;
-            const age = currentTime - data.createdTime;
-            
-            // Remove if lifespan exceeded
-            if (age > data.lifespan) {
-                particlesToRemove.push(index);
-                return;
-            }
-            
-            // Apply velocity (sinking motion)
-            particle.position.add(data.velocity);
-            
-            // Check if fish ate it
-            let wasEaten = false;
-            if (this.fishSchools) {
-                this.fishSchools.forEach(fish => {
-                    const worldPos = new THREE.Vector3();
-                    particle.getWorldPosition(worldPos);
-                    
-                    if (fish.position.distanceTo(worldPos) < 0.5) {
-                        wasEaten = true;
-                        
-                        // Create eating effect
-                        this.createEatingEffect(worldPos);
-                    }
-                });
-            }
-            
-            if (wasEaten) {
-                particlesToRemove.push(index);
-            }
-            
-            // Fade out near end of lifespan
-            const fadeProgress = age / data.lifespan;
-            if (fadeProgress > 0.7) {
-                particle.material.opacity = 1 - ((fadeProgress - 0.7) / 0.3);
-                particle.material.transparent = true;
-            }
-        });
-        
-        // Remove eaten/expired particles
-        particlesToRemove.reverse().forEach(index => {
-            const particle = foodGroup.children[index];
-            particle.geometry.dispose();
-            particle.material.dispose();
-            foodGroup.remove(particle);
-        });
-        
-        // Remove empty food groups
-        if (foodGroup.children.length === 0) {
-            this.scene.remove(foodGroup);
-            this.foodParticles.splice(groupIndex, 1);
-        }
-    });
-}
-
-updateAttractedFish() {
-    if (!this.fishSchools) return;
-    
-    const currentTime = Date.now();
-    
-    this.fishSchools.forEach(fish => {
-        if (fish.userData.attractedToFood) {
-            const elapsed = currentTime - fish.userData.attractionStartTime;
-            
-            // Fish stays attracted for 8 seconds
-            if (elapsed > 8000) {
-                // Return to normal behavior
-                fish.userData.attractedToFood = false;
-                fish.userData.orbitRadius = fish.userData.originalOrbitRadius;
-                fish.userData.speed = fish.userData.originalSpeed;
-                return;
-            }
-            
-            // Move toward food
-            const direction = new THREE.Vector3()
-                .subVectors(fish.userData.foodTarget, fish.position)
-                .normalize();
-            
-            fish.position.add(direction.multiplyScalar(0.08));
-            fish.lookAt(fish.userData.foodTarget);
-            
-            // Faster movement when attracted
-            fish.userData.speed = fish.userData.originalSpeed * 2;
-        }
-    });
-}
-
-createEatingEffect(position) {
-    // Create small splash/bubble effect
-    const splash = new THREE.Mesh(
-        new THREE.SphereGeometry(0.2, 8, 8),
-        new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.6
-        })
-    );
-    splash.position.copy(position);
-    this.scene.add(splash);
-    
-    // Animate splash
-    const startTime = Date.now();
-    const duration = 500;
-    
-    const animateSplash = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = elapsed / duration;
-        
-        if (progress >= 1) {
-            this.scene.remove(splash);
-            splash.geometry.dispose();
-            splash.material.dispose();
-            return;
-        }
-        
-        splash.scale.setScalar(1 + progress * 2);
-        splash.material.opacity = 0.6 * (1 - progress);
-        
-        requestAnimationFrame(animateSplash);
-    };
-    
-    animateSplash();
-}
-
-showFeedingNotification() {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(255, 165, 0, 0.95);
-        color: white;
-        padding: 15px 30px;
-        border-radius: 10px;
-        z-index: 10000;
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-        font-weight: bold;
-        animation: slideDown 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    `;
-    
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 24px;">🍽️</span>
-            <span>Food Released! Fish incoming...</span>
-        </div>
-        <style>
-            @keyframes slideDown {
-                from { transform: translate(-50%, -100%); opacity: 0; }
-                to { transform: translate(-50%, 0); opacity: 1; }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'fadeOut 0.5s ease';
-        setTimeout(() => notification.remove(), 500);
-    }, 3000);
-}
 
     saveRecording() {
         const blob = new Blob(this.recordedFrames, { type: 'video/webm' });
@@ -1836,159 +2838,204 @@ showFeedingNotification() {
     }
 
     updateObjectAnimations() {
-
             const time = this.time || Date.now() * 0.001;
         if (this.isAnimatingObjects) {
             this.images.forEach(img => {
                 img.mesh.rotation.y += 0.02 * this.animationSpeed;
             });
-            this.wallLights.forEach(light => {
-                light.left.rotation.y += 0.03 * this.animationSpeed;
-                light.right.rotation.y += 0.03 * this.animationSpeed;
-            });
-            this.glassSpotlights.forEach(light => {
-                light.mesh.rotation.y += 0.01 * this.animationSpeed;
-            });
+           
         }
-         if (this.fishSchools) {
-        this.fishSchools.forEach((fish, index) => {
-            const data = fish.userData;
+        if (this.turbine) {
+        this.turbine.rotation.z += this.turbine.userData.rotationSpeed;
+    }
+    
+    // 2. CENTER SCULPTURE ROTATION
+    if (this.centerSculpture) {
+        this.centerSculpture.rotation.y += this.centerSculpture.userData.rotationSpeed;
+    }
+    
+    // 3. SUSPENDED ARTWORKS (rotate + sway)
+    if (this.suspendedArtworks) {
+        this.suspendedArtworks.forEach((artwork, index) => {
+            // Slow rotation
+            artwork.rotation.y += artwork.userData.rotationSpeed;
             
-            // Orbital swimming path
-            data.orbitAngle += data.orbitSpeed;
-            const orbitX = Math.cos(data.orbitAngle) * data.orbitRadius;
-            const orbitZ = Math.sin(data.orbitAngle) * data.orbitRadius;
-            
-            // Wave motion (up/down)
-            const wave = Math.sin(time * data.speed + data.phase) * data.amplitude;
-            
-            fish.position.x = orbitX;
-            fish.position.y = wave;
-            fish.position.z = orbitZ;
-            
-            // Face direction of travel
-            const nextAngle = data.orbitAngle + 0.01;
-            const nextX = Math.cos(nextAngle) * data.orbitRadius;
-            const nextZ = Math.sin(nextAngle) * data.orbitRadius;
-            fish.lookAt(new THREE.Vector3(nextX, wave, nextZ));
-            
-            // Tail wiggle
-            if (fish.children[0]) {
-                fish.children[0].rotation.y = Math.sin(time * 5 + index) * 0.3;
-            }
+            // Swaying motion (like hanging on cables)
+            const sway = Math.sin(time * 0.5 + index) * artwork.userData.swayAmount;
+            artwork.rotation.z = sway;
         });
-
-         if (this.fish) {
-        this.fish.forEach((fish, index) => {
-            if (fish.userData.isHungry && fish.userData.targetFood) {
-                // Swim toward food
-                const direction = new THREE.Vector3()
-                    .subVectors(fish.userData.targetFood, fish.position)
-                    .normalize();
-                
-                fish.position.add(direction.multiplyScalar(0.05));
-                fish.lookAt(fish.userData.targetFood);
-                
-                // Stop when close
-                if (fish.position.distanceTo(fish.userData.targetFood) < 1) {
-                    fish.userData.isHungry = false;
-                    fish.userData.targetFood = null;
-                }
+    }
+    
+    // 4. EDISON BULBS (subtle swaying + flicker)
+    if (this.edisonBulbs) {
+        this.edisonBulbs.forEach((bulb, index) => {
+            // Gentle sway
+            const baseY = bulb.bulb.position.y;
+            bulb.bulb.position.y = baseY + Math.sin(time * 0.3 + index * 0.5) * 0.02;
+            bulb.light.position.copy(bulb.bulb.position);
+            
+            // Random flicker
+            if (Math.random() < 0.01) {
+                const flicker = 0.8 + Math.random() * 0.4;
+                bulb.light.intensity = 1.5 * flicker;
+                bulb.bulb.material.emissiveIntensity = 1.2 * flicker;
             } else {
-                // Normal swimming pattern
-                fish.position.x += Math.sin(time * 0.5 + index) * 0.02;
-                fish.position.y += Math.cos(time * 0.3 + index) * 0.01;
-                fish.position.z += Math.sin(time * 0.4 + index) * 0.02;
+                bulb.light.intensity += (1.5 - bulb.light.intensity) * 0.1;
+                bulb.bulb.material.emissiveIntensity += (1.2 - bulb.bulb.material.emissiveIntensity) * 0.1;
             }
         });
     }
     
-    // Food particles falling
-    if (this.foodParticles) {
-        this.foodParticles = this.foodParticles.filter(food => {
-            food.position.add(food.userData.velocity);
-            food.userData.lifetime--;
+    // 5. TRACK SPOTLIGHTS (subtle movement + flicker)
+    if (this.trackSpotlights) {
+        this.trackSpotlights.forEach((light, index) => {
+            // Subtle rotation (like wind or vibration)
+            light.group.rotation.x += Math.sin(time * 0.2 + index) * 0.0001;
+            light.group.rotation.z += Math.cos(time * 0.3 + index) * 0.0001;
             
-            if (food.userData.lifetime <= 0 || food.position.y < -2) {
-                this.scene.remove(food);
-                return false;
-            }
-            return true;
-        });
-    }
-    }
-    
-    // 2. JELLYFISH FLOATING (vertical bobbing + pulsing)
-    if (this.jellyfish) {
-        this.jellyfish.forEach((jelly, index) => {
-            const data = jelly.userData;
-            
-            // Slow vertical float
-            const baseY = jelly.position.y;
-            jelly.position.y = baseY + Math.sin(time * data.floatSpeed + data.floatPhase) * data.floatAmplitude * 0.01;
-            
-            // Bell pulsing (scale animation)
-            const pulse = 1.0 + Math.sin(time * data.pulseSpeed) * 0.1;
-            jelly.children[0].scale.set(1, pulse, 1);
-            
-            // Tentacles wave
-            for (let i = 1; i < jelly.children.length - 1; i++) {
-                const tentacle = jelly.children[i];
-                tentacle.rotation.x = Math.sin(time * 2 + i) * 0.3;
-                tentacle.rotation.z = Math.cos(time * 2 + i) * 0.2;
-            }
-            
-            // Glow pulse
-            const light = jelly.children[jelly.children.length - 1];
-            if (light.isPointLight) {
-                light.intensity = 2.0 + Math.sin(time * data.pulseSpeed) * 1.0;
+            // Occasional flicker/spark
+            if (Math.random() < 0.005) {
+                light.spotlight.intensity = 5.0 + Math.random() * 2.0;
+                light.lens.material.emissiveIntensity = 1.5;
+            } else {
+                light.spotlight.intensity += (3.5 - light.spotlight.intensity) * 0.05;
+                light.lens.material.emissiveIntensity += (0.8 - light.lens.material.emissiveIntensity) * 0.05;
             }
         });
     }
     
-    // 3. KELP SWAYING
-    if (this.kelpStrands) {
-        this.kelpStrands.forEach(kelp => {
-            const data = kelp.userData;
-            const sway = Math.sin(time * data.swaySpeed + data.phaseOffset) * data.swayAmount;
-            kelp.rotation.z = sway;
-        });
+    // 6. OFFICE FLUORESCENT FLICKER
+    if (this.officeFlicker && Math.random() < 0.02) {
+        this.officeFlicker.intensity = Math.random() < 0.5 ? 0.5 : 2.0;
+        setTimeout(() => {
+            if (this.officeFlicker) this.officeFlicker.intensity = 2.0;
+        }, 50 + Math.random() * 100);
     }
     
-    // 4. BUBBLES RISING
-    if (this.bubbles) {
-        this.bubbles.forEach(bubble => {
-            const data = bubble.userData;
-            
-            // Rise upward
-            bubble.position.y += data.riseSpeed;
-            
-            // Wobble sideways
-            bubble.position.x += Math.sin(time * data.wobbleSpeed + data.phaseOffset) * data.wobbleAmount * 0.01;
-            
-            // Reset when reaching top
-            if (bubble.position.y > 8) {
-                bubble.position.y = -3;
-                bubble.position.x = (Math.random() - 0.5) * 50;
-                bubble.position.z = (Math.random() - 0.5) * 30;
+    // 7. STEAM VENTS (periodic puffs)
+    if (this.steamVents) {
+        this.steamVents.forEach(vent => {
+            const currentTime = Date.now();
+            if (currentTime - vent.lastPuff > vent.interval) {
+                this.createSteamPuff(vent.position);
+                vent.lastPuff = currentTime;
+                vent.interval = 3000 + Math.random() * 5000;
             }
         });
     }
     
-    // 5. WATER CAUSTICS LIGHT ANIMATION
-    if (this.causticsLight) {
-        // Simulate moving water surface refracting light
-        this.causticsLight.position.x = Math.sin(time * 0.3) * 5;
-        this.causticsLight.position.z = Math.cos(time * 0.5) * 5;
-        this.causticsLight.intensity = 1.5 + Math.sin(time * 0.8) * 0.3;
+  
+    
+    // 9. CATWALK RATTLING (if player nearby)
+    if (this.catwalks && this.camera) {
+        this.catwalks.forEach(catwalk => {
+            const distance = this.camera.position.distanceTo(catwalk.position);
+            if (distance < 5) {
+                // Shake when player is nearby
+                catwalk.position.y += Math.sin(time * 10) * 0.002;
+            }
+        });
     }
     
-    // 6. AIRLOCK WHEEL SPINNING (optional decoration)
-    if (this.airlockWheel && Math.random() < 0.01) {
-        // Occasionally spin
-        this.airlockWheel.rotation.z += 0.05;
+    // 10. FREIGHT ELEVATOR ANIMATION (if moving)
+    if (this.freightElevator && this.freightElevator.userData.isMoving) {
+        const elevator = this.freightElevator;
+        const targetY = elevator.userData.targetY || 0;
+        const currentY = elevator.position.y;
+        const speed = 0.05;
+        
+        if (Math.abs(targetY - currentY) > 0.1) {
+            // Move elevator
+            elevator.position.y += (targetY - currentY) * speed;
+            
+            // Warning lights flash
+            elevator.traverse(child => {
+                if (child.material && child.material.emissive && child.material.emissive.getHex() === 0xff0000) {
+                    child.material.emissiveIntensity = 1.5 + Math.sin(time * 10) * 0.5;
+                }
+            });
+            
+            // Mechanical sound effect (visual cue)
+            if (Math.floor(time * 10) % 2 === 0) {
+                elevator.rotation.z = 0.002;
+            } else {
+                elevator.rotation.z = -0.002;
+            }
+        } else {
+            // Arrived at destination
+            elevator.position.y = targetY;
+            elevator.userData.isMoving = false;
+            elevator.rotation.z = 0;
+            
+            // Turn off warning lights
+            elevator.traverse(child => {
+                if (child.material && child.material.emissive && child.material.emissive.getHex() === 0xff0000) {
+                    child.material.emissiveIntensity = 1.5;
+                }
+            });
+            
+            console.log("🛗 Elevator arrived at level", elevator.userData.currentLevel);
+        }
     }
     }
+
+    createSteamPuff(position) {
+    const steamGroup = new THREE.Group();
+    
+    // Create multiple steam particles
+    for (let i = 0; i < 10; i++) {
+        const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 8, 8),
+            new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.6
+            })
+        );
+        
+        particle.position.set(
+            (Math.random() - 0.5) * 0.5,
+            (Math.random() - 0.5) * 0.5,
+            (Math.random() - 0.5) * 0.5
+        );
+        
+        steamGroup.add(particle);
+    }
+    
+    steamGroup.position.copy(position);
+    this.scene.add(steamGroup);
+    
+    // Animate steam rising and dissipating
+    const startTime = Date.now();
+    const duration = 2000;
+    
+    const animateSteam = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+        
+        if (progress >= 1) {
+            this.scene.remove(steamGroup);
+            steamGroup.children.forEach(child => {
+                child.geometry.dispose();
+                child.material.dispose();
+            });
+            return;
+        }
+        
+        // Rise and expand
+        steamGroup.position.y += 0.03;
+        steamGroup.scale.setScalar(1 + progress * 2);
+        
+        // Fade out
+        steamGroup.children.forEach(child => {
+            child.material.opacity = 0.6 * (1 - progress);
+        });
+        
+        requestAnimationFrame(animateSteam);
+    };
+    
+    animateSteam();
+}
 
 updateLighting() {
     const time = this.time || 0;
@@ -2185,20 +3232,25 @@ updateLighting() {
             this.animationSpeed = parseFloat(slider.value);
             value.textContent = this.animationSpeed.toFixed(1);
         });
+    
+     // Camera Height Slider - FIXED VERSION
+const cameraHeightSlider = document.getElementById("cameraHeightSlider");
+const cameraHeightValue = document.getElementById("cameraHeightValue");
 
-          // Camera Height Slider - FIXED VERSION
-        const cameraHeightSlider = document.getElementById("cameraHeightSlider");
-        const cameraHeightValue = document.getElementById("cameraHeightValue");
-
-       if (cameraHeightSlider && cameraHeightValue) {
+if (cameraHeightSlider && cameraHeightValue) {
     cameraHeightSlider.addEventListener("input", () => {
+        // Get new height value
         this.cameraHeight = parseFloat(cameraHeightSlider.value);
         cameraHeightValue.textContent = this.cameraHeight.toFixed(1);
         
+        // Update the stored initial settings (so it persists on pointer lock)
         this.roomCameraSettings[0].position.y = this.cameraHeight;
         this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
+        
+        // Update camera position
         this.camera.position.y = this.cameraHeight;
         
+        // Update controls position (this is the critical fix!)
         if (!this.isMobile) {
             this.controls.getObject().position.y = this.cameraHeight;
         } else {
@@ -2207,16 +3259,13 @@ updateLighting() {
         }
     });
 }
-    
         document.getElementById("sensitivitySlider")?.addEventListener("input", () => {
             const sensitivitySlider = document.getElementById("sensitivitySlider");
             const sensitivityValue = document.getElementById("sensitivityValue");
             const sensitivity = parseFloat(sensitivitySlider.value);
             sensitivityValue.textContent = sensitivity.toFixed(3);
             this.controls.setSensitivity(sensitivity);
-        }); 
-
-
+        });
     
         const prevBtn = document.getElementById('prevImage');
         const nextBtn = document.getElementById('nextImage');
@@ -2634,112 +3683,43 @@ updateLighting() {
         console.log(this.controlsVisible ? "🖥️ Controls visible" : "🖥️ Controls hidden");
     }
 
- onKeyDown(event) {
-        // Existing movement keys
-        switch (event.key.toLowerCase()) {
-            case "w": this.keys.w = true; break;
-            case "a": this.keys.a = true; break;
-            case "s": this.keys.s = true; break;
-            case "d": this.keys.d = true; break;
-            case "q": this.keys.q = true; break;
-            case "e": this.keys.e = true; break;
-
-            // ✅ NEW: Glider toggle
-            case " ": // Spacebar
-                if (!this.isSliderActive && !this.isFocused && this.glider) {
-                    event.preventDefault();
-                    this.toggleGlider();
-                }
-                break;
-
-            // ✅ NEW: Zipline activation
-            case "z":
-                if (!this.isRidingZipline) {
-                    const nearbyZipline = this.checkNearZipline();
-                    if (nearbyZipline) {
-                        this.startZiplineRide(nearbyZipline);
-                    }
-                }
-                break;
-
-            // ✅ NEW: Manual weather change (for testing)
-            case "t":
-                if (this.weatherSystem) {
-                    this.changeWeather();
-                }
-                break;
-        }
- if (event.key === " " || event.code === "Space") {
-        console.log("🚀 SPACEBAR DETECTED!");
-        console.log("  - isSliderActive:", this.isSliderActive);
-        console.log("  - isFocused:", this.isFocused);
-        console.log("  - glider exists:", !!this.glider);
-        
-        if (!this.isSliderActive && !this.isFocused && this.glider) {
-            console.log("✅ All conditions met, toggling glider...");
-            event.preventDefault();
-            this.toggleGlider();
-        } else {
-            console.log("❌ Conditions NOT met:");
-            if (this.isSliderActive) console.log("  - Slider is active");
-            if (this.isFocused) console.log("  - Camera is focused");
-            if (!this.glider) console.log("  - Glider doesn't exist!");
-        }
+onKeyDown(event) {
+    // Existing movement keys
+    switch(event.key.toLowerCase()) {
+        case "w": this.keys.w = true; break;
+        case "a": this.keys.a = true; break;
+        case "s": this.keys.s = true; break;
+        case "d": this.keys.d = true; break;
+        case "q": this.keys.q = true; break;
+        case "e": this.keys.e = true; break;
+        case "control": this.isControlPressed = true; break;
     }
+    
      if (event.key === 'PageUp' || event.key === ']') {
-    this.cameraHeight = Math.min(5.0, this.cameraHeight + 0.5);
-
-
-    document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
-    document.getElementById('cameraHeightSlider').value = this.cameraHeight;
+        this.cameraHeight = Math.min(3.0, this.cameraHeight + 0.1);
+        document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
+        document.getElementById('cameraHeightSlider').value = this.cameraHeight;
+    }
+    if (event.key === 'PageDown' || event.key === '[') {
+        this.cameraHeight = Math.max(1.2, this.cameraHeight - 0.1);
+        document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
+        document.getElementById('cameraHeightSlider').value = this.cameraHeight;
+    }
     
-    // ✅ ADD: Actually update camera position
-    this.roomCameraSettings[0].position.y = this.cameraHeight;
-    this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
-    this.camera.position.y = this.cameraHeight;
+    // Existing artwork navigation
+    const num = parseInt(event.key);
+    if (num >= 4 && num <= 9 && num <= this.images.length + 3) {
+        this.focusOnArtwork(num - 4);
+    }
     
-    if (!this.isMobile) {
-        this.controls.getObject().position.y = this.cameraHeight;
-    } else {
-        this.controls.target.y = this.cameraHeight;
-        this.controls.update();
+    // Help toggle
+    if (event.key === '?' || event.key === '/') {
+        this.toggleHelpOverlay();
+    }
+    if (event.key.toLowerCase() === 'r') {
+        this.resetCameraPosition();
     }
 }
-if (event.key === 'PageDown' || event.key === '[') {
-    this.cameraHeight = Math.max(-2.0, this.cameraHeight - 0.5); // ✅ CHANGED from 0.3 to -2.0
-
-
-    
-    document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
-    document.getElementById('cameraHeightSlider').value = this.cameraHeight;
-    
-    // ✅ ADD: Actually update camera position
-    this.roomCameraSettings[0].position.y = this.cameraHeight;
-    this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
-    this.camera.position.y = this.cameraHeight;
-    
-    if (!this.isMobile) {
-        this.controls.getObject().position.y = this.cameraHeight;
-    } else {
-        this.controls.target.y = this.cameraHeight;
-        this.controls.update();
-    }
-}
-
-        // Existing artwork navigation
-        const num = parseInt(event.key);
-        if (num >= 4 && num <= 9 && num <= this.images.length + 3) {
-            this.focusOnArtwork(num - 4);
-        }
-
-        // Help toggle
-        if (event.key === '?' || event.key === '/') {
-            this.toggleHelpOverlay();
-        }
-        if (event.key.toLowerCase() === 'r') {
-            this.resetCameraPosition();
-        }
-    }
 
     onKeyUp(event) {
         switch (event.key.toLowerCase()) {
@@ -2787,32 +3767,6 @@ if (event.key === 'PageDown' || event.key === '[') {
     this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
     this.isFocused = false;
 }
- checkCollisions() {
-        if (!this.isMobile) {
-            this.camera.position.y = this.cameraHeight || 1.6;
-
-            // ✓ FIXED: Sky Islands bounds (much larger to reach all islands)
-            const minX = -50; // ✓ CHANGE: was -13, now -50
-            const maxX = 50;  // ✓ CHANGE: was 13, now 50
-            const minZ = -50; // ✓ CHANGE: was -13, now -50
-            const maxZ = 50;  // ✓ CHANGE: was 13, now 50
-            const minY = -10; // Safety net (respawn if falling too far)
-
-            // Respawn if falling into the void
-            if (this.camera.position.y < minY) {
-                console.log("⚠️ Fell into void! Respawning at main island...");
-                this.camera.position.set(0, 2, 10);
-                this.controls.getObject().position.copy(this.camera.position);
-
-                // Show respawn message
-                this.showRespawnMessage();
-            }
-
-            this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
-            this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
-            this.controls.getObject().position.copy(this.camera.position);
-        }
-    }
 
     async computeImageHash(texture) {
         return new Promise((resolve) => {
@@ -3128,80 +4082,126 @@ if (event.key === 'PageDown' || event.key === '[') {
             );
         });
     }
+onCanvasClick(event) {
+    const currentTime = new Date().getTime();
+    const timeSinceLastClick = currentTime - this.lastClickTime;
 
-    onCanvasClick(event) {
-        const currentTime = new Date().getTime();
-        const timeSinceLastClick = currentTime - this.lastClickTime;
+    if (timeSinceLastClick < this.clickDelay) {
+        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-        if (timeSinceLastClick < this.clickDelay) {
-            this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            this.raycaster.setFromCamera(this.mouse, this.camera);
-            const intersects = this.raycaster.intersectObjects([...this.images.map(img => img.mesh), ...this.scene.children.filter(obj => (obj.parent && obj.parent.userData.isAvatar))]);
-
-            if (intersects.length > 0) {
-                const obj = intersects[0].object;
-                if (this.isFocused) {
-                    this.resetCamera();
-                    this.closeSlider();
-                } else if (obj.parent && obj.parent.userData.isAvatar) {
-                    this.showAvatarInstructions();
-                } else if (obj.userData.filename) {
-                    console.log(`Clicked image: ${obj.userData.filename}`);
-                    if (!this.clickSound.isPlaying) this.clickSound.play();
-                    this.focusImage(obj);
-                    this.scaleImage(obj);
-                    this.openSlider(obj);
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        
+        // Get all interactive objects including portal meshes
+        const interactiveObjects = [
+            ...this.images.map(img => img.mesh),
+            ...this.scene.children.filter(obj => (obj.parent && obj.parent.userData.isAvatar))
+        ];
+        
+        // ✓ ADD: Get all portal meshes from current room
+        const currentRoom = this.rooms[this.currentEra];
+        if (currentRoom) {
+            currentRoom.traverse(child => {
+                if (child.isMesh && child.parent?.userData?.isPortal) {
+                    interactiveObjects.push(child);
                 }
-            }
-            else{
-            if (this.fishSchools && this.fishSchools.length > 0) {
-                // Raycast against all fish
-                const fishIntersects = this.raycaster.intersectObjects(this.fishSchools, true);
-                
-                if (fishIntersects.length > 0) {
-                    const clickedFish = fishIntersects[0].object.parent || fishIntersects[0].object;
-                    
-                    // Check if it's actually a fish
-                    if (this.fishSchools.includes(clickedFish)) {
-                        this.followFish(clickedFish);
-                        
-                        // Play sound
-                        if (!this.clickSound.isPlaying) this.clickSound.play();
-                        
-                        // Show fish info
-                        this.showFishInfo(clickedFish);
-                    }
-                }
-            }
+            });
+        }
+        
+        const intersects = this.raycaster.intersectObjects(interactiveObjects, true);
+
+        if (intersects.length > 0) {
+            const obj = intersects[0].object;
             
-            // ========================================
-            // NEW: JELLYFISH FOLLOWING SYSTEM
-            // ========================================
-            if (this.jellyfish && this.jellyfish.length > 0) {
-                const jellyIntersects = this.raycaster.intersectObjects(
-                    this.jellyfish.map(j => j.children).flat(),
-                    true
-                );
-                
-                if (jellyIntersects.length > 0) {
-                    const clickedJelly = jellyIntersects[0].object.parent;
-                    
-                    if (this.jellyfish.includes(clickedJelly)) {
-                        this.followFish(clickedJelly); // Reuse follow system
-                        if (!this.clickSound.isPlaying) this.clickSound.play();
-                        this.showFishInfo(clickedJelly, true); // Pass true for jellyfish
-                    }
-                }
+            // ✓ CHECK: Portal click detection
+          // Add after existing click handling
+if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    
+    // Check if clicked on jukebox
+    if (obj.parent && obj.parent.userData.isJukebox) {
+        this.playJukeboxSong();
+        return;
+    }
+}
+            
+            // Rest of your existing click handling
+            if (this.isFocused) {
+                this.resetCamera();
+                this.closeSlider();
+            } else if (obj.parent && obj.parent.userData.isAvatar) {
+                this.showAvatarInstructions();
+            } else if (obj.userData.filename) {
+                console.log(`Clicked image: ${obj.userData.filename}`);
+                if (!this.clickSound.isPlaying) this.clickSound.play();
+                this.focusImage(obj);
+                this.scaleImage(obj);
+                this.openSlider(obj);
             }
         }
     }
     this.lastClickTime = currentTime;
-            
-      
-    }
+}
 
+playJukeboxSong() {
+    const songs = [
+        'Rock Around the Clock',
+        'Johnny B. Goode', 
+        'Great Balls of Fire',
+        'Blue Suede Shoes',
+        'Peggy Sue'
+    ];
+    
+    const randomSong = songs[Math.floor(Math.random() * songs.length)];
+    
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 0, 255, 0.95);
+        color: white;
+        padding: 20px 30px;
+        border-radius: 15px;
+        z-index: 10000;
+        font-family: 'Courier New', monospace;
+        font-size: 18px;
+        font-weight: bold;
+        border: 3px solid #ffd700;
+        box-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+        animation: jukeboxPop 0.5s ease;
+    `;
+    
+    notification.innerHTML = `
+        <div style="text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 10px;">🎵 NOW PLAYING 🎵</div>
+            <div style="font-size: 20px;">"${randomSong}"</div>
+        </div>
+        <style>
+            @keyframes jukeboxPop {
+                0% { transform: translateX(-50%) scale(0); opacity: 0; }
+                50% { transform: translateX(-50%) scale(1.1); }
+                100% { transform: translateX(-50%) scale(1); opacity: 1; }
+            }
+        </style>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Speed up record spinning
+    if (this.jukebox && this.jukebox.userData.record) {
+        this.jukebox.userData.rotationSpeed = 0.1;
+        setTimeout(() => {
+            this.jukebox.userData.rotationSpeed = 0.02;
+        }, 3000);
+    }
+    
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.5s ease';
+        setTimeout(() => notification.remove(), 500);
+    }, 3000);
+}
     openSlider(selectedMesh) {
        if (!this.isFocused) {
     this.updateCameraState(); // Only save if not already focused
@@ -3237,384 +4237,6 @@ if (event.key === 'PageDown' || event.key === '[') {
         }
     }
     
-    followFish(fish) {
-    console.log("Following marine creature:", fish);
-    
-    // Cancel any existing follow
-    if (this.followingFish) {
-        this.stopFollowingFish();
-    }
-    
-    this.followingFish = fish;
-    this.isFocused = true;
-    this.followStartTime = Date.now();
-    
-    // Store original camera state
-    this.updateCameraState();
-    
-    // Create follow indicator (green ring around fish)
-    const indicator = new THREE.Mesh(
-        new THREE.TorusGeometry(0.4, 0.05, 16, 32),
-        new THREE.MeshBasicMaterial({
-            color: 0x00ff00,
-            transparent: true,
-            opacity: 0.8
-        })
-    );
-    indicator.rotation.x = Math.PI / 2;
-    fish.add(indicator);
-    this.fishFollowIndicator = indicator;
-    
-    // Animate indicator pulsing
-    this.fishIndicatorPulse = 1.0;
-}
-
-stopFollowingFish() {
-    if (!this.followingFish) return;
-    
-    console.log("Stopped following fish");
-    
-    // Remove indicator
-    if (this.fishFollowIndicator) {
-        this.followingFish.remove(this.fishFollowIndicator);
-        this.fishFollowIndicator = null;
-    }
-    
-    this.followingFish = null;
-    this.isFocused = false;
-    
-    // Don't reset camera - let user keep exploring from current position
-}
-
-updateFishFollowCamera() {
-    if (!this.followingFish || !this.followingFish.position) {
-        return;
-    }
-    
-    const time = Date.now() * 0.001;
-    const fish = this.followingFish;
-    
-    // Calculate camera position (behind and slightly above fish)
-    const fishDirection = new THREE.Vector3();
-    fish.getWorldDirection(fishDirection);
-    
-    const offset = new THREE.Vector3()
-        .copy(fishDirection)
-        .multiplyScalar(-3) // 3 units behind
-        .add(new THREE.Vector3(0, 1, 0)); // 1 unit above
-    
-    const targetPos = fish.position.clone().add(offset);
-    
-    // Smooth camera movement
-    this.camera.position.lerp(targetPos, 0.05);
-    
-    // Look at fish
-    const lookAtPos = fish.position.clone();
-    lookAtPos.y += 0.2; // Look slightly above center
-    this.camera.lookAt(lookAtPos);
-    
-    // Update OrbitControls target for mobile
-    if (this.isMobile) {
-        this.controls.target.copy(lookAtPos);
-        this.controls.update();
-    }
-    
-    // Update indicator pulse
-    if (this.fishFollowIndicator) {
-        this.fishIndicatorPulse = 1.0 + Math.sin(time * 3) * 0.2;
-        this.fishFollowIndicator.scale.set(
-            this.fishIndicatorPulse,
-            this.fishIndicatorPulse,
-            this.fishIndicatorPulse
-        );
-    }
-    
-    // Auto-stop after 20 seconds
-    if (Date.now() - this.followStartTime > 20000) {
-        this.stopFollowingFish();
-    }
-}
-
-showFishInfo(fish, isJellyfish = false) {
-    const existing = document.getElementById('fishInfo');
-    if (existing) existing.remove();
-    
-    // Determine species
-    let species, description, color;
-    
-    if (isJellyfish) {
-        species = "Bioluminescent Jellyfish";
-        description = "These ethereal creatures pulse with cyan light, drifting through the depths.";
-        color = "#00ffff";
-    } else {
-        // Detect fish type by geometry
-        const isBigFish = fish.scale.x > 1.5;
-        
-        if (isBigFish) {
-            species = "Manta Ray";
-            description = "Graceful giant gliding through the water with powerful wing-like fins.";
-            color = "#5a7d9a";
-        } else {
-            const fishColor = fish.material.color.getHex();
-            const colorNames = {
-                0xff6b35: { name: "Coral Tang", desc: "Vibrant orange reef dweller, feeds on algae." },
-                0xf7931e: { name: "Clownfish", desc: "Orange and white striped, lives in anemones." },
-                0xfdc82f: { name: "Yellow Tang", desc: "Bright yellow surgeon fish from coral reefs." },
-                0x00a8e8: { name: "Blue Damselfish", desc: "Electric blue, territorial but beautiful." }
-            };
-            
-            const match = colorNames[fishColor] || { name: "Tropical Fish", desc: "Colorful reef inhabitant." };
-            species = match.name;
-            description = match.desc;
-            color = `#${fishColor.toString(16).padStart(6, '0')}`;
-        }
-    }
-    
-    const info = document.createElement('div');
-    info.id = 'fishInfo';
-    info.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: rgba(0,0,0,0.9);
-        color: white;
-        padding: 20px;
-        border-radius: 10px;
-        max-width: 320px;
-        z-index: 1000;
-        font-family: Arial, sans-serif;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        animation: slideInRight 0.3s ease;
-        border-left: 4px solid ${color};
-    `;
-    
-    info.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-            <div style="font-size: 32px;">${isJellyfish ? '🪼' : '🐠'}</div>
-            <h3 style="margin: 0; font-size: 18px; color: ${color};">${species}</h3>
-        </div>
-        <p style="margin: 8px 0; font-size: 13px; line-height: 1.5; opacity: 0.9;">
-            ${description}
-        </p>
-        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; font-size: 12px;">
-            <strong>📹 Following Mode Active</strong><br>
-            <span style="opacity: 0.8;">Press ESC or right-click to stop</span>
-        </div>
-        <button id="stopFollowing" style="
-            margin-top: 12px;
-            width: 100%;
-            padding: 10px;
-            background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
-            border: none;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-        ">Stop Following</button>
-        <style>
-            @keyframes slideInRight {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(info);
-    
-    document.getElementById('stopFollowing').addEventListener('click', () => {
-        this.stopFollowingFish();
-        info.remove();
-    });
-}
-
-
-startSubmarineDive() {
-    if (this.isDiving) return;
-    
-    console.log("🚢 Starting submarine dive sequence...");
-    this.isDiving = true;
-    this.isFocused = true;
-    
-    // Save current position
-    this.updateCameraState();
-    
-    // Show dive UI
-    this.showDiveUI();
-    
-    // Animate descent through depth zones
-    this.diveSequence = [
-        { depth: 0, duration: 2000, zone: "Surface Level", color: 0x4da6ff },
-        { depth: -5, duration: 3000, zone: "Shallow Reef", color: 0x3d8fb8 },
-        { depth: -10, duration: 3000, zone: "Twilight Zone", color: 0x2d5f7a },
-        { depth: -15, duration: 3000, zone: "Deep Abyss", color: 0x1a3a4d },
-        { depth: -20, duration: 3000, zone: "Hadal Zone", color: 0x0d1f2d }
-    ];
-    
-    this.currentDiveStep = 0;
-    this.diveStartTime = Date.now();
-    this.diveStartY = this.camera.position.y;
-    
-    // Play dive sound (optional)
-    if (!this.clickSound.isPlaying) this.clickSound.play();
-}
-
-updateSubmarineDive() {
-    if (!this.isDiving || this.currentDiveStep >= this.diveSequence.length) {
-        if (this.isDiving && this.currentDiveStep >= this.diveSequence.length) {
-            this.completeDive();
-        }
-        return;
-    }
-    
-    const currentStep = this.diveSequence[this.currentDiveStep];
-    const elapsed = Date.now() - this.diveStartTime;
-    const progress = Math.min(elapsed / currentStep.duration, 1);
-    const eased = this.easeInOutCubic(progress);
-    
-    // Calculate target depth
-    const startDepth = this.currentDiveStep === 0 ? this.diveStartY : this.diveSequence[this.currentDiveStep - 1].depth;
-    const targetDepth = currentStep.depth;
-    
-    // Smoothly move camera down
-    this.camera.position.y = startDepth + (targetDepth - startDepth) * eased;
-    
-    // Update fog color and density based on depth
-    if (this.scene.fog) {
-        const fogColor = new THREE.Color(currentStep.color);
-        this.scene.fog.color.lerp(fogColor, 0.05);
-        this.scene.fog.density = 0.015 + (Math.abs(targetDepth) / 100);
-    }
-    
-    // Update ambient light intensity (darker as we go deeper)
-    const ambientLight = this.scene.children.find(child => child instanceof THREE.AmbientLight);
-    if (ambientLight) {
-        const targetIntensity = 0.4 - (Math.abs(targetDepth) / 50);
-        ambientLight.intensity += (targetIntensity - ambientLight.intensity) * 0.05;
-    }
-    
-    // Update dive UI
-    this.updateDiveUI(currentStep.zone, targetDepth, progress);
-    
-    // Move to next step when complete
-    if (progress >= 1) {
-        this.currentDiveStep++;
-        this.diveStartTime = Date.now();
-        
-        if (this.currentDiveStep < this.diveSequence.length) {
-            console.log(`Entering ${this.diveSequence[this.currentDiveStep].zone}`);
-        }
-    }
-}
-
-completeDive() {
-    console.log("🌊 Dive complete! Returning to surface...");
-    
-    // Animate return to original position
-    const returnDuration = 5000;
-    const startY = this.camera.position.y;
-    const targetY = this.previousCameraState.position.y;
-    const startTime = Date.now();
-    
-    const ascend = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / returnDuration, 1);
-        const eased = this.easeInOutCubic(progress);
-        
-        this.camera.position.y = startY + (targetY - startY) * eased;
-        
-        // Restore fog
-        if (this.scene.fog) {
-            this.scene.fog.color.lerp(new THREE.Color(0x1a4d7a), 0.05);
-            this.scene.fog.density += (0.015 - this.scene.fog.density) * 0.05;
-        }
-        
-        // Restore ambient light
-        const ambientLight = this.scene.children.find(child => child instanceof THREE.AmbientLight);
-        if (ambientLight) {
-            ambientLight.intensity += (0.4 - ambientLight.intensity) * 0.05;
-        }
-        
-        this.updateDiveUI("Ascending...", this.camera.position.y, progress);
-        
-        if (progress < 1) {
-            requestAnimationFrame(ascend);
-        } else {
-            this.isDiving = false;
-            this.isFocused = false;
-            this.hideDiveUI();
-        }
-    };
-    
-    requestAnimationFrame(ascend);
-}
-
-showDiveUI() {
-    const diveUI = document.createElement('div');
-    diveUI.id = 'diveUI';
-    diveUI.style.cssText = `
-        position: fixed;
-        bottom: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,0.85);
-        color: white;
-        padding: 20px 30px;
-        border-radius: 15px;
-        z-index: 1000;
-        font-family: 'Courier New', monospace;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        border: 2px solid #00ffff;
-        min-width: 350px;
-    `;
-    
-    diveUI.innerHTML = `
-        <div style="text-align: center;">
-            <div style="font-size: 24px; margin-bottom: 10px;">🚢 SUBMARINE DIVE</div>
-            <div id="diveZone" style="font-size: 16px; color: #00ffff; margin-bottom: 10px;">Preparing...</div>
-            <div id="diveDepth" style="font-size: 20px; font-weight: bold; color: #ffffff; margin-bottom: 10px;">0m</div>
-            <div style="background: rgba(255,255,255,0.2); height: 8px; border-radius: 4px; overflow: hidden;">
-                <div id="diveProgress" style="background: linear-gradient(90deg, #00ffff, #00ff88); height: 100%; width: 0%; transition: width 0.3s;"></div>
-            </div>
-            <button id="cancelDive" style="
-                margin-top: 15px;
-                padding: 8px 20px;
-                background: #ff4444;
-                border: none;
-                color: white;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 12px;
-            ">Cancel Dive</button>
-        </div>
-    `;
-    
-    document.body.appendChild(diveUI);
-    
-    document.getElementById('cancelDive').addEventListener('click', () => {
-        this.isDiving = false;
-        this.isFocused = false;
-        this.camera.position.copy(this.previousCameraState.position);
-        this.hideDiveUI();
-    });
-}
-
-updateDiveUI(zone, depth, progress) {
-    const zoneEl = document.getElementById('diveZone');
-    const depthEl = document.getElementById('diveDepth');
-    const progressEl = document.getElementById('diveProgress');
-    
-    if (zoneEl) zoneEl.textContent = zone;
-    if (depthEl) depthEl.textContent = `${Math.abs(depth).toFixed(1)}m`;
-    if (progressEl) progressEl.style.width = `${progress * 100}%`;
-}
-
-hideDiveUI() {
-    const diveUI = document.getElementById('diveUI');
-    if (diveUI) diveUI.remove();
-}
     closeSlider() {
         this.isSliderActive = false;
         const sliderContainer = document.getElementById('imageSliderContainer');
@@ -4393,5 +5015,5 @@ setupMobileControls() {
     }
 }
 
-const app = new ThreeJSApp();
+window.app = new ThreeJSApp(); // ✓ Make globally accessible
 app.init();

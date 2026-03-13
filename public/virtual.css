@@ -714,3 +714,23 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 212, 255, 0.7);
 }
+
+/* Add to your virtual.css or in a <style> tag */
+#treasureHUD,
+#progressionUI,
+#treasureCompass,
+#treasureMapContainer,
+#artworkProgress,
+#skyIslandsUI {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#treasureHUD.hidden,
+#progressionUI.hidden,
+#treasureCompass.hidden,
+#artworkProgress.hidden,
+#skyIslandsUI.hidden {
+    opacity: 0;
+    transform: scale(0.9);
+    pointer-events: none;
+}

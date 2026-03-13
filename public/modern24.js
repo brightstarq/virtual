@@ -54,9 +54,9 @@ class ThreeJSApp {
     
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
-   this.roomCameraSettings = [
-    { position: new THREE.Vector3(-25, 0, 5), lookAt: new THREE.Vector3(0, 0, -5) }
-];
+    this.roomCameraSettings = [
+        { position: new THREE.Vector3(0, 1.6, 15), lookAt: new THREE.Vector3(0, 2, 0) }
+    ];
 
     const initialSettings = this.roomCameraSettings[0];
     this.camera.position.copy(initialSettings.position);
@@ -98,8 +98,7 @@ class ThreeJSApp {
             this.controls = new CustomPointerLockControls(this.camera, this.renderer.domElement);
             this.controls.getObject().position.copy(initialSettings.position);
         }
-    document.getElementById("feedFishBtn")?.addEventListener("click", () => this.feedFish());
-    document.getElementById("submarineDiveBtn")?.addEventListener("click", () => this.startSubmarineDive());
+
         this.images = [];
         this.sessionId = localStorage.getItem('sessionId');
         this.textureLoader = new THREE.TextureLoader();
@@ -299,822 +298,1591 @@ this.setupMobileControls();
     const fillLight = new THREE.DirectionalLight(0xfff5e6, 0.3); // was 0xffffff, 0.4
     fillLight.position.set(-15, 15, -10);
     this.scene.add(fillLight);
-    // Underwater haze
-this.scene.fog = new THREE.FogExp2(0x1a4d7a, 0.015); // Blue-green fog
 }
+
 
 
 createGallery() {
     const room1 = new THREE.Group();
     
+    const galleryLength = 60;
+    const galleryWidth = 35;
+    const maxHeight = 16;
+    
     // ========================================
-    // MATERIALS LIBRARY
+    // AFRICAN COLOR PALETTE
     // ========================================
     
-    // Thick acrylic glass tunnel material
-    const acrylicGlassMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        transmission: 0.98,
-        thickness: 0.8,
-        roughness: 0.05,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
-        ior: 1.49, // Acrylic IOR
-        envMapIntensity: 1.2,
-        transparent: true,
-        opacity: 0.95,
-        side: THREE.DoubleSide
+    const colors = {
+        // Earth tones (mud brick, terracotta)
+        mudBrick: 0xc08552,
+        terracotta: 0xd4774e,
+        ochre: 0xcc7722,
+        earthBrown: 0x8b6f47,
+        
+        // Vibrant traditional colors
+        kenteGold: 0xdaa520,
+        indigoBlue: 0x4b0082,
+        maasaiRed: 0xb22222,
+        africanGreen: 0x2d5016,
+        royalPurple: 0x663399,
+        
+        // Natural materials
+        darkWood: 0x3e2723,
+        baobabWood: 0x8d6e63,
+        brass: 0xb5a642,
+        copper: 0xb87333
+    };
+    
+    // ========================================
+    // MATERIALS
+    // ========================================
+    
+    // Mud brick material (Mali/Djenné style)
+    const mudBrickMaterial = new THREE.MeshStandardMaterial({
+        color: colors.mudBrick,
+        roughness: 0.9,
+        metalness: 0.0,
+        envMap: this.envMap,
+        envMapIntensity: 0.3
     });
     
-    // Brass submarine metal
-    const brassMaterial = new THREE.MeshStandardMaterial({
-        color: 0xb87333,
-        roughness: 0.4,
-        metalness: 0.9,
-        envMapIntensity: 1.5
-    });
-    
-    // Dark ocean floor sand
-    const sandFloorMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2c2416,
-        roughness: 0.95,
-        metalness: 0.0
-    });
-    
-    // Bioluminescent glow material
-    const biolumMaterial = new THREE.MeshStandardMaterial({
-        color: 0x00ffff,
-        emissive: 0x00ffff,
-        emissiveIntensity: 2.0,
-        transparent: true,
-        opacity: 0.6
-    });
-    
-    // Coral material
-    const coralMaterial = new THREE.MeshStandardMaterial({
-        color: 0xff6b9d,
+    // Terracotta clay
+    const terracottaMaterial = new THREE.MeshStandardMaterial({
+        color: colors.terracotta,
         roughness: 0.8,
         metalness: 0.0
     });
     
-    // Weathered metal hull
-    const hullMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4a5f6b,
-        roughness: 0.7,
-        metalness: 0.8
+    // Carved wood (dark African hardwood)
+    const carvedWoodMaterial = new THREE.MeshStandardMaterial({
+        color: colors.darkWood,
+        roughness: 0.6,
+        metalness: 0.1,
+        envMap: this.envMap,
+        envMapIntensity: 0.5
     });
     
-    // ========================================
-    // MAIN CURVED TUNNEL STRUCTURE
-    // ========================================
-    
-    // Create curved path for tunnel
-    const tunnelCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-25, 0, 0),
-        new THREE.Vector3(-15, 0, -8),
-        new THREE.Vector3(0, 0, -10),
-        new THREE.Vector3(15, 0, -8),
-        new THREE.Vector3(25, 0, 0)
-    ]);
-    
-    // Tunnel tube geometry
-    const tunnelGeometry = new THREE.TubeGeometry(
-        tunnelCurve,
-        100, // path segments
-        3.5, // radius
-        16, // radial segments
-        false // closed
-    );
-    
-    const tunnel = new THREE.Mesh(tunnelGeometry, acrylicGlassMaterial);
-    tunnel.receiveShadow = true;
-    room1.add(tunnel);
-    
-    // Chrome support rings every 5m
-    for (let i = 0; i <= 10; i++) {
-        const t = i / 10;
-        const pos = tunnelCurve.getPoint(t);
-        const tangent = tunnelCurve.getTangent(t);
-        
-        const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(3.6, 0.15, 16, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0xc0c0c0,
-                roughness: 0.2,
-                metalness: 1.0,
-                envMapIntensity: 2.0
-            })
-        );
-        
-        ring.position.copy(pos);
-        ring.lookAt(pos.clone().add(tangent));
-        ring.castShadow = true;
-        room1.add(ring);
-        
-        // Rivets on rings
-        for (let j = 0; j < 24; j++) {
-            const angle = (j / 24) * Math.PI * 2;
-            const rivet = new THREE.Mesh(
-                new THREE.SphereGeometry(0.08, 8, 8),
-                brassMaterial
-            );
-            rivet.position.copy(pos);
-            rivet.position.x += Math.cos(angle) * 3.6;
-            rivet.position.y += Math.sin(angle) * 3.6;
-            room1.add(rivet);
+    // Woven textile material (Kente/Ndebele patterns)
+  const kenteTextileMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+        time: { value: 0 },
+        color1: { value: new THREE.Color(colors.kenteGold) },
+        color2: { value: new THREE.Color(colors.indigoBlue) },
+        color3: { value: new THREE.Color(colors.maasaiRed) },
+        color4: { value: new THREE.Color(colors.africanGreen) }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
+    `,
+  fragmentShader: `
+    uniform float time;
+    uniform vec3 color1;
+    uniform vec3 color2;
+    uniform vec3 color3;
+    uniform vec3 color4;
+    varying vec2 vUv;
+    
+    void main() {
+        // Kente cloth pattern
+        float pattern1 = step(0.5, fract(vUv.x * 10.0));
+        float pattern2 = step(0.5, fract(vUv.y * 8.0));
+        float pattern3 = step(0.5, fract((vUv.x + vUv.y) * 6.0));
+        
+        vec3 color = color1;
+        if (pattern1 > 0.5 && pattern2 > 0.5) color = color2;
+        else if (pattern3 > 0.5) color = color3;
+        else if (pattern1 < 0.5 && pattern2 < 0.5) color = color4;
+        
+        // ⭐ ADD SHIMMER/SHEEN
+        float shimmer = sin(vUv.x * 20.0 + time) * 0.5 + 0.5;
+        color += vec3(shimmer * 0.2);
+        
+        gl_FragColor = vec4(color, 1.0);
     }
+`
+});
+    
+    // Brass/Copper accents
+ const brassAccentMaterial = new THREE.MeshStandardMaterial({
+    color: colors.brass,
+    roughness: 0.25,  // More polished
+    metalness: 0.95,  // More metallic
+    emissive: colors.brass,
+    emissiveIntensity: 0.4,  // Stronger glow
+    envMap: this.envMap,
+    envMapIntensity: 2.5  // More reflection
+});
     
     // ========================================
-    // FLOOR SYSTEM
+    // FLOOR - EARTH & PATTERNS
     // ========================================
     
-    // Main walkway floor (metal grating)
-    const walkwayPath = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-25, -2.5, 0),
-        new THREE.Vector3(-15, -2.5, -8),
-        new THREE.Vector3(0, -2.5, -10),
-        new THREE.Vector3(15, -2.5, -8),
-        new THREE.Vector3(25, -2.5, 0)
-    ]);
-    
-    const walkwayGeometry = new THREE.TubeGeometry(
-        walkwayPath,
-        100,
-        2.0, // narrower floor
-        8,
-        false
-    );
-    
-    const walkway = new THREE.Mesh(
-        walkwayGeometry,
+    // Base floor - packed earth/ochre
+    const baseFloor = new THREE.Mesh(
+        new THREE.PlaneGeometry(galleryWidth, galleryLength),
         new THREE.MeshStandardMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.8,
-            metalness: 0.9,
-            transparent: true,
-            opacity: 0.8
+            color: colors.ochre,
+            roughness: 0.95,
+            metalness: 0.0
         })
     );
-    walkway.receiveShadow = true;
-    room1.add(walkway);
+    baseFloor.rotation.x = -Math.PI / 2;
+    baseFloor.receiveShadow = true;
+    room1.add(baseFloor);
     
-    // Glass floor sections (see fish below)
-    for (let i = 1; i < 10; i += 2) {
-        const t = i / 10;
-        const pos = walkwayPath.getPoint(t);
-        
-        const glassFloor = new THREE.Mesh(
-            new THREE.CircleGeometry(1.5, 32),
-            acrylicGlassMaterial
-        );
-        glassFloor.position.copy(pos);
-        glassFloor.position.y += 0.05;
-        glassFloor.rotation.x = -Math.PI / 2;
-        glassFloor.receiveShadow = true;
-        room1.add(glassFloor);
-    }
-    
-    // ========================================
-    // VIEWING PODS (6 Spherical Domes)
-    // ========================================
-    
-    const podPositions = [
-        { x: -20, y: 0, z: 5 },
-        { x: -10, y: 0, z: -12 },
-        { x: 0, y: 0, z: -15 },
-        { x: 10, y: 0, z: -12 },
-        { x: 20, y: 0, z: 5 },
-        { x: 0, y: 5, z: -10 } // Elevated pod
-    ];
-    
-    podPositions.forEach((podPos, index) => {
-        // Glass dome (hemisphere)
-        const dome = new THREE.Mesh(
-            new THREE.SphereGeometry(4, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
-            acrylicGlassMaterial
-        );
-        dome.position.set(podPos.x, podPos.y, podPos.z);
-        dome.receiveShadow = true;
-        dome.castShadow = true;
-        room1.add(dome);
-        
-        // Metal base ring
-        const baseRing = new THREE.Mesh(
-            new THREE.CylinderGeometry(4.1, 4.1, 0.3, 32),
-            hullMaterial
-        );
-        baseRing.position.set(podPos.x, podPos.y - 0.15, podPos.z);
-        baseRing.castShadow = true;
-        room1.add(baseRing);
-        
-        // Interior floor platform
-        const platform = new THREE.Mesh(
-            new THREE.CircleGeometry(3.5, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0x3a3a3a,
-                roughness: 0.6,
-                metalness: 0.8
-            })
-        );
-        platform.position.set(podPos.x, podPos.y - 2, podPos.z);
-        platform.rotation.x = -Math.PI / 2;
-        platform.receiveShadow = true;
-        room1.add(platform);
-        
-        // Brass observation seat
-        const seat = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.4, 0.5, 0.8, 16),
-            brassMaterial
-        );
-        seat.position.set(podPos.x, podPos.y - 1.6, podPos.z);
-        seat.castShadow = true;
-        room1.add(seat);
-        
-        // Ambient pod lighting (blue-green)
-        const podLight = new THREE.PointLight(0x00ccff, 2.0, 10);
-        podLight.position.set(podPos.x, podPos.y + 3, podPos.z);
-        room1.add(podLight);
-    });
-    
-    // ========================================
-    // PORTHOLE WINDOWS (Along Tunnel)
-    // ========================================
-    
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const t = (i / 8);
-        const pos = tunnelCurve.getPoint(t);
-        
-        // Brass porthole frame
-        const frame = new THREE.Mesh(
-            new THREE.TorusGeometry(0.8, 0.1, 16, 32),
-            brassMaterial
-        );
-        frame.position.set(
-            pos.x + Math.cos(angle) * 3.3,
-            pos.y + Math.sin(angle) * 3.3,
-            pos.z
-        );
-        frame.lookAt(pos);
-        frame.castShadow = true;
-        room1.add(frame);
-        
-        // Glass porthole
-        const glass = new THREE.Mesh(
-            new THREE.CircleGeometry(0.75, 32),
-            acrylicGlassMaterial
-        );
-        glass.position.copy(frame.position);
-        glass.lookAt(pos);
-        room1.add(glass);
-        
-        // Locking wheel mechanism
-        for (let j = 0; j < 6; j++) {
-            const spokeAngle = (j / 6) * Math.PI * 2;
-            const spoke = new THREE.Mesh(
-                new THREE.BoxGeometry(0.08, 0.08, 0.4),
-                brassMaterial
-            );
-            spoke.position.copy(frame.position);
-            spoke.position.x += Math.cos(spokeAngle) * 0.5 + Math.cos(angle) * 0.1;
-            spoke.position.y += Math.sin(spokeAngle) * 0.5 + Math.sin(angle) * 0.1;
-            spoke.rotation.z = spokeAngle;
-            room1.add(spoke);
-        }
-    }
-    
-    // ========================================
-    // SUBMARINE ENTRANCE AIRLOCK
-    // ========================================
-    
-    const airlockGroup = new THREE.Group();
-    
-    // Circular door
-    const door = new THREE.Mesh(
-        new THREE.CylinderGeometry(2.5, 2.5, 0.5, 32),
-        hullMaterial
-    );
-    door.rotation.z = Math.PI / 2;
-    door.position.set(-28, 0, 0);
-    door.castShadow = true;
-    airlockGroup.add(door);
-    
-    // Spinning wheel handle
-    const wheel = new THREE.Mesh(
-        new THREE.TorusGeometry(0.8, 0.08, 16, 32),
-        brassMaterial
-    );
-    wheel.position.set(-27.5, 0, 0);
-    wheel.rotation.y = Math.PI / 2;
-    airlockGroup.add(wheel);
-    
-    // Wheel spokes
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const spoke = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, 0.08, 1.4),
-            brassMaterial
-        );
-        spoke.position.copy(wheel.position);
-        spoke.rotation.copy(wheel.rotation);
-        spoke.rotation.z = angle;
-        airlockGroup.add(spoke);
-    }
-    
-  
-    
-    room1.add(airlockGroup);
-    this.airlockWheel = wheel; // Store for animation
-    
-    // ========================================
-    // MARINE LIFE - SWIMMING FISH
-    // ========================================
-    
-    this.fishSchools = [];
-    
-    // Tropical fish (small, colorful)
-    for (let i = 0; i < 30; i++) {
-        const fish = new THREE.Mesh(
-            new THREE.ConeGeometry(0.1, 0.3, 8),
-            new THREE.MeshStandardMaterial({
-                color: [0xff6b35, 0xf7931e, 0xfdc82f, 0x00a8e8][Math.floor(Math.random() * 4)],
-                roughness: 0.4,
-                metalness: 0.3
-            })
-        );
-        
-        fish.rotation.x = Math.PI / 2;
-        fish.position.set(
-            (Math.random() - 0.5) * 50,
-            Math.random() * 8 - 2,
-            (Math.random() - 0.5) * 30
-        );
-        
-        // Add tail fin
-        const tail = new THREE.Mesh(
-            new THREE.ConeGeometry(0.08, 0.15, 3),
-            fish.material
-        );
-        tail.position.z = -0.15;
-        fish.add(tail);
-        
-        fish.userData = {
-            speed: 0.02 + Math.random() * 0.03,
-            amplitude: 0.5 + Math.random() * 1.0,
-            phase: Math.random() * Math.PI * 2,
-            orbitRadius: 10 + Math.random() * 15,
-            orbitSpeed: 0.001 + Math.random() * 0.002,
-            orbitAngle: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(fish);
-        this.fishSchools.push(fish);
-    }
-    
-    // Large rays (gliding)
-    for (let i = 0; i < 5; i++) {
-        const ray = new THREE.Mesh(
-            new THREE.SphereGeometry(1.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-            new THREE.MeshStandardMaterial({
-                color: 0x5a7d9a,
-                roughness: 0.6,
-                metalness: 0.2
-            })
-        );
-        
-        ray.scale.set(2, 0.2, 1);
-        ray.position.set(
-            (Math.random() - 0.5) * 40,
-            Math.random() * 6,
-            (Math.random() - 0.5) * 25
-        );
-        
-        ray.userData = {
-            speed: 0.01,
-            amplitude: 2.0,
-            phase: Math.random() * Math.PI * 2,
-            orbitRadius: 20,
-            orbitSpeed: 0.0008,
-            orbitAngle: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(ray);
-        this.fishSchools.push(ray);
-    }
-    
-    // ========================================
-    // BIOLUMINESCENT JELLYFISH
-    // ========================================
-    
-    this.jellyfish = [];
-    
-    for (let i = 0; i < 15; i++) {
-        const jellyfishGroup = new THREE.Group();
-        
-        // Bell (dome)
-        const bell = new THREE.Mesh(
-            new THREE.SphereGeometry(0.4, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-            new THREE.MeshStandardMaterial({
-                color: 0x00ffff,
-                emissive: 0x00ffff,
-                emissiveIntensity: 0.8,
-                transparent: true,
-                opacity: 0.6,
-                roughness: 0.3
-            })
-        );
-        bell.rotation.x = Math.PI;
-        jellyfishGroup.add(bell);
-        
-        // Tentacles (6-8 per jellyfish)
-        const numTentacles = 6 + Math.floor(Math.random() * 3);
-        for (let j = 0; j < numTentacles; j++) {
-            const angle = (j / numTentacles) * Math.PI * 2;
-            const tentacle = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.02, 0.01, 1.5, 8),
+    // Ndebele-style geometric floor pattern (center path)
+    const createNdebelePattern = (startZ, length, patternType) => {
+        const segments = Math.floor(length / 2);
+        for (let i = 0; i < segments; i++) {
+            const z = startZ + i * 2;
+            const colorIndex = i % 4;
+            const patternColors = [
+                colors.maasaiRed,
+                colors.kenteGold,
+                colors.indigoBlue,
+                colors.africanGreen
+            ];
+            
+            // Diamond pattern
+            const diamond = new THREE.Mesh(
+                new THREE.PlaneGeometry(1.5, 1.5),
                 new THREE.MeshStandardMaterial({
-                    color: 0x00ccff,
-                    emissive: 0x0088cc,
-                    emissiveIntensity: 0.5,
-                    transparent: true,
-                    opacity: 0.4
-                })
-            );
-            tentacle.position.set(
-                Math.cos(angle) * 0.3,
-                -0.75,
-                Math.sin(angle) * 0.3
-            );
-            jellyfishGroup.add(tentacle);
-        }
-        
-        // Glow light
-        const glowLight = new THREE.PointLight(0x00ffff, 2.0, 5);
-        glowLight.position.set(0, 0, 0);
-        jellyfishGroup.add(glowLight);
-        
-        jellyfishGroup.position.set(
-            (Math.random() - 0.5) * 45,
-            Math.random() * 8 + 2,
-            (Math.random() - 0.5) * 28
-        );
-        
-        jellyfishGroup.userData = {
-            floatSpeed: 0.0005 + Math.random() * 0.001,
-            floatAmplitude: 1.5 + Math.random() * 1.0,
-            floatPhase: Math.random() * Math.PI * 2,
-            pulseSpeed: 1.0 + Math.random() * 2.0
-        };
-        
-        room1.add(jellyfishGroup);
-        this.jellyfish.push(jellyfishGroup);
-    }
-    
-    // ========================================
-    // CORAL REEF STRUCTURES
-    // ========================================
-    
-    const coralPositions = [
-        { x: -18, z: 8 }, { x: -12, z: -14 }, { x: 0, z: -18 },
-        { x: 12, z: -14 }, { x: 18, z: 8 }, { x: -8, z: 0 },
-        { x: 8, z: -5 }, { x: 0, z: 10 }
-    ];
-    
-    coralPositions.forEach(pos => {
-        const coralGroup = new THREE.Group();
-        
-        // Brain coral
-        const brainCoral = new THREE.Mesh(
-            new THREE.SphereGeometry(0.8, 16, 16),
-            new THREE.MeshStandardMaterial({
-                color: 0xff6b9d,
-                roughness: 0.9,
-                metalness: 0.0
-            })
-        );
-        brainCoral.scale.set(1, 0.6, 1);
-        brainCoral.position.y = -2.5;
-        coralGroup.add(brainCoral);
-        
-        // Branch coral (random height)
-        for (let i = 0; i < 5 + Math.floor(Math.random() * 5); i++) {
-            const branch = new THREE.Mesh(
-                new THREE.CylinderGeometry(
-                    0.05 + Math.random() * 0.05,
-                    0.08 + Math.random() * 0.07,
-                    0.5 + Math.random() * 1.0,
-                    8
-                ),
-                new THREE.MeshStandardMaterial({
-                    color: [0xff6b9d, 0xffa07a, 0xee82ee, 0xdda0dd][Math.floor(Math.random() * 4)],
-                    roughness: 0.85
-                })
-            );
-            branch.position.set(
-                (Math.random() - 0.5) * 1.5,
-                -2.5 + Math.random() * 0.8,
-                (Math.random() - 0.5) * 1.5
-            );
-            branch.rotation.set(
-                (Math.random() - 0.5) * 0.4,
-                Math.random() * Math.PI * 2,
-                (Math.random() - 0.5) * 0.4
-            );
-            coralGroup.add(branch);
-        }
-        
-        // Sea anemone (swaying)
-        const anemone = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.2, 0.6, 12),
-            new THREE.MeshStandardMaterial({
-                color: 0xee82ee,
-                roughness: 0.7
-            })
-        );
-        anemone.position.set(
-            (Math.random() - 0.5) * 2,
-            -2.2,
-            (Math.random() - 0.5) * 2
-        );
-        coralGroup.add(anemone);
-        
-        coralGroup.position.set(pos.x, 0, pos.z);
-        room1.add(coralGroup);
-    });
-    
-    // ========================================
-    // KELP FOREST (Swaying Seaweed)
-    // ========================================
-    
-    this.kelpStrands = [];
-    
-    for (let i = 0; i < 20; i++) {
-        const kelpGroup = new THREE.Group();
-        
-        const segments = 8;
-        for (let j = 0; j < segments; j++) {
-            const segment = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.08, 0.1, 0.8, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x2d5016,
+                    color: patternColors[colorIndex],
                     roughness: 0.8
                 })
             );
-            segment.position.y = j * 0.75;
-            kelpGroup.add(segment);
+            diamond.rotation.x = -Math.PI / 2;
+            diamond.rotation.z = Math.PI / 4;
+            diamond.position.set(0, 0.001, z);
+            diamond.receiveShadow = true;
+            room1.add(diamond);
             
-            // Leaves
-            if (j % 2 === 0) {
-                const leaf = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.3, 0.6),
+            // Border triangles
+            for (let side of [-1, 1]) {
+                const triangle = new THREE.Mesh(
+                    new THREE.CircleGeometry(0.3, 3),
                     new THREE.MeshStandardMaterial({
-                        color: 0x3d7c2f,
-                        side: THREE.DoubleSide,
-                        roughness: 0.7
+                        color: patternColors[(colorIndex + 2) % 4],
+                        roughness: 0.8
                     })
                 );
-                leaf.position.set(0.15, j * 0.75, 0);
-                kelpGroup.add(leaf);
+                triangle.rotation.x = -Math.PI / 2;
+                triangle.position.set(side * 1.5, 0.002, z);
+                room1.add(triangle);
             }
         }
-        
-        kelpGroup.position.set(
-            (Math.random() - 0.5) * 40,
-            -2.5,
-            (Math.random() - 0.5) * 25
-        );
-        
-        kelpGroup.userData = {
-            swaySpeed: 0.5 + Math.random() * 1.0,
-            swayAmount: 0.1 + Math.random() * 0.15,
-            phaseOffset: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(kelpGroup);
-        this.kelpStrands.push(kelpGroup);
-    }
+    };
+    
+    createNdebelePattern(-galleryLength / 2, galleryLength, 'path');
     
     // ========================================
-    // WATER CAUSTICS LIGHTING
+    // ORGANIC MUD BRICK WALLS (Djenné style)
     // ========================================
     
-    // Main overhead "sunlight" with caustic effect
-    const causticsLight = new THREE.DirectionalLight(0x4da6ff, 1.5);
-    causticsLight.position.set(0, 15, -5);
-    causticsLight.castShadow = true;
-    causticsLight.shadow.mapSize.width = 2048;
-    causticsLight.shadow.mapSize.height = 2048;
-    causticsLight.shadow.camera.left = -30;
-    causticsLight.shadow.camera.right = 30;
-    causticsLight.shadow.camera.top = 30;
-    causticsLight.shadow.camera.bottom = -30;
-    room1.add(causticsLight);
+    // Left wall - organic curved mud brick
+    const createMudBrickWall = (side) => {
+        const wallSegments = 30;
+        for (let i = 0; i < wallSegments; i++) {
+            const t = i / wallSegments;
+            const z = -galleryLength / 2 + t * galleryLength;
+            
+            // Organic wave pattern (like Djenné mosque)
+            const curve = Math.sin(t * Math.PI * 3) * 2;
+            const x = side * (galleryWidth / 2 - 3) + curve;
+            
+            for (let y = 0; y < maxHeight; y += 1.2) {
+                // Individual mud bricks (slightly irregular)
+                const brick = new THREE.Mesh(
+                    new THREE.BoxGeometry(
+                        0.8 + Math.random() * 0.2,
+                        1.0 + Math.random() * 0.2,
+                        2.2
+                    ),
+                    mudBrickMaterial
+                );
+                brick.position.set(x, y + 0.6, z);
+                brick.rotation.y = (Math.random() - 0.5) * 0.1;
+                brick.castShadow = true;
+                brick.receiveShadow = true;
+                room1.add(brick);
+                
+                // Wooden beam supports (toron - protruding beams)
+                if (y > 0 && y < maxHeight - 2 && i % 5 === 0) {
+                    const beam = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.08, 0.08, 1.5, 8),
+                        carvedWoodMaterial
+                    );
+                    beam.rotation.z = Math.PI / 2;
+                    beam.position.set(x + side * 0.7, y + 0.6, z);
+                    beam.castShadow = true;
+                    room1.add(beam);
+                }
+            }
+        }
+    };
     
-    this.causticsLight = causticsLight; // Store for animation
-    
-    // Ambient underwater glow
-    const ambientOcean = new THREE.AmbientLight(0x1a4d7a, 0.4);
-    room1.add(ambientOcean);
-    
-    // Interior pod lights (warm research station feel)
-    const podLightPositions = [
-        { x: 0, y: 3, z: -10 },
-        { x: -15, y: 3, z: -8 },
-        { x: 15, y: 3, z: -8 }
-    ];
-    
-    podLightPositions.forEach(pos => {
-        const light = new THREE.SpotLight(0xffffcc, 2.0, 15, Math.PI / 6, 0.5);
-        light.position.set(pos.x, pos.y, pos.z);
-        light.target.position.set(pos.x, pos.y - 5, pos.z);
-        light.castShadow = true;
-        room1.add(light);
-        room1.add(light.target);
-    });
-    
-    // Emergency red lights (on ceiling)
-    for (let i = 0; i < 6; i++) {
-        const t = i / 6;
-        const pos = tunnelCurve.getPoint(t);
-        
-        const emergencyLight = new THREE.PointLight(0xff0000, 0.5, 8);
-        emergencyLight.position.set(pos.x, pos.y + 3, pos.z);
-        room1.add(emergencyLight);
-        
-        const bulb = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 8, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0xff0000,
-                emissive: 0xff0000,
-                emissiveIntensity: 1.0
-            })
-        );
-        bulb.position.copy(emergencyLight.position);
-        room1.add(bulb);
-    }
+    createMudBrickWall(-1); // Left wall
+    createMudBrickWall(1);  // Right wall
     
     // ========================================
-    // BUBBLE PARTICLE SYSTEM
+    // BACK WALL - ADINKRA SYMBOLS
     // ========================================
     
-    this.bubbles = [];
+    // Create back wall with carved symbols
+    const backWall = new THREE.Mesh(
+        new THREE.BoxGeometry(galleryWidth - 10, maxHeight - 2, 1),
+        terracottaMaterial
+    );
+    backWall.position.set(0, maxHeight / 2, -galleryLength / 2 + 2);
+    backWall.castShadow = true;
+    backWall.receiveShadow = true;
+    room1.add(backWall);
     
-    for (let i = 0; i < 50; i++) {
-        const bubble = new THREE.Mesh(
-            new THREE.SphereGeometry(0.05 + Math.random() * 0.1, 8, 8),
-            new THREE.MeshPhysicalMaterial({
-                color: 0xffffff,
-                transmission: 0.95,
-                thickness: 0.5,
-                roughness: 0.0,
-                transparent: true,
-                opacity: 0.3
-            })
-        );
-        
-        bubble.position.set(
-            (Math.random() - 0.5) * 50,
-            Math.random() * 10 - 3,
-            (Math.random() - 0.5) * 30
-        );
-        
-        bubble.userData = {
-            riseSpeed: 0.01 + Math.random() * 0.02,
-            wobbleSpeed: 1.0 + Math.random() * 2.0,
-            wobbleAmount: 0.2 + Math.random() * 0.3,
-            phaseOffset: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(bubble);
-        this.bubbles.push(bubble);
-    }
-    
-    // ========================================
-    // DEEP SEA FEATURES
-    // ========================================
-    
-    // Sunken treasure chest (easter egg)
-    const chest = new THREE.Mesh(
-        new THREE.BoxGeometry(1.5, 1.0, 1.0),
-        new THREE.MeshStandardMaterial({
-            color: 0x8b4513,
-            roughness: 0.9,
+    // Adinkra symbols carved into back wall
+    const createAdinkraSymbol = (x, y, z, symbolType) => {
+        const symbolMaterial = new THREE.MeshStandardMaterial({
+            color: colors.darkWood,
+            roughness: 0.7,
             metalness: 0.1
+        });
+        
+        // Gye Nyame (supremacy of God) - most popular Adinkra
+        if (symbolType === 'gyeNyame') {
+            const symbol = new THREE.Mesh(
+                new THREE.TorusGeometry(0.5, 0.15, 8, 16),
+                symbolMaterial
+            );
+            symbol.position.set(x, y, z);
+            symbol.castShadow = true;
+            room1.add(symbol);
+            
+            const cross = new THREE.Mesh(
+                new THREE.BoxGeometry(0.1, 1.2, 0.1),
+                symbolMaterial
+            );
+            cross.position.set(x, y, z);
+            room1.add(cross);
+        }
+        // Sankofa (return and get it)
+        else if (symbolType === 'sankofa') {
+            const heart = new THREE.Mesh(
+                new THREE.SphereGeometry(0.4, 8, 8),
+                symbolMaterial
+            );
+            heart.scale.set(1, 0.8, 0.5);
+            heart.position.set(x, y, z);
+            room1.add(heart);
+            
+            const curve = new THREE.Mesh(
+                new THREE.TorusGeometry(0.3, 0.08, 6, 12, Math.PI),
+                symbolMaterial
+            );
+            curve.position.set(x, y + 0.3, z);
+            curve.rotation.x = Math.PI / 2;
+            room1.add(curve);
+        }
+    };
+    
+    // Place Adinkra symbols on back wall
+    createAdinkraSymbol(-8, 8, -galleryLength / 2 + 1.6, 'gyeNyame');
+    createAdinkraSymbol(0, 8, -galleryLength / 2 + 1.6, 'sankofa');
+    createAdinkraSymbol(8, 8, -galleryLength / 2 + 1.6, 'gyeNyame');
+    createAdinkraSymbol(-4, 12, -galleryLength / 2 + 1.6, 'sankofa');
+    createAdinkraSymbol(4, 12, -galleryLength / 2 + 1.6, 'sankofa');
+    
+    // ========================================
+    // DOMED CEILING (Zulu beehive hut inspired)
+    // ========================================
+    
+    const ceilingGeometry = new THREE.SphereGeometry(
+        galleryWidth / 2,
+        40,
+        40,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 2
+    );
+    
+    const ceiling = new THREE.Mesh(
+        ceilingGeometry,
+        new THREE.MeshStandardMaterial({
+            color: colors.earthBrown,
+            roughness: 0.9,
+            side: THREE.BackSide
         })
     );
-    chest.position.set(12, -2.3, -15);
-    chest.rotation.y = 0.3;
-    chest.castShadow = true;
-    room1.add(chest);
+    ceiling.position.set(0, maxHeight - 2, 0);
+    ceiling.receiveShadow = true;
+    room1.add(ceiling);
     
-    // Gold glow from chest
-    const chestGlow = new THREE.PointLight(0xffd700, 1.5, 5);
-    chestGlow.position.set(12, -2.0, -15);
-    room1.add(chestGlow);
-    
-    // Ancient ruins (stone pillars)
-    for (let i = 0; i < 4; i++) {
-        const pillar = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.5, 0.6, 3 + Math.random() * 2, 8),
+    // Thatch texture rings (concentric circles)
+    for (let r = 5; r < 20; r += 3) {
+        const thatchRing = new THREE.Mesh(
+            new THREE.TorusGeometry(r, 0.2, 8, 32),
             new THREE.MeshStandardMaterial({
-                color: 0x5a5a5a,
+                color: colors.baobabWood,
                 roughness: 0.95
             })
         );
-        pillar.position.set(
-            (Math.random() - 0.5) * 35,
-            -2.5 + pillar.geometry.parameters.height / 2,
-            (Math.random() - 0.5) * 22
-        );
-        pillar.rotation.set(
-            (Math.random() - 0.5) * 0.3,
-            Math.random() * Math.PI,
-            (Math.random() - 0.5) * 0.3
-        );
-        pillar.castShadow = true;
-        room1.add(pillar);
-    }
-    
-    // Bioluminescent floor plants
-    for (let i = 0; i < 30; i++) {
-        const plant = new THREE.Mesh(
-            new THREE.ConeGeometry(0.15, 0.5, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x00ff88,
-                emissive: 0x00ff88,
-                emissiveIntensity: 1.0
-            })
-        );
-        plant.position.set(
-            (Math.random() - 0.5) * 45,
-            -2.5,
-            (Math.random() - 0.5) * 28
-        );
-        room1.add(plant);
-        
-        const plantLight = new THREE.PointLight(0x00ff88, 0.8, 3);
-        plantLight.position.copy(plant.position);
-        plantLight.position.y += 0.25;
-        room1.add(plantLight);
+        thatchRing.rotation.x = Math.PI / 2;
+        thatchRing.position.set(0, maxHeight - 2 + Math.sqrt(Math.max(0, (galleryWidth/2)**2 - r**2)), 0);
+        room1.add(thatchRing);
     }
     
     // ========================================
-    // SUBMARINE WINDOW VIEWS
+    // CARVED WOODEN PILLARS
     // ========================================
     
-    // Research equipment inside pods
-    podPositions.slice(0, 3).forEach(pos => {
-        // Computer terminal
-        const terminal = new THREE.Mesh(
-            new THREE.BoxGeometry(0.8, 0.6, 0.1),
-            new THREE.MeshStandardMaterial({
-                color: 0x1a1a1a,
-                emissive: 0x00ff00,
-                emissiveIntensity: 0.3
-            })
-        );
-        terminal.position.set(pos.x + 1.5, pos.y - 0.5, pos.z);
-        room1.add(terminal);
+    const createCarvedPillar = (x, z) => {
+        const pillarHeight = 12;
+        const segments = 6;
         
-        // Control panel buttons
-        for (let i = 0; i < 6; i++) {
-            const button = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.05, 0.05, 0.05, 16),
-                new THREE.MeshStandardMaterial({
-                    color: [0xff0000, 0x00ff00, 0xffff00][i % 3],
-                    emissive: [0xff0000, 0x00ff00, 0xffff00][i % 3],
-                    emissiveIntensity: 0.5
-                })
-            );
-            button.position.set(
-                pos.x + 1.5 + (i % 3 - 1) * 0.2,
-                pos.y - 0.8,
-                pos.z + Math.floor(i / 3) * 0.2
-            );
-            button.rotation.x = Math.PI / 2;
-            room1.add(button);
+        for (let i = 0; i < segments; i++) {
+            const y = (i / segments) * pillarHeight;
+            const segmentHeight = pillarHeight / segments;
+            
+            // Alternating carved patterns
+            const radius = i % 2 === 0 ? 0.35 : 0.25;
+            const geometry = i % 2 === 0 
+                ? new THREE.CylinderGeometry(radius, radius, segmentHeight, 8)
+                : new THREE.CylinderGeometry(radius, radius, segmentHeight, 4);
+            
+            const segment = new THREE.Mesh(geometry, carvedWoodMaterial);
+            segment.position.set(x, y + segmentHeight / 2, z);
+            segment.rotation.y = (i % 2 === 0) ? 0 : Math.PI / 4;
+            segment.castShadow = true;
+            segment.receiveShadow = true;
+            room1.add(segment);
+            
+            // Brass rings between segments
+            if (i < segments - 1) {
+                const ring = new THREE.Mesh(
+                    new THREE.TorusGeometry(radius + 0.05, 0.03, 8, 16),
+                    brassAccentMaterial
+                );
+                ring.rotation.x = Math.PI / 2;
+                ring.position.set(x, y + segmentHeight, z);
+                ring.castShadow = true;
+                room1.add(ring);
+            }
         }
+        
+        // Carved capital (top)
+        const capital = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.6, 0.4, 1, 8),
+            carvedWoodMaterial
+        );
+        capital.position.set(x, pillarHeight, z);
+        capital.castShadow = true;
+        room1.add(capital);
+        
+        // Brass finial
+        const finial = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 8, 8),
+            brassAccentMaterial
+        );
+        finial.position.set(x, pillarHeight + 0.8, z);
+        finial.castShadow = true;
+        room1.add(finial);
+    };
+    
+    // Place carved pillars
+    createCarvedPillar(-10, -20);
+    createCarvedPillar(10, -20);
+    createCarvedPillar(-10, 0);
+    createCarvedPillar(10, 0);
+    createCarvedPillar(-10, 20);
+    createCarvedPillar(10, 20);
+    
+    // ========================================
+    // KENTE CLOTH HANGING BANNERS
+    // ========================================
+    
+    this.kenteBanners = [];
+    const bannerPositions = [
+        [-12, -15], [12, -15],
+        [-12, 5], [12, 5],
+        [-12, 25], [12, 25]
+    ];
+    
+    bannerPositions.forEach(pos => {
+        const banner = new THREE.Mesh(
+            new THREE.PlaneGeometry(3, 8),
+            kenteTextileMaterial.clone()
+        );
+        banner.position.set(pos[0], 8, pos[1]);
+        banner.castShadow = true;
+        banner.receiveShadow = true;
+        room1.add(banner);
+        this.kenteBanners.push(banner);
     });
     
     // ========================================
-    // FINAL SETUP
+    // TRADITIONAL DRUMS (Djembe)
     // ========================================
+    
+    const createDjembeDrum = (x, z, scale = 1) => {
+        // Drum body
+        const drumBody = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4 * scale, 0.3 * scale, 1.2 * scale, 12),
+            carvedWoodMaterial
+        );
+        drumBody.position.set(x, 0.6 * scale, z);
+        drumBody.castShadow = true;
+        room1.add(drumBody);
+        
+        // Drum head (leather)
+        const drumHead = new THREE.Mesh(
+            new THREE.CircleGeometry(0.4 * scale, 16),
+            new THREE.MeshStandardMaterial({
+                color: 0xdeb887,
+                roughness: 0.9
+            })
+        );
+        drumHead.rotation.x = -Math.PI / 2;
+        drumHead.position.set(x, 1.2 * scale + 0.01, z);
+        room1.add(drumHead);
+        
+        // Rope pattern
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const rope = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.02 * scale, 0.02 * scale, 1.3 * scale, 4),
+                new THREE.MeshStandardMaterial({ color: 0x8b7355 })
+            );
+            rope.position.set(
+                x + Math.cos(angle) * 0.35 * scale,
+                0.65 * scale,
+                z + Math.sin(angle) * 0.35 * scale
+            );
+            rope.rotation.z = 0.1;
+            room1.add(rope);
+        }
+    };
+    
+    // Place drums as decorative elements
+    createDjembeDrum(-14, -25, 1);
+    createDjembeDrum(14, -25, 0.8);
+    createDjembeDrum(-14, 25, 0.9);
+    createDjembeDrum(14, 25, 1.1);
+    
+    // ========================================
+    // WOVEN BASKETS
+    // ========================================
+    
+    const createWovenBasket = (x, z, radius) => {
+        const basket = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius * 0.8, radius * 1.5, 16, 4, true),
+            new THREE.MeshStandardMaterial({
+                color: colors.baobabWood,
+                roughness: 0.9,
+                wireframe: false
+            })
+        );
+        basket.position.set(x, radius * 0.75, z);
+        basket.castShadow = true;
+        room1.add(basket);
+        
+        // Woven pattern (horizontal bands)
+        for (let i = 0; i < 4; i++) {
+            const band = new THREE.Mesh(
+                new THREE.TorusGeometry(radius - 0.02, 0.03, 6, 16),
+                new THREE.MeshStandardMaterial({
+                    color: i % 2 === 0 ? colors.earthBrown : colors.baobabWood
+                })
+            );
+            band.rotation.x = Math.PI / 2;
+            band.position.set(x, radius * 0.4 * i, z);
+            room1.add(band);
+        }
+    };
+    
+// ⭐ FIXED: Moved inside boundaries (Z: ±26 instead of ±28)
+createWovenBasket(-12, 26, 0.6);
+createWovenBasket(12, 26, 0.5);
+createWovenBasket(-12, -26, 0.7);
+createWovenBasket(12, -26, 0.6);
+    
+    // ========================================
+    // TERRACOTTA POTTERY
+    // ========================================
+    
+    const createTerracottaPot = (x, z, height) => {
+        const pot = new THREE.Mesh(
+            new THREE.SphereGeometry(height * 0.4, 16, 16),
+            terracottaMaterial
+        );
+        pot.scale.set(1, 1.2, 1);
+        pot.position.set(x, height * 0.5, z);
+        pot.castShadow = true;
+        room1.add(pot);
+        
+        // Decorative bands
+        for (let i = 1; i <= 3; i++) {
+            const band = new THREE.Mesh(
+                new THREE.TorusGeometry(height * 0.35, 0.02, 8, 16),
+                new THREE.MeshStandardMaterial({ color: colors.darkWood })
+            );
+            band.rotation.x = Math.PI / 2;
+            band.position.set(x, height * 0.3 * i, z);
+            room1.add(band);
+        }
+    };
+    
+    createTerracottaPot(galleryWidth / 2 - 4, 20, 1.2);
+    createTerracottaPot(-galleryWidth / 2 + 4, 20, 1.0);
+    createTerracottaPot(galleryWidth / 2 - 4, -10, 1.1);
+    createTerracottaPot(-galleryWidth / 2 + 4, -10, 1.3);
+    
+
+    const createAfricanMask = (x, y, z, rotation, maskType) => {
+    const group = new THREE.Group();
+    
+    const maskMaterial = new THREE.MeshStandardMaterial({
+        color: colors.darkWood,
+        roughness: 0.6,
+        metalness: 0.1
+    });
+    
+    if (maskType === 'ceremonial') {
+        // Ceremonial mask (elongated face)
+        const face = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 1.2, 0.2),
+            maskMaterial
+        );
+        group.add(face);
+        
+        // Eyes (carved indentations)
+        [-0.2, 0.2].forEach(xOff => {
+            const eye = new THREE.Mesh(
+                new THREE.SphereGeometry(0.1, 8, 8),
+                new THREE.MeshStandardMaterial({ color: 0x000000 })
+            );
+            eye.position.set(xOff, 0.2, 0.12);
+            group.add(eye);
+        });
+        
+        // Nose
+        const nose = new THREE.Mesh(
+            new THREE.ConeGeometry(0.08, 0.3, 6),
+            maskMaterial
+        );
+        nose.position.set(0, 0, 0.2);
+        nose.rotation.x = Math.PI / 2;
+        group.add(nose);
+        
+        // Mouth
+        const mouth = new THREE.Mesh(
+            new THREE.BoxGeometry(0.25, 0.08, 0.08),
+            new THREE.MeshStandardMaterial({ color: 0x8b0000 })
+        );
+        mouth.position.set(0, -0.3, 0.12);
+        group.add(mouth);
+        
+        // Decorative horns
+        [-1, 1].forEach(side => {
+            const horn = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.03, 0.06, 0.4, 6),
+                brassAccentMaterial
+            );
+            horn.position.set(side * 0.35, 0.6, 0);
+            horn.rotation.z = side * Math.PI / 6;
+            group.add(horn);
+        });
+    } else if (maskType === 'warrior') {
+        // Warrior mask (angular, fierce)
+        const face = new THREE.Mesh(
+            new THREE.BoxGeometry(0.7, 1.0, 0.25),
+            maskMaterial
+        );
+        face.scale.set(1, 1.2, 1);
+        group.add(face);
+        
+        // Sharp geometric eyes
+        [-0.2, 0.2].forEach(xOff => {
+            const eye = new THREE.Mesh(
+                new THREE.BoxGeometry(0.15, 0.25, 0.05),
+                new THREE.MeshStandardMaterial({ color: 0xffffff })
+            );
+            eye.position.set(xOff, 0.2, 0.14);
+            eye.rotation.z = Math.PI / 4;
+            group.add(eye);
+        });
+        
+        // Fierce teeth
+        for (let i = 0; i < 5; i++) {
+            const tooth = new THREE.Mesh(
+                new THREE.ConeGeometry(0.04, 0.15, 6),
+                new THREE.MeshStandardMaterial({ color: 0xffffff })
+            );
+            tooth.position.set((i - 2) * 0.12, -0.5, 0.15);
+            tooth.rotation.x = Math.PI;
+            group.add(tooth);
+        }
+        
+        // Red war paint
+        const paint = new THREE.Mesh(
+            new THREE.BoxGeometry(0.5, 0.15, 0.02),
+            new THREE.MeshStandardMaterial({ 
+                color: colors.maasaiRed,
+                emissive: colors.maasaiRed,
+                emissiveIntensity: 0.3
+            })
+        );
+        paint.position.set(0, 0.35, 0.13);
+        group.add(paint);
+    }
+    
+    group.position.set(x, y, z);
+    group.rotation.y = rotation;
+    group.castShadow = true;
+    return group;
+};
+
+// Place masks on walls (6 total)
+const maskPositions = [
+    { x: -12, y: 6, z: -galleryLength/2 + 3, rot: 0, type: 'ceremonial' },
+    { x: 12, y: 6, z: -galleryLength/2 + 3, rot: 0, type: 'warrior' },
+    { x: -galleryWidth/2 + 3, y: 5, z: -15, rot: Math.PI/2, type: 'ceremonial' },
+    { x: galleryWidth/2 - 3, y: 5, z: 15, rot: -Math.PI/2, type: 'warrior' },
+    { x: -galleryWidth/2 + 3, y: 7, z: 10, rot: Math.PI/2, type: 'warrior' },
+    { x: galleryWidth/2 - 3, y: 7, z: -5, rot: -Math.PI/2, type: 'ceremonial' }
+];
+
+maskPositions.forEach(pos => {
+    const mask = createAfricanMask(pos.x, pos.y, pos.z, pos.rot, pos.type);
+    room1.add(mask);
+});
+
+
+
+const createAfricanSculpture = (x, z, sculptureType) => {
+    const group = new THREE.Group();
+    
+    if (sculptureType === 'mother-child') {
+        // Mother and Child sculpture (common African theme)
+        
+        // Mother body
+        const motherBody = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.25, 1.2, 8),
+            carvedWoodMaterial
+        );
+        motherBody.position.y = 0.6;
+        group.add(motherBody);
+        
+        // Mother head
+        const motherHead = new THREE.Mesh(
+            new THREE.SphereGeometry(0.25, 8, 8),
+            carvedWoodMaterial
+        );
+        motherHead.position.y = 1.4;
+        motherHead.scale.set(1, 1.3, 1);
+        group.add(motherHead);
+        
+        // Child (smaller figure)
+        const child = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.15, 0.12, 0.6, 8),
+            carvedWoodMaterial
+        );
+        child.position.set(0.3, 0.8, 0.2);
+        group.add(child);
+        
+        const childHead = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15, 8, 8),
+            carvedWoodMaterial
+        );
+        childHead.position.set(0.3, 1.2, 0.2);
+        group.add(childHead);
+        
+        // Base pedestal
+        const base = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.5, 0.2, 8),
+            new THREE.MeshStandardMaterial({ color: colors.earthBrown })
+        );
+        base.position.y = 0.1;
+        group.add(base);
+        
+    } else if (sculptureType === 'warrior') {
+        // Standing warrior figure
+        
+        // Body
+        const body = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.25, 0.3, 1.5, 8),
+            carvedWoodMaterial
+        );
+        body.position.y = 0.75;
+        group.add(body);
+        
+        // Head
+        const head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 8, 8),
+            carvedWoodMaterial
+        );
+        head.position.y = 1.7;
+        head.scale.set(1, 1.2, 1);
+        group.add(head);
+        
+        // Spear (brass)
+        const spear = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.02, 0.02, 2.5, 6),
+            brassAccentMaterial
+        );
+        spear.position.set(0.4, 1.2, 0);
+        spear.rotation.z = Math.PI / 6;
+        group.add(spear);
+        
+        // Spear tip
+        const spearTip = new THREE.Mesh(
+            new THREE.ConeGeometry(0.08, 0.3, 6),
+            brassAccentMaterial
+        );
+        spearTip.position.set(0.7, 2.5, 0);
+        spearTip.rotation.z = Math.PI / 6;
+        group.add(spearTip);
+        
+        // Shield (round)
+        const shield = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16),
+            new THREE.MeshStandardMaterial({
+                color: colors.maasaiRed,
+                roughness: 0.8
+            })
+        );
+        shield.position.set(-0.5, 0.9, 0);
+        shield.rotation.z = Math.PI / 2;
+        group.add(shield);
+        
+        // Base
+        const base = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.6, 0.6, 0.2, 8),
+            new THREE.MeshStandardMaterial({ color: colors.earthBrown })
+        );
+        base.position.y = 0.1;
+        group.add(base);
+        
+    } else if (sculptureType === 'dancer') {
+        // Dancing figure (dynamic pose)
+        
+        // Body (tilted)
+        const body = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.25, 1.2, 8),
+            carvedWoodMaterial
+        );
+        body.position.y = 0.6;
+        body.rotation.z = Math.PI / 8;
+        group.add(body);
+        
+        // Head
+        const head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.25, 8, 8),
+            carvedWoodMaterial
+        );
+        head.position.set(0.2, 1.3, 0);
+        group.add(head);
+        
+        // Arms (raised)
+        [-1, 1].forEach(side => {
+            const arm = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.08, 0.8, 6),
+                carvedWoodMaterial
+            );
+            arm.position.set(side * 0.3, 1.0, 0);
+            arm.rotation.z = side * Math.PI / 3;
+            group.add(arm);
+        });
+        
+        // Ceremonial beads (brass)
+        for (let i = 0; i < 3; i++) {
+            const bead = new THREE.Mesh(
+                new THREE.TorusGeometry(0.15 + i * 0.05, 0.02, 8, 16),
+                brassAccentMaterial
+            );
+            bead.position.y = 1.0 - i * 0.15;
+            bead.rotation.x = Math.PI / 2;
+            group.add(bead);
+        }
+        
+        // Base
+        const base = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.5, 0.2, 8),
+            new THREE.MeshStandardMaterial({ color: colors.earthBrown })
+        );
+        base.position.y = 0.1;
+        group.add(base);
+    }
+    
+    group.position.set(x, 0, z);
+    group.castShadow = true;
+    group.receiveShadow = true;
+    return group;
+};
+
+// Place sculptures strategically (6 total)
+const sculpturePositions = [
+    { x: -8, z: 15, type: 'mother-child' },
+    { x: 8, z: 15, type: 'warrior' },
+    { x: -8, z: -10, type: 'dancer' },
+    { x: 8, z: -10, type: 'mother-child' },
+    { x: 0, z: 22, type: 'warrior' },
+    { x: 0, z: -18, type: 'dancer' }
+];
+
+sculpturePositions.forEach(pos => {
+    const sculpture = createAfricanSculpture(pos.x, pos.z, pos.type);
+    room1.add(sculpture);
+});
+
+const createRockArt = (x, y, z, rotation) => {
+    // Canvas background (stone)
+    const canvas = new THREE.Mesh(
+        new THREE.BoxGeometry(3, 2, 0.1),
+        new THREE.MeshStandardMaterial({
+            color: 0x6b5d4f,
+            roughness: 0.95
+        })
+    );
+    
+    // Paint layer with African rock art motifs
+    const paintMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8b4513,
+        roughness: 0.9,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    // Human figures (stick figures - ancient style)
+    for (let i = 0; i < 5; i++) {
+        const figure = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.02, 0.02, 0.4, 6),
+            paintMaterial
+        );
+        figure.position.set(-1 + i * 0.5, 0, 0.06);
+        canvas.add(figure);
+        
+        // Head
+        const head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.06, 6, 6),
+            paintMaterial
+        );
+        head.position.set(-1 + i * 0.5, 0.25, 0.06);
+        canvas.add(head);
+    }
+    
+    // Animals (simplified shapes)
+    const animalPositions = [
+        { x: -0.8, y: -0.5 },
+        { x: 0.3, y: -0.6 },
+        { x: 1.0, y: -0.5 }
+    ];
+    
+    animalPositions.forEach(pos => {
+        const animal = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.15, 0.05),
+            paintMaterial
+        );
+        animal.position.set(pos.x, pos.y, 0.06);
+        canvas.add(animal);
+        
+        // Legs
+        for (let i = 0; i < 4; i++) {
+            const leg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.01, 0.01, 0.1, 4),
+                paintMaterial
+            );
+            leg.position.set(pos.x - 0.1 + i * 0.07, pos.y - 0.12, 0.06);
+            canvas.add(leg);
+        }
+    });
+    
+    // Sun symbol (common in African art)
+    const sun = new THREE.Mesh(
+        new THREE.CircleGeometry(0.2, 16),
+        new THREE.MeshStandardMaterial({
+            color: colors.kenteGold,
+            emissive: colors.kenteGold,
+            emissiveIntensity: 0.3
+        })
+    );
+    sun.position.set(1.2, 0.7, 0.07);
+    canvas.add(sun);
+    
+    canvas.position.set(x, y, z);
+    canvas.rotation.y = rotation;
+    canvas.castShadow = true;
+    canvas.receiveShadow = true;
+    return canvas;
+};
+
+// Place rock art on walls (4 total)
+const rockArtPositions = [
+    { x: -5, y: 4, z: -galleryLength/2 + 2.5, rot: 0 },
+    { x: 5, y: 4, z: -galleryLength/2 + 2.5, rot: 0 },
+    { x: -galleryWidth/2 + 2.5, y: 4, z: 5, rot: Math.PI/2 },
+    { x: galleryWidth/2 - 2.5, y: 4, z: -8, rot: -Math.PI/2 }
+];
+
+rockArtPositions.forEach(pos => {
+    const art = createRockArt(pos.x, pos.y, pos.z, pos.rot);
+    room1.add(art);
+});
+const createAfricanStool = (x, z, style) => {
+    const group = new THREE.Group();
+    
+    if (style === 'round') {
+        // Round carved stool
+        const seat = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.35, 0.1, 16),
+            carvedWoodMaterial
+        );
+        seat.position.y = 0.5;
+        group.add(seat);
+        
+        // Central support
+        const support = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.15, 0.2, 0.4, 8),
+            carvedWoodMaterial
+        );
+        support.position.y = 0.2;
+        group.add(support);
+        
+        // Base
+        const base = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.35, 0.1, 16),
+            carvedWoodMaterial
+        );
+        base.position.y = 0.05;
+        group.add(base);
+        
+    } else if (style === 'tribal') {
+        // Four-legged tribal stool
+        const seat = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 0.08, 0.5),
+            carvedWoodMaterial
+        );
+        seat.position.y = 0.4;
+        group.add(seat);
+        
+        // Carved pattern on seat
+        const pattern = new THREE.Mesh(
+            new THREE.TorusGeometry(0.15, 0.02, 8, 16),
+            new THREE.MeshStandardMaterial({ color: colors.kenteGold })
+        );
+        pattern.position.y = 0.45;
+        pattern.rotation.x = Math.PI / 2;
+        group.add(pattern);
+        
+        // Four legs
+        const legPositions = [
+            [-0.25, -0.2], [0.25, -0.2],
+            [-0.25, 0.2], [0.25, 0.2]
+        ];
+        
+        legPositions.forEach(pos => {
+            const leg = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.05, 0.06, 0.4, 6),
+                carvedWoodMaterial
+            );
+            leg.position.set(pos[0], 0.2, pos[1]);
+            group.add(leg);
+        });
+    }
+    
+    group.position.set(x, 0, z);
+    group.castShadow = true;
+    group.receiveShadow = true;
+    return group;
+};
+
+// Place stools (6 total - safe positions)
+const stoolPositions = [
+    { x: -11, z: 18, style: 'round' },
+    { x: 11, z: 18, style: 'tribal' },
+    { x: -11, z: -12, style: 'tribal' },
+    { x: 11, z: -12, style: 'round' },
+    { x: -6, z: 0, style: 'round' },
+    { x: 6, z: 0, style: 'tribal' }
+];
+
+stoolPositions.forEach(pos => {
+    const stool = createAfricanStool(pos.x, pos.z, pos.style);
+    room1.add(stool);
+});
+
+console.log("🎭 African cultural artifacts added: masks, sculptures, rock art, stools");
+
+    // ========================================
+    // LIGHTING - WARM AFRICAN SUNSET
+    // ========================================
+    
+    this.glassSpotlights = [];
+    
+    // Main spotlights (warm sunset colors)
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const radius = 12;
+        
+        const spotlight = new THREE.SpotLight(0xffaa66, 3.5, 35, Math.PI / 5, 0.5);
+        spotlight.position.set(
+            Math.cos(angle) * radius,
+            maxHeight - 3,
+            Math.sin(angle) * radius * 1.5
+        );
+        spotlight.target.position.set(
+            Math.cos(angle) * radius * 0.3,
+            0,
+            Math.sin(angle) * radius * 0.5
+        );
+        spotlight.castShadow = true;
+        spotlight.shadow.mapSize.width = 2048;
+        spotlight.shadow.mapSize.height = 2048;
+        room1.add(spotlight);
+        room1.add(spotlight.target);
+        
+        this.glassSpotlights.push({
+            spot: spotlight,
+            angle: angle
+        });
+    }
+    
+    // Warm ambient lighting
+    const ambient = new THREE.AmbientLight(0xffcc88, 0.4);
+    this.scene.add(ambient);
+    
+    // Hemisphere (sunset sky)
+    const hemi = new THREE.HemisphereLight(0xffaa66, 0x8b6f47, 0.7);
+    hemi.position.set(0, maxHeight, 0);
+    this.scene.add(hemi);
+    
+    // Directional (sun)
+    const sunLight = new THREE.DirectionalLight(0xffaa44, 1.0);
+    sunLight.position.set(30, maxHeight * 1.5, 20);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 4096;
+    sunLight.shadow.mapSize.height = 4096;
+    this.scene.add(sunLight);
+    
+    // Warm fill light
+    const fillLight = new THREE.DirectionalLight(0xff8844, 0.5);
+    fillLight.position.set(-20, maxHeight, -15);
+    this.scene.add(fillLight);
+
+    // ⭐ ADD THIS HELPER FUNCTION
+// ⭐ ADD THIS HELPER FUNCTION
+const createTorchSmoke = (x, z) => {
+    const smokeParticles = 50;  // 50 per torch (100 for more smoke)
+    const positions = new Float32Array(smokeParticles * 3);
+    const velocities = new Float32Array(smokeParticles * 3);
+    
+    for (let i = 0; i < smokeParticles; i++) {
+        const i3 = i * 3;
+        positions[i3] = x + (Math.random() - 0.5) * 0.3;
+        positions[i3 + 1] = 2.5 + Math.random() * 0.5;
+        positions[i3 + 2] = z + (Math.random() - 0.5) * 0.3;
+        
+        velocities[i3] = (Math.random() - 0.5) * 0.01;
+        velocities[i3 + 1] = 0.02 + Math.random() * 0.01;
+        velocities[i3 + 2] = (Math.random() - 0.5) * 0.01;
+    }
+    
+    const smokeGeo = new THREE.BufferGeometry();
+    smokeGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    smokeGeo.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+    
+    const smokeMat = new THREE.PointsMaterial({
+        size: 0.2,
+        color: 0x666666,
+        transparent: true,
+        opacity: 0.3,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    
+    const smoke = new THREE.Points(smokeGeo, smokeMat);
+    return smoke;
+};
+
+// ⭐ DEFINE torchPositions ARRAY HERE (BEFORE using it!)
+const torchPositions = [
+    [-galleryWidth/2 + 5, -galleryLength/2 + 10],
+    [galleryWidth/2 - 5, -galleryLength/2 + 10],
+    [-galleryWidth/2 + 5, galleryLength/2 - 10],
+    [galleryWidth/2 - 5, galleryLength/2 - 10]
+];
+    
+// Fire/torch lights (warm glow)
+torchPositions.forEach(pos => {
+    const torchLight = new THREE.PointLight(0xff6633, 2, 15);
+    torchLight.position.set(pos[0], 2, pos[1]);
+    torchLight.castShadow = true;
+    room1.add(torchLight);
+    
+    // ⭐ ANIMATED SHADER FLAME (UPGRADED)
+    const flameMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+            time: { value: 0 }
+        },
+        vertexShader: `
+            uniform float time;
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                vec3 pos = position;
+                pos.x += sin(time * 5.0 + position.y * 10.0) * 0.1;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float time;
+            varying vec2 vUv;
+            void main() {
+                float fire = vUv.y + sin(time * 3.0 + vUv.x * 10.0) * 0.2;
+                vec3 color = mix(
+                    vec3(1.0, 0.3, 0.0),  // Red-orange base
+                    vec3(1.0, 1.0, 0.0),  // Yellow tips
+                    fire
+                );
+                gl_FragColor = vec4(color, 0.8);
+            }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending
+    });
+    
+    const flame = new THREE.Mesh(
+        new THREE.ConeGeometry(0.2, 0.6, 8),
+        flameMaterial
+    );
+    flame.position.set(pos[0], 2.3, pos[1]);
+    room1.add(flame);
+    
+    // ⭐ Store for animation
+    if (!this.torchFlames) this.torchFlames = [];
+    this.torchFlames.push(flame);
+    
+    // ⭐ ADD SMOKE
+    const smoke = createTorchSmoke(pos[0], pos[1]);
+    room1.add(smoke);
+    if (!this.torchSmoke) this.torchSmoke = [];
+    this.torchSmoke.push(smoke);
+});
+    
+    // Fire/torch lights (warm glow)
+ torchPositions.forEach(pos => {
+    const torchLight = new THREE.PointLight(0xff6633, 2, 15);
+    torchLight.position.set(pos[0], 2, pos[1]);
+    torchLight.castShadow = true;
+    room1.add(torchLight);
+    
+    // ⭐ ANIMATED SHADER FLAME (UPGRADED)
+    const flameMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+            time: { value: 0 }
+        },
+        vertexShader: `
+            uniform float time;
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                vec3 pos = position;
+                pos.x += sin(time * 5.0 + position.y * 10.0) * 0.1;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float time;
+            varying vec2 vUv;
+            void main() {
+                float fire = vUv.y + sin(time * 3.0 + vUv.x * 10.0) * 0.2;
+                vec3 color = mix(
+                    vec3(1.0, 0.3, 0.0),  // Red-orange base
+                    vec3(1.0, 1.0, 0.0),  // Yellow tips
+                    fire
+                );
+                gl_FragColor = vec4(color, 0.8);
+            }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending
+    });
+    
+    const flame = new THREE.Mesh(
+        new THREE.ConeGeometry(0.2, 0.6, 8),
+        flameMaterial
+    );
+    flame.position.set(pos[0], 2.3, pos[1]);
+    room1.add(flame);
+    
+    // ⭐ Store for animation
+  const smoke = createTorchSmoke(pos[0], pos[1]);
+    room1.add(smoke);
+    if (!this.torchSmoke) this.torchSmoke = [];
+    this.torchSmoke.push(smoke);
+});
+    
+    // ========================================
+    // ATMOSPHERE
+    // ========================================
+    
+    this.scene.background = new THREE.Color(0x3e2723); // Deep earth brown
+    this.scene.fog = new THREE.FogExp2(0x3e2723, 0.01);
     
     room1.position.set(0, 0, 0);
     this.rooms.push(room1);
-    this.scene.add(room1);
+    this.rooms.forEach(room => this.scene.add(room));
     
-    console.log("🌊 Underwater aquarium gallery created with marine life!");
+    console.log("🌍 African Heritage Gallery created!");
+}
+generateConcreteTexture(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base dark concrete
+    ctx.fillStyle = '#3a3a3a';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Subtle noise
+    for (let i = 0; i < 8000; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const size = Math.random() * 3 + 1;
+        const shade = Math.random() * 30 + 45;
+        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, 0.4)`;
+        ctx.fillRect(x, y, size, size);
+    }
+    
+    return canvas;
+}
+
+// ============================================================================
+// HELPER FUNCTION: Generate Carrara Marble Texture
+// Add this function after generateConcreteTexture() (around line 569)
+// ============================================================================
+
+generateCarraraMarble(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base white marble
+    ctx.fillStyle = '#f8f8f8';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Subtle gray veining (diagonal flow)
+    const numVeins = 40;
+    for (let i = 0; i < numVeins; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        // Mix of gray tones
+        const grayValue = 200 + Math.random() * 40;
+        const color = `rgba(${grayValue}, ${grayValue}, ${grayValue + 5}, ${0.15 + Math.random() * 0.25})`;
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.random() * 2 + 0.5;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        // Diagonal angle for natural marble flow
+        let angle = Math.PI / 4 + (Math.random() - 0.5) * 0.8;
+        
+        for (let j = 0; j < 150; j++) {
+            angle += (Math.random() - 0.5) * 0.3;
+            x += Math.cos(angle) * 8;
+            y += Math.sin(angle) * 8;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Add occasional darker accent veins
+    for (let i = 0; i < 8; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        ctx.strokeStyle = `rgba(150, 150, 155, ${0.2 + Math.random() * 0.2})`;
+        ctx.lineWidth = Math.random() * 3 + 1;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        let angle = Math.PI / 4 + (Math.random() - 0.5) * 1.0;
+        
+        for (let j = 0; j < 100; j++) {
+            angle += (Math.random() - 0.5) * 0.4;
+            x += Math.cos(angle) * 12;
+            y += Math.sin(angle) * 12;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Polished finish with subtle shine
+    const gradient = ctx.createRadialGradient(
+        width / 2, height / 2, 0,
+        width / 2, height / 2, width / 2
+    );
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.03)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    return canvas;
+}
+generateMetalGridPattern(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Dark metallic base
+    ctx.fillStyle = '#1a2332';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Grid lines
+    ctx.strokeStyle = '#2a3f5f';
+    ctx.lineWidth = 3;
+    
+    const gridSize = 128;
+    for (let x = 0; x < width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+    }
+    
+    for (let y = 0; y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+    }
+    
+    // Tech details (random panels)
+    ctx.fillStyle = '#00d4ff';
+    ctx.globalAlpha = 0.3;
+    for (let i = 0; i < 20; i++) {
+        const x = Math.floor(Math.random() * (width / gridSize)) * gridSize;
+        const y = Math.floor(Math.random() * (height / gridSize)) * gridSize;
+        ctx.fillRect(x + 10, y + 10, gridSize - 20, gridSize - 20);
+    }
+    
+    return canvas;
+}
+
+
+generateEarthTexture(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Ocean base
+    ctx.fillStyle = '#0a3d62';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Continents (simplified)
+    ctx.fillStyle = '#2d5016';
+    
+    // Africa
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.5, width * 0.15, height * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Americas
+    ctx.beginPath();
+    ctx.ellipse(width * 0.2, height * 0.4, width * 0.1, height * 0.25, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.ellipse(width * 0.25, height * 0.6, width * 0.08, height * 0.15, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Asia
+    ctx.beginPath();
+    ctx.ellipse(width * 0.7, height * 0.35, width * 0.18, height * 0.15, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Europe
+    ctx.beginPath();
+    ctx.ellipse(width * 0.52, height * 0.32, width * 0.08, height * 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Australia
+    ctx.beginPath();
+    ctx.ellipse(width * 0.78, height * 0.65, width * 0.09, height * 0.08, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Clouds
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    for (let i = 0; i < 100; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const r = Math.random() * 50 + 20;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Ice caps
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.05, width * 0.2, height * 0.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.95, width * 0.15, height * 0.06, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    return canvas;
 }
 
 
 
+generateBlackMarquina(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Deep black base
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Gold and white veining
+    const numVeins = 30;
+    for (let i = 0; i < numVeins; i++) {
+        const startX = Math.random() * width;
+        const startY = Math.random() * height;
+        
+        // Mix of gold and white veins
+        const isGold = Math.random() > 0.6;
+        const color = isGold 
+            ? `rgba(218, 165, 32, ${0.4 + Math.random() * 0.3})`  // Gold
+            : `rgba(255, 255, 255, ${0.2 + Math.random() * 0.2})`; // White
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.random() * 3 + 1;
+        ctx.lineCap = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        
+        let x = startX;
+        let y = startY;
+        let angle = Math.random() * Math.PI * 2;
+        
+        for (let j = 0; j < 120; j++) {
+            angle += (Math.random() - 0.5) * 0.4;
+            x += Math.cos(angle) * 10;
+            y += Math.sin(angle) * 10;
+            ctx.lineTo(x, y);
+        }
+        
+        ctx.stroke();
+    }
+    
+    // Polished finish
+    const gradient = ctx.createRadialGradient(
+        width / 2, height / 2, 0,
+        width / 2, height / 2, width / 2
+    );
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+    
+    return canvas;
+}
 
+generateMarbleNormalMap(width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Base normal map color (neutral normal)
+    ctx.fillStyle = '#8080ff';
+    ctx.fillRect(0, 0, width, height);
+    
+    const imageData = ctx.getImageData(0, 0, width, height);
+    
+    // Generate subtle height variation for normal map
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            
+            // Perlin-like noise for realistic surface
+            const noise = (Math.sin(x * 0.02) * Math.cos(y * 0.02)) * 0.5 + 0.5;
+            const variation = (Math.random() - 0.5) * 30;
+            
+            // Normal map RGB channels (X, Y, Z surface normals)
+            imageData.data[i] = 128 + noise * 25 + variation;     // R (X normal)
+            imageData.data[i + 1] = 128 + noise * 25 + variation; // G (Y normal)
+            imageData.data[i + 2] = 200 + noise * 45;             // B (Z normal - pointing up)
+            imageData.data[i + 3] = 255;                           // Alpha
+        }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+}
+    generateModernWallTexture(width, height) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        const imageData = context.createImageData(width, height);
 
+        for (let x = 0; x < width; x++) {
+            for (let y = 0; y < height; y++) {
+                const i = (y * width + x) * 4;
+                const noise = Math.sin(x * 0.05 + y * 0.05) * 0.5 + 0.5;
+                imageData.data[i] = noise * 255;
+                imageData.data[i + 1] = noise * 255;
+                imageData.data[i + 2] = 255;
+                imageData.data[i + 3] = 255;
+            }
+        }
 
+        context.putImageData(imageData, 0, 0);
+        return canvas;
+    }
 
+    generateNoiseCanvas(width, height) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        const imageData = context.createImageData(width, height);
 
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            const noise = Math.random() * 0.1 + 0.9;
+            imageData.data[i] = 136 * noise;
+            imageData.data[i + 1] = 136 * noise;
+            imageData.data[i + 2] = 136 * noise;
+            imageData.data[i + 3] = 255;
+        }
+
+        context.putImageData(imageData, 0, 0);
+        return canvas;
+    }
 
 //   createAvatar() {
 //     this.avatarGroup = new THREE.Group();
@@ -1259,36 +2027,25 @@ createGallery() {
 
 
 
-   animate() {
-    requestAnimationFrame(() => this.animate());
-    const delta = 0.016;
-    this.time += delta;
-    
-    this.update();
-    this.updateImageEffects();
-    this.updateLighting();
-    this.updateFoodParticles();
-    this.updateAttractedFish();
-    
-    // ✨ NEW: Update fish follow camera
-    if (this.followingFish) {
-        this.updateFishFollowCamera();
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        const delta = 0.016;
+        this.time += delta;
+        this.update();
+        this.updateImageEffects();
+        this.updateLighting();
+   
+        this.renderer.render(this.scene, this.camera);
+        this.updateArtworkProgress();
+        if (this.isMobile) this.controls.update();
+        // this.updateAvatarPosition();
+        
+        if (this.isRecording) {
+            // Frame capture handled by MediaRecorder
+        }
+        this.animationMixer.update(delta * this.animationSpeed);
+        this.updateObjectAnimations();
     }
-    
-    this.renderer.render(this.scene, this.camera);
-    this.updateArtworkProgress();
-    if (this.isMobile) this.controls.update();
-    // this.updateAvatarPosition();
-    
-    if (this.isRecording) {
-        // Frame capture handled by MediaRecorder
-    }
-      if (this.isDiving) {
-        this.updateSubmarineDive();
-    }
-    this.animationMixer.update(delta * this.animationSpeed);
-    this.updateObjectAnimations();
-}
 showArtworkInfo(index) {
     const metadata = this.metadata[index];
     if (!metadata) return;
@@ -1540,261 +2297,7 @@ toggleHelpOverlay() {
         this.showMessage('recordStatus', 'Recording stopped', 'success');
         console.log("🎥 Recording stopped");
     }
-feedFish() {
-    console.log("🍽️ Releasing food particles...");
-    
-    // Get click position or use camera forward
-    const foodPosition = this.camera.position.clone();
-    const direction = new THREE.Vector3();
-    this.camera.getWorldDirection(direction);
-    foodPosition.add(direction.multiplyScalar(5));
-    
-    // Create food particle system
-    const foodGroup = new THREE.Group();
-    
-    // Create 20 food particles
-    for (let i = 0; i < 20; i++) {
-        const particle = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 8, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0xffa500, // Orange food pellets
-                emissive: 0xff8800,
-                emissiveIntensity: 0.5
-            })
-        );
-        
-        // Random spread
-        particle.position.set(
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2
-        );
-        
-        particle.userData = {
-            velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.02,
-                -0.02 - Math.random() * 0.03, // Sink downward
-                (Math.random() - 0.5) * 0.02
-            ),
-            lifespan: 5000 + Math.random() * 3000, // 5-8 seconds
-            createdTime: Date.now()
-        };
-        
-        foodGroup.add(particle);
-    }
-    
-    foodGroup.position.copy(foodPosition);
-    this.scene.add(foodGroup);
-    
-    // Store for animation
-    if (!this.foodParticles) this.foodParticles = [];
-    this.foodParticles.push(foodGroup);
-    
-    // Attract nearby fish
-    this.attractFishToFood(foodPosition);
-    
-    // Show feeding notification
-    this.showFeedingNotification();
-}
 
-attractFishToFood(foodPosition) {
-    if (!this.fishSchools) return;
-    
-    const attractionRadius = 8;
-    
-    this.fishSchools.forEach(fish => {
-        const distance = fish.position.distanceTo(foodPosition);
-        
-        if (distance < attractionRadius) {
-            // Store original data
-            if (!fish.userData.originalOrbitRadius) {
-                fish.userData.originalOrbitRadius = fish.userData.orbitRadius;
-                fish.userData.originalSpeed = fish.userData.speed;
-            }
-            
-            // Make fish swim toward food
-            fish.userData.attractedToFood = true;
-            fish.userData.foodTarget = foodPosition.clone();
-            fish.userData.attractionStartTime = Date.now();
-            
-            console.log("Fish attracted to food!");
-        }
-    });
-}
-
-updateFoodParticles() {
-    if (!this.foodParticles || this.foodParticles.length === 0) return;
-    
-    const currentTime = Date.now();
-    
-    this.foodParticles.forEach((foodGroup, groupIndex) => {
-        const particlesToRemove = [];
-        
-        foodGroup.children.forEach((particle, index) => {
-            const data = particle.userData;
-            const age = currentTime - data.createdTime;
-            
-            // Remove if lifespan exceeded
-            if (age > data.lifespan) {
-                particlesToRemove.push(index);
-                return;
-            }
-            
-            // Apply velocity (sinking motion)
-            particle.position.add(data.velocity);
-            
-            // Check if fish ate it
-            let wasEaten = false;
-            if (this.fishSchools) {
-                this.fishSchools.forEach(fish => {
-                    const worldPos = new THREE.Vector3();
-                    particle.getWorldPosition(worldPos);
-                    
-                    if (fish.position.distanceTo(worldPos) < 0.5) {
-                        wasEaten = true;
-                        
-                        // Create eating effect
-                        this.createEatingEffect(worldPos);
-                    }
-                });
-            }
-            
-            if (wasEaten) {
-                particlesToRemove.push(index);
-            }
-            
-            // Fade out near end of lifespan
-            const fadeProgress = age / data.lifespan;
-            if (fadeProgress > 0.7) {
-                particle.material.opacity = 1 - ((fadeProgress - 0.7) / 0.3);
-                particle.material.transparent = true;
-            }
-        });
-        
-        // Remove eaten/expired particles
-        particlesToRemove.reverse().forEach(index => {
-            const particle = foodGroup.children[index];
-            particle.geometry.dispose();
-            particle.material.dispose();
-            foodGroup.remove(particle);
-        });
-        
-        // Remove empty food groups
-        if (foodGroup.children.length === 0) {
-            this.scene.remove(foodGroup);
-            this.foodParticles.splice(groupIndex, 1);
-        }
-    });
-}
-
-updateAttractedFish() {
-    if (!this.fishSchools) return;
-    
-    const currentTime = Date.now();
-    
-    this.fishSchools.forEach(fish => {
-        if (fish.userData.attractedToFood) {
-            const elapsed = currentTime - fish.userData.attractionStartTime;
-            
-            // Fish stays attracted for 8 seconds
-            if (elapsed > 8000) {
-                // Return to normal behavior
-                fish.userData.attractedToFood = false;
-                fish.userData.orbitRadius = fish.userData.originalOrbitRadius;
-                fish.userData.speed = fish.userData.originalSpeed;
-                return;
-            }
-            
-            // Move toward food
-            const direction = new THREE.Vector3()
-                .subVectors(fish.userData.foodTarget, fish.position)
-                .normalize();
-            
-            fish.position.add(direction.multiplyScalar(0.08));
-            fish.lookAt(fish.userData.foodTarget);
-            
-            // Faster movement when attracted
-            fish.userData.speed = fish.userData.originalSpeed * 2;
-        }
-    });
-}
-
-createEatingEffect(position) {
-    // Create small splash/bubble effect
-    const splash = new THREE.Mesh(
-        new THREE.SphereGeometry(0.2, 8, 8),
-        new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.6
-        })
-    );
-    splash.position.copy(position);
-    this.scene.add(splash);
-    
-    // Animate splash
-    const startTime = Date.now();
-    const duration = 500;
-    
-    const animateSplash = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = elapsed / duration;
-        
-        if (progress >= 1) {
-            this.scene.remove(splash);
-            splash.geometry.dispose();
-            splash.material.dispose();
-            return;
-        }
-        
-        splash.scale.setScalar(1 + progress * 2);
-        splash.material.opacity = 0.6 * (1 - progress);
-        
-        requestAnimationFrame(animateSplash);
-    };
-    
-    animateSplash();
-}
-
-showFeedingNotification() {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(255, 165, 0, 0.95);
-        color: white;
-        padding: 15px 30px;
-        border-radius: 10px;
-        z-index: 10000;
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-        font-weight: bold;
-        animation: slideDown 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    `;
-    
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 24px;">🍽️</span>
-            <span>Food Released! Fish incoming...</span>
-        </div>
-        <style>
-            @keyframes slideDown {
-                from { transform: translate(-50%, -100%); opacity: 0; }
-                to { transform: translate(-50%, 0); opacity: 1; }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'fadeOut 0.5s ease';
-        setTimeout(() => notification.remove(), 500);
-    }, 3000);
-}
 
     saveRecording() {
         const blob = new Blob(this.recordedFrames, { type: 'video/webm' });
@@ -1836,8 +2339,6 @@ showFeedingNotification() {
     }
 
     updateObjectAnimations() {
-
-            const time = this.time || Date.now() * 0.001;
         if (this.isAnimatingObjects) {
             this.images.forEach(img => {
                 img.mesh.rotation.y += 0.02 * this.animationSpeed;
@@ -1850,167 +2351,46 @@ showFeedingNotification() {
                 light.mesh.rotation.y += 0.01 * this.animationSpeed;
             });
         }
-         if (this.fishSchools) {
-        this.fishSchools.forEach((fish, index) => {
-            const data = fish.userData;
-            
-            // Orbital swimming path
-            data.orbitAngle += data.orbitSpeed;
-            const orbitX = Math.cos(data.orbitAngle) * data.orbitRadius;
-            const orbitZ = Math.sin(data.orbitAngle) * data.orbitRadius;
-            
-            // Wave motion (up/down)
-            const wave = Math.sin(time * data.speed + data.phase) * data.amplitude;
-            
-            fish.position.x = orbitX;
-            fish.position.y = wave;
-            fish.position.z = orbitZ;
-            
-            // Face direction of travel
-            const nextAngle = data.orbitAngle + 0.01;
-            const nextX = Math.cos(nextAngle) * data.orbitRadius;
-            const nextZ = Math.sin(nextAngle) * data.orbitRadius;
-            fish.lookAt(new THREE.Vector3(nextX, wave, nextZ));
-            
-            // Tail wiggle
-            if (fish.children[0]) {
-                fish.children[0].rotation.y = Math.sin(time * 5 + index) * 0.3;
-            }
-        });
-
-         if (this.fish) {
-        this.fish.forEach((fish, index) => {
-            if (fish.userData.isHungry && fish.userData.targetFood) {
-                // Swim toward food
-                const direction = new THREE.Vector3()
-                    .subVectors(fish.userData.targetFood, fish.position)
-                    .normalize();
-                
-                fish.position.add(direction.multiplyScalar(0.05));
-                fish.lookAt(fish.userData.targetFood);
-                
-                // Stop when close
-                if (fish.position.distanceTo(fish.userData.targetFood) < 1) {
-                    fish.userData.isHungry = false;
-                    fish.userData.targetFood = null;
-                }
-            } else {
-                // Normal swimming pattern
-                fish.position.x += Math.sin(time * 0.5 + index) * 0.02;
-                fish.position.y += Math.cos(time * 0.3 + index) * 0.01;
-                fish.position.z += Math.sin(time * 0.4 + index) * 0.02;
-            }
-        });
-    }
-    
-    // Food particles falling
-    if (this.foodParticles) {
-        this.foodParticles = this.foodParticles.filter(food => {
-            food.position.add(food.userData.velocity);
-            food.userData.lifetime--;
-            
-            if (food.userData.lifetime <= 0 || food.position.y < -2) {
-                this.scene.remove(food);
-                return false;
-            }
-            return true;
-        });
-    }
-    }
-    
-    // 2. JELLYFISH FLOATING (vertical bobbing + pulsing)
-    if (this.jellyfish) {
-        this.jellyfish.forEach((jelly, index) => {
-            const data = jelly.userData;
-            
-            // Slow vertical float
-            const baseY = jelly.position.y;
-            jelly.position.y = baseY + Math.sin(time * data.floatSpeed + data.floatPhase) * data.floatAmplitude * 0.01;
-            
-            // Bell pulsing (scale animation)
-            const pulse = 1.0 + Math.sin(time * data.pulseSpeed) * 0.1;
-            jelly.children[0].scale.set(1, pulse, 1);
-            
-            // Tentacles wave
-            for (let i = 1; i < jelly.children.length - 1; i++) {
-                const tentacle = jelly.children[i];
-                tentacle.rotation.x = Math.sin(time * 2 + i) * 0.3;
-                tentacle.rotation.z = Math.cos(time * 2 + i) * 0.2;
-            }
-            
-            // Glow pulse
-            const light = jelly.children[jelly.children.length - 1];
-            if (light.isPointLight) {
-                light.intensity = 2.0 + Math.sin(time * data.pulseSpeed) * 1.0;
-            }
-        });
-    }
-    
-    // 3. KELP SWAYING
-    if (this.kelpStrands) {
-        this.kelpStrands.forEach(kelp => {
-            const data = kelp.userData;
-            const sway = Math.sin(time * data.swaySpeed + data.phaseOffset) * data.swayAmount;
-            kelp.rotation.z = sway;
-        });
-    }
-    
-    // 4. BUBBLES RISING
-    if (this.bubbles) {
-        this.bubbles.forEach(bubble => {
-            const data = bubble.userData;
-            
-            // Rise upward
-            bubble.position.y += data.riseSpeed;
-            
-            // Wobble sideways
-            bubble.position.x += Math.sin(time * data.wobbleSpeed + data.phaseOffset) * data.wobbleAmount * 0.01;
-            
-            // Reset when reaching top
-            if (bubble.position.y > 8) {
-                bubble.position.y = -3;
-                bubble.position.x = (Math.random() - 0.5) * 50;
-                bubble.position.z = (Math.random() - 0.5) * 30;
-            }
-        });
-    }
-    
-    // 5. WATER CAUSTICS LIGHT ANIMATION
-    if (this.causticsLight) {
-        // Simulate moving water surface refracting light
-        this.causticsLight.position.x = Math.sin(time * 0.3) * 5;
-        this.causticsLight.position.z = Math.cos(time * 0.5) * 5;
-        this.causticsLight.intensity = 1.5 + Math.sin(time * 0.8) * 0.3;
-    }
-    
-    // 6. AIRLOCK WHEEL SPINNING (optional decoration)
-    if (this.airlockWheel && Math.random() < 0.01) {
-        // Occasionally spin
-        this.airlockWheel.rotation.z += 0.05;
-    }
     }
 
 updateLighting() {
     const time = this.time || 0;
     
-    // Dynamic track spotlights
+    // Animate spotlights (gentle sway like lanterns in wind)
     this.glassSpotlights.forEach((light, index) => {
-        const distance = this.camera.position.distanceTo(light.position);
-        const baseIntensity = Math.max(2.5, Math.min(4.5, 6 - distance / 4));
+        const sway = Math.sin(time * 0.5 + index) * 0.1;
+        const pulse = Math.sin(time * 1.5 + index) * 0.3;
         
-        // Subtle flicker
-        const flicker = Math.sin(time * 4 + index * 1.2) * 0.2;
-        light.spot.intensity = baseIntensity + flicker;
+        light.spot.intensity = 3.5 + pulse;
         
-        // Pulsing lens glow
-        if (light.lens) {
-            light.lens.material.emissiveIntensity = 0.8 + Math.sin(time * 2 + index) * 0.3;
-        }
-        
-        // Warm up when close
-        const proximity = Math.max(0, 1 - distance / 20);
-        light.spot.color.setRGB(1.0, 0.96 + proximity * 0.04, 0.90 + proximity * 0.05);
+        // Sunset color shift (orange to deep red)
+        const colorShift = Math.sin(time * 0.3) * 0.5 + 0.5;
+        light.spot.color.setRGB(
+            1.0,
+            0.6 + colorShift * 0.1,
+            0.3 + colorShift * 0.1
+        );
     });
+    
+    // Animate Kente cloth banners (gentle wave)
+    if (this.kenteBanners) {
+        this.kenteBanners.forEach((banner, index) => {
+            if (banner.material.uniforms) {
+                banner.material.uniforms.time.value = time + index;
+            }
+            
+            // Gentle sway
+            banner.rotation.y = Math.sin(time * 0.5 + index) * 0.1;
+        });
+    }
+    // Update torch flames (add to existing updateLighting function)
+if (this.torchFlames) {
+    this.torchFlames.forEach(flame => {
+        if (flame.material.uniforms) {
+            flame.material.uniforms.time.value = time;
+        }
+    });
+}
     
     // Update artwork shaders
     this.images.forEach((img, index) => {
@@ -2019,6 +2399,7 @@ updateLighting() {
         }
     });
 }
+
 
 
 
@@ -2185,28 +2566,6 @@ updateLighting() {
             this.animationSpeed = parseFloat(slider.value);
             value.textContent = this.animationSpeed.toFixed(1);
         });
-
-          // Camera Height Slider - FIXED VERSION
-        const cameraHeightSlider = document.getElementById("cameraHeightSlider");
-        const cameraHeightValue = document.getElementById("cameraHeightValue");
-
-       if (cameraHeightSlider && cameraHeightValue) {
-    cameraHeightSlider.addEventListener("input", () => {
-        this.cameraHeight = parseFloat(cameraHeightSlider.value);
-        cameraHeightValue.textContent = this.cameraHeight.toFixed(1);
-        
-        this.roomCameraSettings[0].position.y = this.cameraHeight;
-        this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
-        this.camera.position.y = this.cameraHeight;
-        
-        if (!this.isMobile) {
-            this.controls.getObject().position.y = this.cameraHeight;
-        } else {
-            this.controls.target.y = this.cameraHeight;
-            this.controls.update();
-        }
-    });
-}
     
         document.getElementById("sensitivitySlider")?.addEventListener("input", () => {
             const sensitivitySlider = document.getElementById("sensitivitySlider");
@@ -2214,9 +2573,7 @@ updateLighting() {
             const sensitivity = parseFloat(sensitivitySlider.value);
             sensitivityValue.textContent = sensitivity.toFixed(3);
             this.controls.setSensitivity(sensitivity);
-        }); 
-
-
+        });
     
         const prevBtn = document.getElementById('prevImage');
         const nextBtn = document.getElementById('nextImage');
@@ -2634,112 +2991,42 @@ updateLighting() {
         console.log(this.controlsVisible ? "🖥️ Controls visible" : "🖥️ Controls hidden");
     }
 
- onKeyDown(event) {
-        // Existing movement keys
-        switch (event.key.toLowerCase()) {
-            case "w": this.keys.w = true; break;
-            case "a": this.keys.a = true; break;
-            case "s": this.keys.s = true; break;
-            case "d": this.keys.d = true; break;
-            case "q": this.keys.q = true; break;
-            case "e": this.keys.e = true; break;
-
-            // ✅ NEW: Glider toggle
-            case " ": // Spacebar
-                if (!this.isSliderActive && !this.isFocused && this.glider) {
-                    event.preventDefault();
-                    this.toggleGlider();
-                }
-                break;
-
-            // ✅ NEW: Zipline activation
-            case "z":
-                if (!this.isRidingZipline) {
-                    const nearbyZipline = this.checkNearZipline();
-                    if (nearbyZipline) {
-                        this.startZiplineRide(nearbyZipline);
-                    }
-                }
-                break;
-
-            // ✅ NEW: Manual weather change (for testing)
-            case "t":
-                if (this.weatherSystem) {
-                    this.changeWeather();
-                }
-                break;
+   onKeyDown(event) {
+    // Existing movement keys
+    switch(event.key.toLowerCase()) {
+        case "w": this.keys.w = true; break;
+        case "a": this.keys.a = true; break;
+        case "s": this.keys.s = true; break;
+        case "d": this.keys.d = true; break;
+        case "q": this.keys.q = true; break;
+        case "e": this.keys.e = true; break;
+        case "control": this.isControlPressed = true; break;
+    }
+    
+    // ✨ NEW: Number keys for artwork navigation
+    const num = parseInt(event.key);
+    if (num >= 1 && num <= 9 && num <= this.images.length) {
+        this.focusOnArtwork(num - 1);
+    }
+    
+    // ✨ NEW: Arrow keys for navigation
+    if (!this.isSliderActive) {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+            this.navigateToNextArtwork();
         }
- if (event.key === " " || event.code === "Space") {
-        console.log("🚀 SPACEBAR DETECTED!");
-        console.log("  - isSliderActive:", this.isSliderActive);
-        console.log("  - isFocused:", this.isFocused);
-        console.log("  - glider exists:", !!this.glider);
-        
-        if (!this.isSliderActive && !this.isFocused && this.glider) {
-            console.log("✅ All conditions met, toggling glider...");
-            event.preventDefault();
-            this.toggleGlider();
-        } else {
-            console.log("❌ Conditions NOT met:");
-            if (this.isSliderActive) console.log("  - Slider is active");
-            if (this.isFocused) console.log("  - Camera is focused");
-            if (!this.glider) console.log("  - Glider doesn't exist!");
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+            this.navigateToPrevArtwork();
         }
     }
-     if (event.key === 'PageUp' || event.key === ']') {
-    this.cameraHeight = Math.min(5.0, this.cameraHeight + 0.5);
-
-
-    document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
-    document.getElementById('cameraHeightSlider').value = this.cameraHeight;
     
-    // ✅ ADD: Actually update camera position
-    this.roomCameraSettings[0].position.y = this.cameraHeight;
-    this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
-    this.camera.position.y = this.cameraHeight;
-    
-    if (!this.isMobile) {
-        this.controls.getObject().position.y = this.cameraHeight;
-    } else {
-        this.controls.target.y = this.cameraHeight;
-        this.controls.update();
+    // ✨ NEW: Help toggle
+    if (event.key === '?' || event.key === '/') {
+        this.toggleHelpOverlay();
     }
+    if (event.key.toLowerCase() === 'r') {
+    this.resetCameraPosition();
 }
-if (event.key === 'PageDown' || event.key === '[') {
-    this.cameraHeight = Math.max(-2.0, this.cameraHeight - 0.5); // ✅ CHANGED from 0.3 to -2.0
-
-
-    
-    document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
-    document.getElementById('cameraHeightSlider').value = this.cameraHeight;
-    
-    // ✅ ADD: Actually update camera position
-    this.roomCameraSettings[0].position.y = this.cameraHeight;
-    this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
-    this.camera.position.y = this.cameraHeight;
-    
-    if (!this.isMobile) {
-        this.controls.getObject().position.y = this.cameraHeight;
-    } else {
-        this.controls.target.y = this.cameraHeight;
-        this.controls.update();
-    }
 }
-
-        // Existing artwork navigation
-        const num = parseInt(event.key);
-        if (num >= 4 && num <= 9 && num <= this.images.length + 3) {
-            this.focusOnArtwork(num - 4);
-        }
-
-        // Help toggle
-        if (event.key === '?' || event.key === '/') {
-            this.toggleHelpOverlay();
-        }
-        if (event.key.toLowerCase() === 'r') {
-            this.resetCameraPosition();
-        }
-    }
 
     onKeyUp(event) {
         switch (event.key.toLowerCase()) {
@@ -2787,33 +3074,27 @@ if (event.key === 'PageDown' || event.key === '[') {
     this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
     this.isFocused = false;
 }
- checkCollisions() {
-        if (!this.isMobile) {
-            this.camera.position.y = this.cameraHeight || 1.6;
-
-            // ✓ FIXED: Sky Islands bounds (much larger to reach all islands)
-            const minX = -50; // ✓ CHANGE: was -13, now -50
-            const maxX = 50;  // ✓ CHANGE: was 13, now 50
-            const minZ = -50; // ✓ CHANGE: was -13, now -50
-            const maxZ = 50;  // ✓ CHANGE: was 13, now 50
-            const minY = -10; // Safety net (respawn if falling too far)
-
-            // Respawn if falling into the void
-            if (this.camera.position.y < minY) {
-                console.log("⚠️ Fell into void! Respawning at main island...");
-                this.camera.position.set(0, 2, 10);
-                this.controls.getObject().position.copy(this.camera.position);
-
-                // Show respawn message
-                this.showRespawnMessage();
-            }
-
-            this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
-            this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
-            this.controls.getObject().position.copy(this.camera.position);
-        }
+  checkCollisions() {
+    if (!this.isMobile) {
+        this.camera.position.y = 1.6;
+        
+        // ⭐ MATCH gallery dimensions exactly (35×60)
+        const galleryWidth = 35;
+        const galleryLength = 60;
+        
+        // Padding to stay inside walls
+        const padding = 3;
+        
+        const minX = -(galleryWidth / 2) + padding;  // -14.5
+        const maxX = (galleryWidth / 2) - padding;   // +14.5
+        const minZ = -(galleryLength / 2) + padding; // -27
+        const maxZ = (galleryLength / 2) - padding;  // +27
+        
+        this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
+        this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
+        this.controls.getObject().position.copy(this.camera.position);
     }
-
+}
     async computeImageHash(texture) {
         return new Promise((resolve) => {
             const img = texture.image;
@@ -3155,51 +3436,8 @@ if (event.key === 'PageDown' || event.key === '[') {
                     this.openSlider(obj);
                 }
             }
-            else{
-            if (this.fishSchools && this.fishSchools.length > 0) {
-                // Raycast against all fish
-                const fishIntersects = this.raycaster.intersectObjects(this.fishSchools, true);
-                
-                if (fishIntersects.length > 0) {
-                    const clickedFish = fishIntersects[0].object.parent || fishIntersects[0].object;
-                    
-                    // Check if it's actually a fish
-                    if (this.fishSchools.includes(clickedFish)) {
-                        this.followFish(clickedFish);
-                        
-                        // Play sound
-                        if (!this.clickSound.isPlaying) this.clickSound.play();
-                        
-                        // Show fish info
-                        this.showFishInfo(clickedFish);
-                    }
-                }
-            }
-            
-            // ========================================
-            // NEW: JELLYFISH FOLLOWING SYSTEM
-            // ========================================
-            if (this.jellyfish && this.jellyfish.length > 0) {
-                const jellyIntersects = this.raycaster.intersectObjects(
-                    this.jellyfish.map(j => j.children).flat(),
-                    true
-                );
-                
-                if (jellyIntersects.length > 0) {
-                    const clickedJelly = jellyIntersects[0].object.parent;
-                    
-                    if (this.jellyfish.includes(clickedJelly)) {
-                        this.followFish(clickedJelly); // Reuse follow system
-                        if (!this.clickSound.isPlaying) this.clickSound.play();
-                        this.showFishInfo(clickedJelly, true); // Pass true for jellyfish
-                    }
-                }
-            }
         }
-    }
-    this.lastClickTime = currentTime;
-            
-      
+        this.lastClickTime = currentTime;
     }
 
     openSlider(selectedMesh) {
@@ -3237,384 +3475,6 @@ if (event.key === 'PageDown' || event.key === '[') {
         }
     }
     
-    followFish(fish) {
-    console.log("Following marine creature:", fish);
-    
-    // Cancel any existing follow
-    if (this.followingFish) {
-        this.stopFollowingFish();
-    }
-    
-    this.followingFish = fish;
-    this.isFocused = true;
-    this.followStartTime = Date.now();
-    
-    // Store original camera state
-    this.updateCameraState();
-    
-    // Create follow indicator (green ring around fish)
-    const indicator = new THREE.Mesh(
-        new THREE.TorusGeometry(0.4, 0.05, 16, 32),
-        new THREE.MeshBasicMaterial({
-            color: 0x00ff00,
-            transparent: true,
-            opacity: 0.8
-        })
-    );
-    indicator.rotation.x = Math.PI / 2;
-    fish.add(indicator);
-    this.fishFollowIndicator = indicator;
-    
-    // Animate indicator pulsing
-    this.fishIndicatorPulse = 1.0;
-}
-
-stopFollowingFish() {
-    if (!this.followingFish) return;
-    
-    console.log("Stopped following fish");
-    
-    // Remove indicator
-    if (this.fishFollowIndicator) {
-        this.followingFish.remove(this.fishFollowIndicator);
-        this.fishFollowIndicator = null;
-    }
-    
-    this.followingFish = null;
-    this.isFocused = false;
-    
-    // Don't reset camera - let user keep exploring from current position
-}
-
-updateFishFollowCamera() {
-    if (!this.followingFish || !this.followingFish.position) {
-        return;
-    }
-    
-    const time = Date.now() * 0.001;
-    const fish = this.followingFish;
-    
-    // Calculate camera position (behind and slightly above fish)
-    const fishDirection = new THREE.Vector3();
-    fish.getWorldDirection(fishDirection);
-    
-    const offset = new THREE.Vector3()
-        .copy(fishDirection)
-        .multiplyScalar(-3) // 3 units behind
-        .add(new THREE.Vector3(0, 1, 0)); // 1 unit above
-    
-    const targetPos = fish.position.clone().add(offset);
-    
-    // Smooth camera movement
-    this.camera.position.lerp(targetPos, 0.05);
-    
-    // Look at fish
-    const lookAtPos = fish.position.clone();
-    lookAtPos.y += 0.2; // Look slightly above center
-    this.camera.lookAt(lookAtPos);
-    
-    // Update OrbitControls target for mobile
-    if (this.isMobile) {
-        this.controls.target.copy(lookAtPos);
-        this.controls.update();
-    }
-    
-    // Update indicator pulse
-    if (this.fishFollowIndicator) {
-        this.fishIndicatorPulse = 1.0 + Math.sin(time * 3) * 0.2;
-        this.fishFollowIndicator.scale.set(
-            this.fishIndicatorPulse,
-            this.fishIndicatorPulse,
-            this.fishIndicatorPulse
-        );
-    }
-    
-    // Auto-stop after 20 seconds
-    if (Date.now() - this.followStartTime > 20000) {
-        this.stopFollowingFish();
-    }
-}
-
-showFishInfo(fish, isJellyfish = false) {
-    const existing = document.getElementById('fishInfo');
-    if (existing) existing.remove();
-    
-    // Determine species
-    let species, description, color;
-    
-    if (isJellyfish) {
-        species = "Bioluminescent Jellyfish";
-        description = "These ethereal creatures pulse with cyan light, drifting through the depths.";
-        color = "#00ffff";
-    } else {
-        // Detect fish type by geometry
-        const isBigFish = fish.scale.x > 1.5;
-        
-        if (isBigFish) {
-            species = "Manta Ray";
-            description = "Graceful giant gliding through the water with powerful wing-like fins.";
-            color = "#5a7d9a";
-        } else {
-            const fishColor = fish.material.color.getHex();
-            const colorNames = {
-                0xff6b35: { name: "Coral Tang", desc: "Vibrant orange reef dweller, feeds on algae." },
-                0xf7931e: { name: "Clownfish", desc: "Orange and white striped, lives in anemones." },
-                0xfdc82f: { name: "Yellow Tang", desc: "Bright yellow surgeon fish from coral reefs." },
-                0x00a8e8: { name: "Blue Damselfish", desc: "Electric blue, territorial but beautiful." }
-            };
-            
-            const match = colorNames[fishColor] || { name: "Tropical Fish", desc: "Colorful reef inhabitant." };
-            species = match.name;
-            description = match.desc;
-            color = `#${fishColor.toString(16).padStart(6, '0')}`;
-        }
-    }
-    
-    const info = document.createElement('div');
-    info.id = 'fishInfo';
-    info.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: rgba(0,0,0,0.9);
-        color: white;
-        padding: 20px;
-        border-radius: 10px;
-        max-width: 320px;
-        z-index: 1000;
-        font-family: Arial, sans-serif;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        animation: slideInRight 0.3s ease;
-        border-left: 4px solid ${color};
-    `;
-    
-    info.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-            <div style="font-size: 32px;">${isJellyfish ? '🪼' : '🐠'}</div>
-            <h3 style="margin: 0; font-size: 18px; color: ${color};">${species}</h3>
-        </div>
-        <p style="margin: 8px 0; font-size: 13px; line-height: 1.5; opacity: 0.9;">
-            ${description}
-        </p>
-        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; font-size: 12px;">
-            <strong>📹 Following Mode Active</strong><br>
-            <span style="opacity: 0.8;">Press ESC or right-click to stop</span>
-        </div>
-        <button id="stopFollowing" style="
-            margin-top: 12px;
-            width: 100%;
-            padding: 10px;
-            background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
-            border: none;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-        ">Stop Following</button>
-        <style>
-            @keyframes slideInRight {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(info);
-    
-    document.getElementById('stopFollowing').addEventListener('click', () => {
-        this.stopFollowingFish();
-        info.remove();
-    });
-}
-
-
-startSubmarineDive() {
-    if (this.isDiving) return;
-    
-    console.log("🚢 Starting submarine dive sequence...");
-    this.isDiving = true;
-    this.isFocused = true;
-    
-    // Save current position
-    this.updateCameraState();
-    
-    // Show dive UI
-    this.showDiveUI();
-    
-    // Animate descent through depth zones
-    this.diveSequence = [
-        { depth: 0, duration: 2000, zone: "Surface Level", color: 0x4da6ff },
-        { depth: -5, duration: 3000, zone: "Shallow Reef", color: 0x3d8fb8 },
-        { depth: -10, duration: 3000, zone: "Twilight Zone", color: 0x2d5f7a },
-        { depth: -15, duration: 3000, zone: "Deep Abyss", color: 0x1a3a4d },
-        { depth: -20, duration: 3000, zone: "Hadal Zone", color: 0x0d1f2d }
-    ];
-    
-    this.currentDiveStep = 0;
-    this.diveStartTime = Date.now();
-    this.diveStartY = this.camera.position.y;
-    
-    // Play dive sound (optional)
-    if (!this.clickSound.isPlaying) this.clickSound.play();
-}
-
-updateSubmarineDive() {
-    if (!this.isDiving || this.currentDiveStep >= this.diveSequence.length) {
-        if (this.isDiving && this.currentDiveStep >= this.diveSequence.length) {
-            this.completeDive();
-        }
-        return;
-    }
-    
-    const currentStep = this.diveSequence[this.currentDiveStep];
-    const elapsed = Date.now() - this.diveStartTime;
-    const progress = Math.min(elapsed / currentStep.duration, 1);
-    const eased = this.easeInOutCubic(progress);
-    
-    // Calculate target depth
-    const startDepth = this.currentDiveStep === 0 ? this.diveStartY : this.diveSequence[this.currentDiveStep - 1].depth;
-    const targetDepth = currentStep.depth;
-    
-    // Smoothly move camera down
-    this.camera.position.y = startDepth + (targetDepth - startDepth) * eased;
-    
-    // Update fog color and density based on depth
-    if (this.scene.fog) {
-        const fogColor = new THREE.Color(currentStep.color);
-        this.scene.fog.color.lerp(fogColor, 0.05);
-        this.scene.fog.density = 0.015 + (Math.abs(targetDepth) / 100);
-    }
-    
-    // Update ambient light intensity (darker as we go deeper)
-    const ambientLight = this.scene.children.find(child => child instanceof THREE.AmbientLight);
-    if (ambientLight) {
-        const targetIntensity = 0.4 - (Math.abs(targetDepth) / 50);
-        ambientLight.intensity += (targetIntensity - ambientLight.intensity) * 0.05;
-    }
-    
-    // Update dive UI
-    this.updateDiveUI(currentStep.zone, targetDepth, progress);
-    
-    // Move to next step when complete
-    if (progress >= 1) {
-        this.currentDiveStep++;
-        this.diveStartTime = Date.now();
-        
-        if (this.currentDiveStep < this.diveSequence.length) {
-            console.log(`Entering ${this.diveSequence[this.currentDiveStep].zone}`);
-        }
-    }
-}
-
-completeDive() {
-    console.log("🌊 Dive complete! Returning to surface...");
-    
-    // Animate return to original position
-    const returnDuration = 5000;
-    const startY = this.camera.position.y;
-    const targetY = this.previousCameraState.position.y;
-    const startTime = Date.now();
-    
-    const ascend = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / returnDuration, 1);
-        const eased = this.easeInOutCubic(progress);
-        
-        this.camera.position.y = startY + (targetY - startY) * eased;
-        
-        // Restore fog
-        if (this.scene.fog) {
-            this.scene.fog.color.lerp(new THREE.Color(0x1a4d7a), 0.05);
-            this.scene.fog.density += (0.015 - this.scene.fog.density) * 0.05;
-        }
-        
-        // Restore ambient light
-        const ambientLight = this.scene.children.find(child => child instanceof THREE.AmbientLight);
-        if (ambientLight) {
-            ambientLight.intensity += (0.4 - ambientLight.intensity) * 0.05;
-        }
-        
-        this.updateDiveUI("Ascending...", this.camera.position.y, progress);
-        
-        if (progress < 1) {
-            requestAnimationFrame(ascend);
-        } else {
-            this.isDiving = false;
-            this.isFocused = false;
-            this.hideDiveUI();
-        }
-    };
-    
-    requestAnimationFrame(ascend);
-}
-
-showDiveUI() {
-    const diveUI = document.createElement('div');
-    diveUI.id = 'diveUI';
-    diveUI.style.cssText = `
-        position: fixed;
-        bottom: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,0.85);
-        color: white;
-        padding: 20px 30px;
-        border-radius: 15px;
-        z-index: 1000;
-        font-family: 'Courier New', monospace;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        border: 2px solid #00ffff;
-        min-width: 350px;
-    `;
-    
-    diveUI.innerHTML = `
-        <div style="text-align: center;">
-            <div style="font-size: 24px; margin-bottom: 10px;">🚢 SUBMARINE DIVE</div>
-            <div id="diveZone" style="font-size: 16px; color: #00ffff; margin-bottom: 10px;">Preparing...</div>
-            <div id="diveDepth" style="font-size: 20px; font-weight: bold; color: #ffffff; margin-bottom: 10px;">0m</div>
-            <div style="background: rgba(255,255,255,0.2); height: 8px; border-radius: 4px; overflow: hidden;">
-                <div id="diveProgress" style="background: linear-gradient(90deg, #00ffff, #00ff88); height: 100%; width: 0%; transition: width 0.3s;"></div>
-            </div>
-            <button id="cancelDive" style="
-                margin-top: 15px;
-                padding: 8px 20px;
-                background: #ff4444;
-                border: none;
-                color: white;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 12px;
-            ">Cancel Dive</button>
-        </div>
-    `;
-    
-    document.body.appendChild(diveUI);
-    
-    document.getElementById('cancelDive').addEventListener('click', () => {
-        this.isDiving = false;
-        this.isFocused = false;
-        this.camera.position.copy(this.previousCameraState.position);
-        this.hideDiveUI();
-    });
-}
-
-updateDiveUI(zone, depth, progress) {
-    const zoneEl = document.getElementById('diveZone');
-    const depthEl = document.getElementById('diveDepth');
-    const progressEl = document.getElementById('diveProgress');
-    
-    if (zoneEl) zoneEl.textContent = zone;
-    if (depthEl) depthEl.textContent = `${Math.abs(depth).toFixed(1)}m`;
-    if (progressEl) progressEl.style.width = `${progress * 100}%`;
-}
-
-hideDiveUI() {
-    const diveUI = document.getElementById('diveUI');
-    if (diveUI) diveUI.remove();
-}
     closeSlider() {
         this.isSliderActive = false;
         const sliderContainer = document.getElementById('imageSliderContainer');

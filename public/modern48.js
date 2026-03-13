@@ -54,10 +54,24 @@ class ThreeJSApp {
     
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
-   this.roomCameraSettings = [
-    { position: new THREE.Vector3(-25, 0, 5), lookAt: new THREE.Vector3(0, 0, -5) }
+this.roomCameraSettings = [
+    { 
+        position: new THREE.Vector3(0, 2.5, 35), // ✓ CHANGE: was 1.6, now 2.5
+        lookAt: new THREE.Vector3(0, 2.5, 0)     // ✓ CHANGE: was 1.6, now 2.5
+    }
 ];
 
+ this.neonSigns = [];
+    this.holographicAds = [];
+    this.ledBillboards = [];
+    this.steamVents = [];
+    this.droneCameras = [];
+    this.vendingMachines = [];
+    this.flickeringScreens = [];
+    this.rainDroplets = [];
+    this.puddles = [];
+    this.cyberpunkLights = [];
+    this.fogLayers = [];
     const initialSettings = this.roomCameraSettings[0];
     this.camera.position.copy(initialSettings.position);
     this.camera.lookAt(initialSettings.lookAt);
@@ -69,7 +83,7 @@ class ThreeJSApp {
         powerPreference: "high-performance" // ✓ ADDED
     });
     this.renderer.setClearColor(0x1a1a1a, 1); // ✓ FIXED: Darker background
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // ✓ FIXED: Cap pixel ratio
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -98,8 +112,7 @@ class ThreeJSApp {
             this.controls = new CustomPointerLockControls(this.camera, this.renderer.domElement);
             this.controls.getObject().position.copy(initialSettings.position);
         }
-    document.getElementById("feedFishBtn")?.addEventListener("click", () => this.feedFish());
-    document.getElementById("submarineDiveBtn")?.addEventListener("click", () => this.startSubmarineDive());
+
         this.images = [];
         this.sessionId = localStorage.getItem('sessionId');
         this.textureLoader = new THREE.TextureLoader();
@@ -127,9 +140,10 @@ class ThreeJSApp {
 
         this.lastClickTime = 0;
         this.clickDelay = 300;
-        this.moveSpeed = 0.15;
-        this.rotationSpeed = 0.05;
-        this.keys = { w: false, a: false, s: false, d: false, q: false, e: false };
+       this.moveSpeed = 0.15;
+    this.rotationSpeed = 0.05;
+    this.cameraHeight = 1.6; // ✓ ADD THIS LINE
+    this.keys = { w: false, a: false, s: false, d: false, q: false, e: false };
 
         this.time = 0;
         this.wallLights = [];
@@ -277,9 +291,14 @@ this.setupMobileControls();
     }
   addLighting() {
     // ✓ FIXED: Reduced ambient for more dramatic lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); // was 0.3
+    this.scene.fog = new THREE.FogExp2(0x1a1a1a, 0.008); // Dark fog
+    
+    // Reduced ambient (dramatic shadows)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
     this.scene.add(ambientLight);
+   
 
+    
     // ✓ FIXED: Main directional light (softer, more realistic)
     const mainLight = new THREE.DirectionalLight(0xffffff, 0.8); // was 1.2
     mainLight.position.set(10, 20, 10);
@@ -299,912 +318,1675 @@ this.setupMobileControls();
     const fillLight = new THREE.DirectionalLight(0xfff5e6, 0.3); // was 0xffffff, 0.4
     fillLight.position.set(-15, 15, -10);
     this.scene.add(fillLight);
-    // Underwater haze
-this.scene.fog = new THREE.FogExp2(0x1a4d7a, 0.015); // Blue-green fog
 }
 
-
 createGallery() {
-    const room1 = new THREE.Group();
+    // Initialize arrays
+    this.artworkSpots = [];
+    this.neonSigns = [];
+    this.holographicAds = [];
+    this.ledBillboards = [];
+    this.steamVents = [];
+    this.droneCameras = [];
+    this.vendingMachines = [];
+    this.flickeringScreens = [];
+    this.rainDroplets = [];
+    this.puddles = [];
+    this.cyberpunkLights = [];
     
-    // ========================================
-    // MATERIALS LIBRARY
-    // ========================================
+    // Create environment (in order)
+    this.createCyberpunkAlley();           
+    this.createNeonSigns();                
+    this.createHolographicDisplays();      
+    this.createLEDBillboards();  // ✅ ARTWORK DISPLAYS          
+    this.createSteamVents();               
+    this.createRainEffect();               
+    this.createPuddles();                  
+    this.createVendingMachines();          
+    this.createCables();                   
+    this.createFlickeringScreens();        
+    this.createCyberpunkLighting();        
+    this.createCyberpunkFog();
+    this.createDroneCameras(); // ✅ LAST (so they spawn at player position)
     
-    // Thick acrylic glass tunnel material
-    const acrylicGlassMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        transmission: 0.98,
-        thickness: 0.8,
-        roughness: 0.05,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
-        ior: 1.49, // Acrylic IOR
-        envMapIntensity: 1.2,
-        transparent: true,
-        opacity: 0.95,
+    console.log("🌃 ═══════════════════════════════════════");
+    console.log("🌃  CYBERPUNK NEON ALLEY INITIALIZED");
+    console.log("🌃 ═══════════════════════════════════════");
+    console.log("✅ Neon Signs: " + this.neonSigns.length);
+    console.log("✅ LED Billboards (Artworks): " + this.ledBillboards.length);
+    console.log("✅ Holograms: " + this.holographicAds.length);
+    console.log("✅ Drones Following: " + this.droneCameras.length);
+    console.log("✅ Steam Vents: " + this.steamVents.length);
+    console.log("✅ Rain Particles: " + (this.rainDroplets.length > 0 ? "ACTIVE" : "NONE"));
+    console.log("✅ Puddles: " + this.puddles.length);
+    console.log("✅ Vending Machines: " + this.vendingMachines.length);
+    console.log("✅ Total Artwork Spots: " + this.artworkSpots.length);
+    console.log("🌃 ═══════════════════════════════════════");
+    console.log("🎮 CONTROLS:");
+    console.log("   WASD - Move through alley");
+    console.log("   Mouse - Look around");
+    console.log("   Q/E - Rotate view");
+    console.log("   ESC - Exit focus");
+    console.log("🌃 ═══════════════════════════════════════");
+    console.log("🌧️ ATMOSPHERIC EFFECTS:");
+    console.log("   ✓ Constant rainfall");
+    console.log("   ✓ Reflective puddles");
+    console.log("   ✓ Steam vents");
+    console.log("   ✓ Volumetric fog");
+    console.log("   ✓ Neon sign flickering");
+    console.log("   ✓ Holographic glitches");
+    console.log("   ✓ Drone cameras following you");
+    console.log("🌃 ═══════════════════════════════════════");
+}
+
+// ========================================
+// CYBERPUNK ALLEY (main structure)
+// ========================================
+
+createCyberpunkAlley() {
+    const alleyRoom = new THREE.Group();
+    alleyRoom.visible = true;
+    
+    // Materials
+    this.wetConcreteMaterial = new THREE.MeshStandardMaterial({
+        color: 0x1a1a1a,
+        roughness: 0.3,
+        metalness: 0.7
+    });
+    
+    this.neonPinkMaterial = new THREE.MeshStandardMaterial({
+        color: 0xff00ff,
+        emissive: 0xff00ff,
+        emissiveIntensity: 1.5
+    });
+    
+    this.neonCyanMaterial = new THREE.MeshStandardMaterial({
+        color: 0x00ffff,
+        emissive: 0x00ffff,
+        emissiveIntensity: 1.5
+    });
+    
+    this.darkMetalMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2a2a2a,
+        roughness: 0.6,
+        metalness: 0.9
+    });
+    
+    // Alley dimensions (narrow, tall buildings)
+    const alleyWidth = 12;
+    const alleyLength = 80;
+    const buildingHeight = 40;
+    
+    // Floor (wet, reflective)
+    const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(alleyWidth, alleyLength),
+        this.wetConcreteMaterial
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    alleyRoom.add(floor);
+    
+    // Left building wall (with windows and details)
+    this.createBuildingWall('left', alleyLength, buildingHeight, alleyRoom);
+    
+    // Right building wall
+    this.createBuildingWall('right', alleyLength, buildingHeight, alleyRoom);
+    
+    // Back wall (dead end)
+    const backWall = new THREE.Mesh(
+        new THREE.BoxGeometry(alleyWidth, buildingHeight, 2),
+        this.darkMetalMaterial
+    );
+    backWall.position.set(0, buildingHeight / 2, -alleyLength / 2);
+    backWall.castShadow = true;
+    alleyRoom.add(backWall);
+    
+    // Ceiling/Sky (dark, rainy)
+    const sky = new THREE.Mesh(
+        new THREE.PlaneGeometry(alleyWidth, alleyLength),
+        new THREE.MeshBasicMaterial({
+            color: 0x0a0a0a,
+            side: THREE.BackSide
+        })
+    );
+    sky.rotation.x = Math.PI / 2;
+    sky.position.y = buildingHeight;
+    alleyRoom.add(sky);
+    
+    // Ambient lighting (dim, purple-tinted)
+    const ambientLight = new THREE.AmbientLight(0x4a2a6a, 0.3);
+    alleyRoom.add(ambientLight);
+    
+    this.rooms.push(alleyRoom);
+    this.scene.add(alleyRoom);
+}
+
+createBuildingWall(side, length, height, parent) {
+    const x = side === 'left' ? -6 : 6;
+    const rotation = side === 'left' ? Math.PI / 2 : -Math.PI / 2;
+    
+    // Main wall
+    const wall = new THREE.Mesh(
+        new THREE.BoxGeometry(length, height, 2),
+        this.darkMetalMaterial
+    );
+    wall.position.set(x, height / 2, 0);
+    wall.rotation.y = rotation;
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    parent.add(wall);
+    
+    // Windows (dark, some lit)
+    const windowsPerFloor = 12;
+    const floors = 8;
+    
+    for (let floor = 0; floor < floors; floor++) {
+        for (let i = 0; i < windowsPerFloor; i++) {
+            const window = new THREE.Mesh(
+                new THREE.PlaneGeometry(1.5, 2),
+                new THREE.MeshBasicMaterial({
+                    color: Math.random() < 0.3 ? 0xffaa00 : 0x1a1a2a,
+                    emissive: Math.random() < 0.3 ? 0xffaa00 : 0x000000,
+                    emissiveIntensity: 0.5
+                })
+            );
+            
+            window.position.set(
+                x + (side === 'left' ? -1.01 : 1.01),
+                5 + floor * 4,
+                -length / 2 + 5 + i * 6
+            );
+            window.rotation.y = rotation;
+            parent.add(window);
+            
+            // Some windows flicker
+            if (Math.random() < 0.2) {
+                this.flickeringScreens.push({
+                    mesh: window,
+                    baseIntensity: 0.5,
+                    flickerSpeed: 0.5 + Math.random() * 2
+                });
+            }
+        }
+    }
+    
+    // Fire escapes (metal stairs)
+    for (let i = 0; i < 4; i++) {
+        const escape = this.createFireEscape();
+        escape.position.set(
+            x + (side === 'left' ? -2 : 2),
+            10 + i * 8,
+            -30 + i * 15
+        );
+        escape.rotation.y = rotation;
+        parent.add(escape);
+    }
+}
+
+createFireEscape() {
+    const group = new THREE.Group();
+    
+    // Platform
+    const platform = new THREE.Mesh(
+        new THREE.BoxGeometry(3, 0.1, 3),
+        new THREE.MeshStandardMaterial({
+            color: 0x4a4a4a,
+            roughness: 0.8,
+            metalness: 0.9
+        })
+    );
+    group.add(platform);
+    
+    // Railings
+    for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2;
+        const railing = new THREE.Mesh(
+            new THREE.BoxGeometry(0.05, 1, 3),
+            new THREE.MeshStandardMaterial({
+                color: 0x6a6a6a,
+                roughness: 0.7,
+                metalness: 0.8
+            })
+        );
+        railing.position.set(
+            Math.cos(angle) * 1.5,
+            0.5,
+            Math.sin(angle) * 1.5
+        );
+        group.add(railing);
+    }
+    
+    return group;
+}
+
+// ========================================
+// NEON SIGNS (vertical Japanese-style)
+// ========================================
+
+createNeonSigns() {
+    const signConfigs = [
+        // Left wall signs
+        { x: -6.5, y: 15, z: -20, text: '拉麺', color: 0xff0066, vertical: true },
+        { x: -6.5, y: 20, z: -5, text: 'BAR', color: 0x00ffff, vertical: false },
+        { x: -6.5, y: 12, z: 10, text: '居酒屋', color: 0xff9900, vertical: true },
+        { x: -6.5, y: 25, z: 25, text: 'HOTEL', color: 0xff00ff, vertical: false },
+        
+        // Right wall signs
+        { x: 6.5, y: 18, z: -25, text: 'CYBER', color: 0x00ff00, vertical: false },
+        { x: 6.5, y: 14, z: -8, text: '薬局', color: 0xff0000, vertical: true },
+        { x: 6.5, y: 22, z: 8, text: 'CLUB', color: 0xff00ff, vertical: false },
+        { x: 6.5, y: 16, z: 22, text: '寿司', color: 0x00ffff, vertical: true }
+    ];
+    
+    signConfigs.forEach(config => {
+        const sign = this.createNeonSign(config);
+        this.rooms[0].add(sign);
+        this.neonSigns.push(sign);
+    });
+}
+
+createNeonSign(config) {
+    const group = new THREE.Group();
+    
+    // Sign backing (dark panel)
+    const backing = new THREE.Mesh(
+        new THREE.BoxGeometry(
+            config.vertical ? 2 : 4,
+            config.vertical ? 6 : 2,
+            0.2
+        ),
+        this.darkMetalMaterial
+    );
+    group.add(backing);
+    
+    // Neon text (using canvas texture)
+    const canvas = document.createElement('canvas');
+    canvas.width = config.vertical ? 256 : 512;
+    canvas.height = config.vertical ? 512 : 256;
+    const ctx = canvas.getContext('2d');
+    
+    // Background (transparent)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Neon glow effect
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = `#${config.color.toString(16).padStart(6, '0')}`;
+    ctx.fillStyle = `#${config.color.toString(16).padStart(6, '0')}`;
+    ctx.font = `bold ${config.vertical ? '80px' : '120px'} Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    if (config.vertical) {
+        // Vertical text
+        const chars = config.text.split('');
+        chars.forEach((char, index) => {
+            ctx.fillText(char, canvas.width / 2, 80 + index * 100);
+        });
+    } else {
+        // Horizontal text
+        ctx.fillText(config.text, canvas.width / 2, canvas.height / 2);
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    
+    const neonText = new THREE.Mesh(
+        new THREE.PlaneGeometry(
+            config.vertical ? 1.8 : 3.8,
+            config.vertical ? 5.8 : 1.8
+        ),
+        new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            side: THREE.DoubleSide
+        })
+    );
+    neonText.position.z = 0.15;
+    group.add(neonText);
+    
+    // Point light for illumination
+    const light = new THREE.PointLight(config.color, 3, 15);
+    light.position.z = 2;
+    group.add(light);
+    
+    // Position the sign
+    group.position.set(config.x, config.y, config.z);
+    group.rotation.y = config.x < 0 ? Math.PI / 2 : -Math.PI / 2;
+    
+    // Store for animation
+    group.userData = {
+        light: light,
+        baseIntensity: 3,
+        flickerSpeed: 0.5 + Math.random(),
+        color: config.color
+    };
+    
+    return group;
+}
+
+// Continue to Part 2...
+
+// ========================================
+// LED BILLBOARDS (massive screens for artwork)
+// ========================================
+
+createLEDBillboards() {
+    const billboardConfigs = [
+        // Left wall billboards
+        { x: -6.2, y: 10, z: -30, width: 8, height: 5, rotation: Math.PI / 2 },
+        { x: -6.2, y: 15, z: 0, width: 6, height: 4, rotation: Math.PI / 2 },
+        { x: -6.2, y: 12, z: 20, width: 7, height: 4.5, rotation: Math.PI / 2 },
+        
+        // Right wall billboards
+        { x: 6.2, y: 12, z: -25, width: 7, height: 5, rotation: -Math.PI / 2 },
+        { x: 6.2, y: 16, z: -2, width: 8, height: 6, rotation: -Math.PI / 2 },
+        { x: 6.2, y: 14, z: 18, width: 6, height: 4, rotation: -Math.PI / 2 },
+        
+        // Back wall (huge screen)
+        { x: 0, y: 20, z: -39.5, width: 10, height: 8, rotation: 0 }
+    ];
+    
+    billboardConfigs.forEach((config, index) => {
+        const billboard = this.createLEDBillboard(config);
+        this.rooms[0].add(billboard);
+        this.ledBillboards.push(billboard);
+        
+        // Add to artwork spots
+        this.artworkSpots.push({
+            position: new THREE.Vector3(config.x, config.y, config.z),
+            normal: new THREE.Vector3(
+                Math.sin(config.rotation),
+                0,
+                Math.cos(config.rotation)
+            ),
+            mesh: billboard,
+            type: 'billboard',
+            index: index
+        });
+    });
+    
+    console.log(`✅ Created ${this.ledBillboards.length} LED billboards for artwork`);
+}
+
+createLEDBillboard(config) {
+    const group = new THREE.Group();
+    
+    // Frame/housing (dark metal with tech details)
+    const frame = new THREE.Mesh(
+        new THREE.BoxGeometry(config.width + 0.4, config.height + 0.4, 0.3),
+        new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            roughness: 0.3,
+            metalness: 0.9
+        })
+    );
+    group.add(frame);
+    
+    // Screen (for artwork display)
+    const screenGeometry = new THREE.PlaneGeometry(config.width, config.height);
+    const screenMaterial = new THREE.MeshStandardMaterial({
+        color: 0x000000,
+        emissive: 0x111111,
+        emissiveIntensity: 0.5,
         side: THREE.DoubleSide
     });
     
-    // Brass submarine metal
-    const brassMaterial = new THREE.MeshStandardMaterial({
-        color: 0xb87333,
-        roughness: 0.4,
-        metalness: 0.9,
-        envMapIntensity: 1.5
+    const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+    screen.position.z = 0.16;
+    group.add(screen);
+    
+    // LED border lights (animated)
+    const borderLights = [];
+    const ledCount = 20;
+    
+    for (let i = 0; i < ledCount; i++) {
+        const t = i / ledCount;
+        let x, y;
+        
+        // Create border around screen
+        if (t < 0.25) {
+            x = (t * 4) * config.width - config.width / 2;
+            y = config.height / 2;
+        } else if (t < 0.5) {
+            x = config.width / 2;
+            y = config.height / 2 - ((t - 0.25) * 4) * config.height;
+        } else if (t < 0.75) {
+            x = config.width / 2 - ((t - 0.5) * 4) * config.width;
+            y = -config.height / 2;
+        } else {
+            x = -config.width / 2;
+            y = -config.height / 2 + ((t - 0.75) * 4) * config.height;
+        }
+        
+        const led = new THREE.Mesh(
+            new THREE.SphereGeometry(0.05, 8, 8),
+            new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                emissive: 0x00ffff,
+                emissiveIntensity: 2
+            })
+        );
+        led.position.set(x, y, 0.2);
+        group.add(led);
+        borderLights.push(led);
+    }
+    
+    // Spotlight for billboard illumination
+    const spotlight = new THREE.SpotLight(0xffffff, 2, 30, Math.PI / 6, 0.5);
+    spotlight.position.set(0, 0, 3);
+    spotlight.target = screen;
+    group.add(spotlight);
+    
+    // Tech details (vents, panels)
+    for (let i = 0; i < 4; i++) {
+        const vent = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.1, 0.1),
+            new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.8
+            })
+        );
+        vent.position.set(
+            -config.width / 2 + 0.2 + i * (config.width / 4),
+            -config.height / 2 - 0.3,
+            0
+        );
+        group.add(vent);
+    }
+    
+    // Position and rotate
+    group.position.set(config.x, config.y, config.z);
+    group.rotation.y = config.rotation;
+    
+    // Store data
+    group.userData = {
+        screen: screen,
+        borderLights: borderLights,
+        spotlight: spotlight,
+        isArtworkDisplay: true,
+        width: config.width,
+        height: config.height
+    };
+    
+    return group;
+}
+
+// ========================================
+// HOLOGRAPHIC DISPLAYS (floating ads)
+// ========================================
+
+createHolographicDisplays() {
+    const hologramConfigs = [
+        { x: -3, y: 8, z: -15, type: 'ad1' },
+        { x: 3, y: 12, z: -8, type: 'ad2' },
+        { x: -2, y: 10, z: 5, type: 'ad3' },
+        { x: 4, y: 14, z: 15, type: 'warning' },
+        { x: -4, y: 11, z: -22, type: 'ad4' },
+        { x: 2, y: 9, z: 12, type: 'news' }
+    ];
+    
+    hologramConfigs.forEach(config => {
+        const hologram = this.createHologram(config);
+        this.rooms[0].add(hologram);
+        this.holographicAds.push(hologram);
+    });
+}
+
+createHologram(config) {
+    const group = new THREE.Group();
+    
+    // Projector base
+    const projector = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.2, 0.3, 0.5, 8),
+        new THREE.MeshStandardMaterial({
+            color: 0x2a2a2a,
+            roughness: 0.4,
+            metalness: 0.9
+        })
+    );
+    projector.position.y = -2;
+    group.add(projector);
+    
+    // Projection beam
+    const beam = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.8, 2, 8, 1, true),
+        new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.DoubleSide
+        })
+    );
+    beam.position.y = -1;
+    group.add(beam);
+    
+    // Holographic content
+    const content = this.createHologramContent(config.type);
+    content.position.y = 0;
+    group.add(content);
+    
+    // Scan lines effect
+    const scanLines = new THREE.Mesh(
+        new THREE.PlaneGeometry(2, 2),
+        new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.DoubleSide
+        })
+    );
+    content.add(scanLines);
+    
+    // Point light
+    const light = new THREE.PointLight(0x00ffff, 1.5, 10);
+    light.position.y = 0;
+    group.add(light);
+    
+    // Position
+    group.position.set(config.x, config.y, config.z);
+    
+    // Store for animation
+    group.userData = {
+        content: content,
+        scanLines: scanLines,
+        beam: beam,
+        light: light,
+        type: config.type,
+        floatPhase: Math.random() * Math.PI * 2,
+        rotationSpeed: 0.002 + Math.random() * 0.003
+    };
+    
+    return group;
+}
+
+createHologramContent(type) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    // Background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Content based on type
+    ctx.fillStyle = '#00ffff';
+    ctx.font = 'bold 60px Arial';
+    ctx.textAlign = 'center';
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = '#00ffff';
+    
+    switch(type) {
+        case 'ad1':
+            ctx.fillText('CYBER', 256, 200);
+            ctx.font = '40px Arial';
+            ctx.fillText('ENHANCEMENTS', 256, 260);
+            ctx.fillText('50% OFF', 256, 320);
+            break;
+        case 'ad2':
+            ctx.fillStyle = '#ff00ff';
+            ctx.shadowColor = '#ff00ff';
+            ctx.fillText('NOODLE', 256, 200);
+            ctx.fillText('BAR', 256, 280);
+            ctx.font = '30px Arial';
+            ctx.fillText('→ OPEN 24/7', 256, 340);
+            break;
+        case 'ad3':
+            ctx.fillStyle = '#ffff00';
+            ctx.shadowColor = '#ffff00';
+            ctx.fillText('TECH', 256, 200);
+            ctx.fillText('UPGRADES', 256, 280);
+            break;
+        case 'warning':
+            ctx.fillStyle = '#ff0000';
+            ctx.shadowColor = '#ff0000';
+            ctx.fillText('⚠️', 256, 200);
+            ctx.font = '40px Arial';
+            ctx.fillText('SURVEILLANCE', 256, 280);
+            ctx.fillText('ACTIVE', 256, 330);
+            break;
+        case 'ad4':
+            ctx.fillStyle = '#00ff00';
+            ctx.shadowColor = '#00ff00';
+            ctx.fillText('ARCADE', 256, 220);
+            ctx.font = '35px Arial';
+            ctx.fillText('LEVEL UP ↑', 256, 300);
+            break;
+        case 'news':
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#ffffff';
+            ctx.font = '35px Arial';
+            ctx.fillText('NEWS FEED', 256, 180);
+            ctx.font = '25px Arial';
+            ctx.fillText('市場上涨 +2.4%', 256, 240);
+            ctx.fillText('Weather: Rain', 256, 280);
+            ctx.fillText('Temp: 18°C', 256, 320);
+            break;
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    
+    const hologram = new THREE.Mesh(
+        new THREE.PlaneGeometry(2, 2),
+        new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+        })
+    );
+    
+    return hologram;
+}
+
+// ========================================
+// STEAM VENTS (particle effects)
+// ========================================
+
+createSteamVents() {
+    const ventPositions = [
+        { x: -5, y: 0, z: -18 },
+        { x: 5, y: 0, z: -10 },
+        { x: -4, y: 0, z: 3 },
+        { x: 4, y: 0, z: 12 },
+        { x: -5, y: 0, z: 25 },
+        { x: 3, y: 0, z: -28 }
+    ];
+    
+    ventPositions.forEach(pos => {
+        const vent = this.createSteamVent(pos);
+        this.rooms[0].add(vent);
+        this.steamVents.push(vent);
+    });
+}
+
+createSteamVent(pos) {
+    const group = new THREE.Group();
+    
+    // Vent grate
+    const grate = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 0.5, 0.1, 8),
+        new THREE.MeshStandardMaterial({
+            color: 0x3a3a3a,
+            roughness: 0.8,
+            metalness: 0.7
+        })
+    );
+    grate.rotation.x = Math.PI / 2;
+    group.add(grate);
+    
+    // Steam particles
+    const particleCount = 50;
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = [];
+    const lifetimes = [];
+    
+    for (let i = 0; i < particleCount; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * 0.5;
+        positions[i * 3 + 1] = 0;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+        
+        velocities.push({
+            x: (Math.random() - 0.5) * 0.02,
+            y: 0.05 + Math.random() * 0.05,
+            z: (Math.random() - 0.5) * 0.02
+        });
+        
+        lifetimes.push(Math.random() * 100);
+    }
+    
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    const material = new THREE.PointsMaterial({
+        color: 0xaaaaaa,
+        size: 0.3,
+        transparent: true,
+        opacity: 0.6,
+        fog: true
     });
     
-    // Dark ocean floor sand
-    const sandFloorMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2c2416,
-        roughness: 0.95,
-        metalness: 0.0
-    });
+    const particles = new THREE.Points(geometry, material);
+    group.add(particles);
     
-    // Bioluminescent glow material
-    const biolumMaterial = new THREE.MeshStandardMaterial({
-        color: 0x00ffff,
-        emissive: 0x00ffff,
-        emissiveIntensity: 2.0,
+    // Position
+    group.position.set(pos.x, pos.y, pos.z);
+    
+    // Store for animation
+    group.userData = {
+        particles: particles,
+        velocities: velocities,
+        lifetimes: lifetimes,
+        particleCount: particleCount
+    };
+    
+    return group;
+}
+
+// ========================================
+// DRONE CAMERAS (following player)
+// ========================================
+
+createDroneCameras() {
+    const droneConfigs = [
+        { offset: new THREE.Vector3(3, 4, -2), color: 0xff0000 },
+        { offset: new THREE.Vector3(-3, 5, -3), color: 0x00ff00 },
+        { offset: new THREE.Vector3(2, 6, 2), color: 0x0000ff }
+    ];
+    
+    droneConfigs.forEach(config => {
+        const drone = this.createDrone(config);
+        this.rooms[0].add(drone);
+        this.droneCameras.push(drone);
+    });
+}
+
+createDrone(config) {
+    const group = new THREE.Group();
+    
+    // Drone body
+    const body = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3, 8, 8),
+        new THREE.MeshStandardMaterial({
+            color: 0x2a2a2a,
+            roughness: 0.3,
+            metalness: 0.9
+        })
+    );
+    group.add(body);
+    
+    // Propellers (4 arms)
+    const propellers = [];
+    for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2;
+        
+        // Arm
+        const arm = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.03, 0.03, 0.6, 6),
+            new THREE.MeshStandardMaterial({
+                color: 0x4a4a4a,
+                metalness: 0.8
+            })
+        );
+        arm.rotation.z = Math.PI / 2;
+        arm.position.set(
+            Math.cos(angle) * 0.3,
+            0,
+            Math.sin(angle) * 0.3
+        );
+        arm.rotation.y = angle;
+        group.add(arm);
+        
+        // Propeller
+        const propeller = new THREE.Mesh(
+            new THREE.BoxGeometry(0.4, 0.02, 0.1),
+            new THREE.MeshStandardMaterial({
+                color: 0x6a6a6a,
+                transparent: true,
+                opacity: 0.7
+            })
+        );
+        propeller.position.set(
+            Math.cos(angle) * 0.6,
+            0,
+            Math.sin(angle) * 0.6
+        );
+        group.add(propeller);
+        propellers.push(propeller);
+    }
+    
+    // Camera lens
+    const camera = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.1, 0.15, 0.2, 8),
+        new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            roughness: 0.2,
+            metalness: 0.9
+        })
+    );
+    camera.rotation.x = Math.PI / 2;
+    camera.position.y = -0.2;
+    group.add(camera);
+    
+    // Tracking light
+    const light = new THREE.PointLight(config.color, 1, 8);
+    light.position.y = -0.3;
+    group.add(light);
+    
+    // LED indicator
+    const led = new THREE.Mesh(
+        new THREE.SphereGeometry(0.05, 8, 8),
+        new THREE.MeshBasicMaterial({
+            color: config.color,
+            emissive: config.color,
+            emissiveIntensity: 2
+        })
+    );
+    led.position.y = 0.3;
+    group.add(led);
+    
+    // Store for animation
+    group.userData = {
+        propellers: propellers,
+        light: light,
+        led: led,
+        offset: config.offset.clone(),
+        targetPosition: new THREE.Vector3(),
+        currentPosition: new THREE.Vector3(),
+        bobPhase: Math.random() * Math.PI * 2,
+        color: config.color
+    };
+    
+    return group;
+}
+
+// Continue to Part 3...
+
+// ========================================
+// RAIN EFFECT (constant rainfall)
+// ========================================
+
+createRainEffect() {
+    const rainCount = 2000;
+    const positions = new Float32Array(rainCount * 3);
+    const velocities = [];
+    
+    for (let i = 0; i < rainCount; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * 20;      // x
+        positions[i * 3 + 1] = Math.random() * 40;          // y
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 100; // z
+        
+        velocities.push({
+            x: -0.02 + Math.random() * 0.01,
+            y: -0.5 - Math.random() * 0.3,
+            z: 0
+        });
+    }
+    
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    const material = new THREE.PointsMaterial({
+        color: 0x88aaff,
+        size: 0.05,
         transparent: true,
         opacity: 0.6
     });
     
-    // Coral material
-    const coralMaterial = new THREE.MeshStandardMaterial({
-        color: 0xff6b9d,
-        roughness: 0.8,
-        metalness: 0.0
+    const rain = new THREE.Points(geometry, material);
+    this.rooms[0].add(rain);
+    
+    this.rainDroplets.push({
+        mesh: rain,
+        velocities: velocities,
+        count: rainCount
     });
     
-    // Weathered metal hull
-    const hullMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4a5f6b,
-        roughness: 0.7,
-        metalness: 0.8
+    console.log("🌧️ Rain effect activated");
+}
+
+// ========================================
+// PUDDLES (reflective water)
+// ========================================
+
+createPuddles() {
+    const puddlePositions = [
+        { x: -2, z: -15, radius: 1.5 },
+        { x: 3, z: -8, radius: 1.2 },
+        { x: -3, z: 0, radius: 1.8 },
+        { x: 2, z: 10, radius: 1.3 },
+        { x: -1, z: 18, radius: 1.6 },
+        { x: 4, z: -22, radius: 1.4 },
+        { x: -4, z: 25, radius: 1.7 }
+    ];
+    
+    puddlePositions.forEach(config => {
+        const puddle = this.createPuddle(config);
+        this.rooms[0].add(puddle);
+        this.puddles.push(puddle);
     });
+}
+
+createPuddle(config) {
+    const group = new THREE.Group();
     
-    // ========================================
-    // MAIN CURVED TUNNEL STRUCTURE
-    // ========================================
-    
-    // Create curved path for tunnel
-    const tunnelCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-25, 0, 0),
-        new THREE.Vector3(-15, 0, -8),
-        new THREE.Vector3(0, 0, -10),
-        new THREE.Vector3(15, 0, -8),
-        new THREE.Vector3(25, 0, 0)
-    ]);
-    
-    // Tunnel tube geometry
-    const tunnelGeometry = new THREE.TubeGeometry(
-        tunnelCurve,
-        100, // path segments
-        3.5, // radius
-        16, // radial segments
-        false // closed
-    );
-    
-    const tunnel = new THREE.Mesh(tunnelGeometry, acrylicGlassMaterial);
-    tunnel.receiveShadow = true;
-    room1.add(tunnel);
-    
-    // Chrome support rings every 5m
-    for (let i = 0; i <= 10; i++) {
-        const t = i / 10;
-        const pos = tunnelCurve.getPoint(t);
-        const tangent = tunnelCurve.getTangent(t);
-        
-        const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(3.6, 0.15, 16, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0xc0c0c0,
-                roughness: 0.2,
-                metalness: 1.0,
-                envMapIntensity: 2.0
-            })
-        );
-        
-        ring.position.copy(pos);
-        ring.lookAt(pos.clone().add(tangent));
-        ring.castShadow = true;
-        room1.add(ring);
-        
-        // Rivets on rings
-        for (let j = 0; j < 24; j++) {
-            const angle = (j / 24) * Math.PI * 2;
-            const rivet = new THREE.Mesh(
-                new THREE.SphereGeometry(0.08, 8, 8),
-                brassMaterial
-            );
-            rivet.position.copy(pos);
-            rivet.position.x += Math.cos(angle) * 3.6;
-            rivet.position.y += Math.sin(angle) * 3.6;
-            room1.add(rivet);
-        }
-    }
-    
-    // ========================================
-    // FLOOR SYSTEM
-    // ========================================
-    
-    // Main walkway floor (metal grating)
-    const walkwayPath = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-25, -2.5, 0),
-        new THREE.Vector3(-15, -2.5, -8),
-        new THREE.Vector3(0, -2.5, -10),
-        new THREE.Vector3(15, -2.5, -8),
-        new THREE.Vector3(25, -2.5, 0)
-    ]);
-    
-    const walkwayGeometry = new THREE.TubeGeometry(
-        walkwayPath,
-        100,
-        2.0, // narrower floor
-        8,
-        false
-    );
-    
-    const walkway = new THREE.Mesh(
-        walkwayGeometry,
+    // Main puddle surface
+    const puddle = new THREE.Mesh(
+        new THREE.CircleGeometry(config.radius, 32),
         new THREE.MeshStandardMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.8,
+            color: 0x1a1a2a,
+            roughness: 0.1,
             metalness: 0.9,
             transparent: true,
             opacity: 0.8
         })
     );
-    walkway.receiveShadow = true;
-    room1.add(walkway);
+    puddle.rotation.x = -Math.PI / 2;
+    puddle.position.y = 0.01;
+    puddle.receiveShadow = true;
+    group.add(puddle);
     
-    // Glass floor sections (see fish below)
-    for (let i = 1; i < 10; i += 2) {
-        const t = i / 10;
-        const pos = walkwayPath.getPoint(t);
-        
-        const glassFloor = new THREE.Mesh(
-            new THREE.CircleGeometry(1.5, 32),
-            acrylicGlassMaterial
-        );
-        glassFloor.position.copy(pos);
-        glassFloor.position.y += 0.05;
-        glassFloor.rotation.x = -Math.PI / 2;
-        glassFloor.receiveShadow = true;
-        room1.add(glassFloor);
-    }
-    
-    // ========================================
-    // VIEWING PODS (6 Spherical Domes)
-    // ========================================
-    
-    const podPositions = [
-        { x: -20, y: 0, z: 5 },
-        { x: -10, y: 0, z: -12 },
-        { x: 0, y: 0, z: -15 },
-        { x: 10, y: 0, z: -12 },
-        { x: 20, y: 0, z: 5 },
-        { x: 0, y: 5, z: -10 } // Elevated pod
-    ];
-    
-    podPositions.forEach((podPos, index) => {
-        // Glass dome (hemisphere)
-        const dome = new THREE.Mesh(
-            new THREE.SphereGeometry(4, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
-            acrylicGlassMaterial
-        );
-        dome.position.set(podPos.x, podPos.y, podPos.z);
-        dome.receiveShadow = true;
-        dome.castShadow = true;
-        room1.add(dome);
-        
-        // Metal base ring
-        const baseRing = new THREE.Mesh(
-            new THREE.CylinderGeometry(4.1, 4.1, 0.3, 32),
-            hullMaterial
-        );
-        baseRing.position.set(podPos.x, podPos.y - 0.15, podPos.z);
-        baseRing.castShadow = true;
-        room1.add(baseRing);
-        
-        // Interior floor platform
-        const platform = new THREE.Mesh(
-            new THREE.CircleGeometry(3.5, 32),
-            new THREE.MeshStandardMaterial({
-                color: 0x3a3a3a,
-                roughness: 0.6,
-                metalness: 0.8
-            })
-        );
-        platform.position.set(podPos.x, podPos.y - 2, podPos.z);
-        platform.rotation.x = -Math.PI / 2;
-        platform.receiveShadow = true;
-        room1.add(platform);
-        
-        // Brass observation seat
-        const seat = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.4, 0.5, 0.8, 16),
-            brassMaterial
-        );
-        seat.position.set(podPos.x, podPos.y - 1.6, podPos.z);
-        seat.castShadow = true;
-        room1.add(seat);
-        
-        // Ambient pod lighting (blue-green)
-        const podLight = new THREE.PointLight(0x00ccff, 2.0, 10);
-        podLight.position.set(podPos.x, podPos.y + 3, podPos.z);
-        room1.add(podLight);
-    });
-    
-    // ========================================
-    // PORTHOLE WINDOWS (Along Tunnel)
-    // ========================================
-    
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const t = (i / 8);
-        const pos = tunnelCurve.getPoint(t);
-        
-        // Brass porthole frame
-        const frame = new THREE.Mesh(
-            new THREE.TorusGeometry(0.8, 0.1, 16, 32),
-            brassMaterial
-        );
-        frame.position.set(
-            pos.x + Math.cos(angle) * 3.3,
-            pos.y + Math.sin(angle) * 3.3,
-            pos.z
-        );
-        frame.lookAt(pos);
-        frame.castShadow = true;
-        room1.add(frame);
-        
-        // Glass porthole
-        const glass = new THREE.Mesh(
-            new THREE.CircleGeometry(0.75, 32),
-            acrylicGlassMaterial
-        );
-        glass.position.copy(frame.position);
-        glass.lookAt(pos);
-        room1.add(glass);
-        
-        // Locking wheel mechanism
-        for (let j = 0; j < 6; j++) {
-            const spokeAngle = (j / 6) * Math.PI * 2;
-            const spoke = new THREE.Mesh(
-                new THREE.BoxGeometry(0.08, 0.08, 0.4),
-                brassMaterial
-            );
-            spoke.position.copy(frame.position);
-            spoke.position.x += Math.cos(spokeAngle) * 0.5 + Math.cos(angle) * 0.1;
-            spoke.position.y += Math.sin(spokeAngle) * 0.5 + Math.sin(angle) * 0.1;
-            spoke.rotation.z = spokeAngle;
-            room1.add(spoke);
-        }
-    }
-    
-    // ========================================
-    // SUBMARINE ENTRANCE AIRLOCK
-    // ========================================
-    
-    const airlockGroup = new THREE.Group();
-    
-    // Circular door
-    const door = new THREE.Mesh(
-        new THREE.CylinderGeometry(2.5, 2.5, 0.5, 32),
-        hullMaterial
-    );
-    door.rotation.z = Math.PI / 2;
-    door.position.set(-28, 0, 0);
-    door.castShadow = true;
-    airlockGroup.add(door);
-    
-    // Spinning wheel handle
-    const wheel = new THREE.Mesh(
-        new THREE.TorusGeometry(0.8, 0.08, 16, 32),
-        brassMaterial
-    );
-    wheel.position.set(-27.5, 0, 0);
-    wheel.rotation.y = Math.PI / 2;
-    airlockGroup.add(wheel);
-    
-    // Wheel spokes
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const spoke = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, 0.08, 1.4),
-            brassMaterial
-        );
-        spoke.position.copy(wheel.position);
-        spoke.rotation.copy(wheel.rotation);
-        spoke.rotation.z = angle;
-        airlockGroup.add(spoke);
-    }
-    
-  
-    
-    room1.add(airlockGroup);
-    this.airlockWheel = wheel; // Store for animation
-    
-    // ========================================
-    // MARINE LIFE - SWIMMING FISH
-    // ========================================
-    
-    this.fishSchools = [];
-    
-    // Tropical fish (small, colorful)
-    for (let i = 0; i < 30; i++) {
-        const fish = new THREE.Mesh(
-            new THREE.ConeGeometry(0.1, 0.3, 8),
-            new THREE.MeshStandardMaterial({
-                color: [0xff6b35, 0xf7931e, 0xfdc82f, 0x00a8e8][Math.floor(Math.random() * 4)],
-                roughness: 0.4,
-                metalness: 0.3
-            })
-        );
-        
-        fish.rotation.x = Math.PI / 2;
-        fish.position.set(
-            (Math.random() - 0.5) * 50,
-            Math.random() * 8 - 2,
-            (Math.random() - 0.5) * 30
-        );
-        
-        // Add tail fin
-        const tail = new THREE.Mesh(
-            new THREE.ConeGeometry(0.08, 0.15, 3),
-            fish.material
-        );
-        tail.position.z = -0.15;
-        fish.add(tail);
-        
-        fish.userData = {
-            speed: 0.02 + Math.random() * 0.03,
-            amplitude: 0.5 + Math.random() * 1.0,
-            phase: Math.random() * Math.PI * 2,
-            orbitRadius: 10 + Math.random() * 15,
-            orbitSpeed: 0.001 + Math.random() * 0.002,
-            orbitAngle: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(fish);
-        this.fishSchools.push(fish);
-    }
-    
-    // Large rays (gliding)
-    for (let i = 0; i < 5; i++) {
-        const ray = new THREE.Mesh(
-            new THREE.SphereGeometry(1.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-            new THREE.MeshStandardMaterial({
-                color: 0x5a7d9a,
-                roughness: 0.6,
-                metalness: 0.2
-            })
-        );
-        
-        ray.scale.set(2, 0.2, 1);
-        ray.position.set(
-            (Math.random() - 0.5) * 40,
-            Math.random() * 6,
-            (Math.random() - 0.5) * 25
-        );
-        
-        ray.userData = {
-            speed: 0.01,
-            amplitude: 2.0,
-            phase: Math.random() * Math.PI * 2,
-            orbitRadius: 20,
-            orbitSpeed: 0.0008,
-            orbitAngle: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(ray);
-        this.fishSchools.push(ray);
-    }
-    
-    // ========================================
-    // BIOLUMINESCENT JELLYFISH
-    // ========================================
-    
-    this.jellyfish = [];
-    
-    for (let i = 0; i < 15; i++) {
-        const jellyfishGroup = new THREE.Group();
-        
-        // Bell (dome)
-        const bell = new THREE.Mesh(
-            new THREE.SphereGeometry(0.4, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-            new THREE.MeshStandardMaterial({
-                color: 0x00ffff,
-                emissive: 0x00ffff,
-                emissiveIntensity: 0.8,
+    // Ripple rings (animated)
+    const ripples = [];
+    for (let i = 0; i < 3; i++) {
+        const ripple = new THREE.Mesh(
+            new THREE.RingGeometry(0.1, 0.15, 32),
+            new THREE.MeshBasicMaterial({
+                color: 0x88aaff,
                 transparent: true,
-                opacity: 0.6,
-                roughness: 0.3
+                opacity: 0,
+                side: THREE.DoubleSide
             })
         );
-        bell.rotation.x = Math.PI;
-        jellyfishGroup.add(bell);
-        
-        // Tentacles (6-8 per jellyfish)
-        const numTentacles = 6 + Math.floor(Math.random() * 3);
-        for (let j = 0; j < numTentacles; j++) {
-            const angle = (j / numTentacles) * Math.PI * 2;
-            const tentacle = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.02, 0.01, 1.5, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x00ccff,
-                    emissive: 0x0088cc,
-                    emissiveIntensity: 0.5,
-                    transparent: true,
-                    opacity: 0.4
-                })
-            );
-            tentacle.position.set(
-                Math.cos(angle) * 0.3,
-                -0.75,
-                Math.sin(angle) * 0.3
-            );
-            jellyfishGroup.add(tentacle);
-        }
-        
-        // Glow light
-        const glowLight = new THREE.PointLight(0x00ffff, 2.0, 5);
-        glowLight.position.set(0, 0, 0);
-        jellyfishGroup.add(glowLight);
-        
-        jellyfishGroup.position.set(
-            (Math.random() - 0.5) * 45,
-            Math.random() * 8 + 2,
-            (Math.random() - 0.5) * 28
-        );
-        
-        jellyfishGroup.userData = {
-            floatSpeed: 0.0005 + Math.random() * 0.001,
-            floatAmplitude: 1.5 + Math.random() * 1.0,
-            floatPhase: Math.random() * Math.PI * 2,
-            pulseSpeed: 1.0 + Math.random() * 2.0
-        };
-        
-        room1.add(jellyfishGroup);
-        this.jellyfish.push(jellyfishGroup);
+        ripple.rotation.x = -Math.PI / 2;
+        ripple.position.y = 0.02;
+        group.add(ripple);
+        ripples.push(ripple);
     }
     
-    // ========================================
-    // CORAL REEF STRUCTURES
-    // ========================================
+    // Position
+    group.position.set(config.x, 0, config.z);
     
-    const coralPositions = [
-        { x: -18, z: 8 }, { x: -12, z: -14 }, { x: 0, z: -18 },
-        { x: 12, z: -14 }, { x: 18, z: 8 }, { x: -8, z: 0 },
-        { x: 8, z: -5 }, { x: 0, z: 10 }
+    // Store for animation
+    group.userData = {
+        ripples: ripples,
+        radius: config.radius,
+        rippleTimer: Math.random() * 100,
+        currentRipple: 0
+    };
+    
+    return group;
+}
+
+// ========================================
+// HANGING CABLES (atmospheric detail)
+// ========================================
+
+createCables() {
+    const cableConfigs = [
+        { startX: -6, startZ: -30, endX: 6, endZ: -28, y: 15, sag: 2 },
+        { startX: -6, startZ: -20, endX: 6, endZ: -18, y: 18, sag: 1.5 },
+        { startX: -6, startZ: -10, endX: 6, endZ: -8, y: 12, sag: 2.5 },
+        { startX: -6, startZ: 0, endX: 6, endZ: 2, y: 16, sag: 1.8 },
+        { startX: -6, startZ: 10, endX: 6, endZ: 12, y: 14, sag: 2.2 },
+        { startX: -6, startZ: 20, endX: 6, endZ: 22, y: 17, sag: 1.6 }
     ];
     
-    coralPositions.forEach(pos => {
-        const coralGroup = new THREE.Group();
+    cableConfigs.forEach(config => {
+        const cable = this.createCable(config);
+        this.rooms[0].add(cable);
+    });
+}
+
+createCable(config) {
+    const points = [];
+    const segments = 20;
+    
+    for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const x = config.startX + (config.endX - config.startX) * t;
+        const z = config.startZ + (config.endZ - config.startZ) * t;
         
-        // Brain coral
-        const brainCoral = new THREE.Mesh(
-            new THREE.SphereGeometry(0.8, 16, 16),
-            new THREE.MeshStandardMaterial({
-                color: 0xff6b9d,
-                roughness: 0.9,
-                metalness: 0.0
+        // Catenary curve for realistic sag
+        const sag = config.sag * Math.sin(t * Math.PI);
+        const y = config.y - sag;
+        
+        points.push(new THREE.Vector3(x, y, z));
+    }
+    
+    const curve = new THREE.CatmullRomCurve3(points);
+    const geometry = new THREE.TubeGeometry(curve, 20, 0.05, 8, false);
+    
+    const cable = new THREE.Mesh(
+        geometry,
+        new THREE.MeshStandardMaterial({
+            color: 0x2a2a2a,
+            roughness: 0.8,
+            metalness: 0.6
+        })
+    );
+    
+    // Add some lights hanging from cables occasionally
+    if (Math.random() < 0.5) {
+        const hangingLight = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15, 8, 8),
+            new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                emissive: 0xffaa00,
+                emissiveIntensity: 1
             })
         );
-        brainCoral.scale.set(1, 0.6, 1);
-        brainCoral.position.y = -2.5;
-        coralGroup.add(brainCoral);
         
-        // Branch coral (random height)
-        for (let i = 0; i < 5 + Math.floor(Math.random() * 5); i++) {
-            const branch = new THREE.Mesh(
-                new THREE.CylinderGeometry(
-                    0.05 + Math.random() * 0.05,
-                    0.08 + Math.random() * 0.07,
-                    0.5 + Math.random() * 1.0,
-                    8
-                ),
+        const midPoint = points[Math.floor(segments / 2)];
+        hangingLight.position.copy(midPoint);
+        hangingLight.position.y -= 0.5;
+        
+        const light = new THREE.PointLight(0xffaa00, 1, 10);
+        light.position.copy(hangingLight.position);
+        
+        const group = new THREE.Group();
+        group.add(cable);
+        group.add(hangingLight);
+        group.add(light);
+        
+        return group;
+    }
+    
+    return cable;
+}
+
+// ========================================
+// VENDING MACHINES (interactive)
+// ========================================
+
+createVendingMachines() {
+    const machinePositions = [
+        { x: -5.5, y: 0, z: -25, rotation: Math.PI / 2, type: 'drinks' },
+        { x: 5.5, y: 0, z: -12, rotation: -Math.PI / 2, type: 'food' },
+        { x: -5.5, y: 0, z: 8, rotation: Math.PI / 2, type: 'tech' },
+        { x: 5.5, y: 0, z: 20, rotation: -Math.PI / 2, type: 'cigarettes' }
+    ];
+    
+    machinePositions.forEach(config => {
+        const machine = this.createVendingMachine(config);
+        this.rooms[0].add(machine);
+        this.vendingMachines.push(machine);
+    });
+}
+
+createVendingMachine(config) {
+    const group = new THREE.Group();
+    
+    // Machine body
+    const body = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 2.5, 1),
+        new THREE.MeshStandardMaterial({
+            color: 0x2a2a4a,
+            roughness: 0.3,
+            metalness: 0.8
+        })
+    );
+    body.position.y = 1.25;
+    body.castShadow = true;
+    group.add(body);
+    
+    // Glass display
+    const glass = new THREE.Mesh(
+        new THREE.BoxGeometry(1.3, 1.8, 0.1),
+        new THREE.MeshPhysicalMaterial({
+            color: 0x88aaff,
+            transmission: 0.9,
+            opacity: 0.3,
+            transparent: true,
+            roughness: 0.1
+        })
+    );
+    glass.position.set(0, 1.4, 0.51);
+    group.add(glass);
+    
+    // LED screen
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    
+    // Background
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Content based on type
+    ctx.fillStyle = '#00ff00';
+    ctx.font = 'bold 40px Arial';
+    ctx.textAlign = 'center';
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00ff00';
+    
+    switch(config.type) {
+        case 'drinks':
+            ctx.fillText('DRINKS', 128, 80);
+            ctx.font = '30px Arial';
+            ctx.fillText('Cola: ¥5', 128, 130);
+            ctx.fillText('Water: ¥3', 128, 170);
+            ctx.fillText('Energy: ¥8', 128, 210);
+            break;
+        case 'food':
+            ctx.fillText('FOOD', 128, 80);
+            ctx.font = '30px Arial';
+            ctx.fillText('Ramen: ¥12', 128, 130);
+            ctx.fillText('Sushi: ¥15', 128, 170);
+            ctx.fillText('Snacks: ¥5', 128, 210);
+            break;
+        case 'tech':
+            ctx.fillStyle = '#ff00ff';
+            ctx.shadowColor = '#ff00ff';
+            ctx.fillText('CYBER', 128, 80);
+            ctx.font = '30px Arial';
+            ctx.fillText('Implants', 128, 130);
+            ctx.fillText('Upgrades', 128, 170);
+            ctx.fillText('Mods', 128, 210);
+            break;
+        case 'cigarettes':
+            ctx.fillStyle = '#ff6600';
+            ctx.shadowColor = '#ff6600';
+            ctx.fillText('SMOKE', 128, 80);
+            ctx.font = '30px Arial';
+            ctx.fillText('Various', 128, 140);
+            ctx.fillText('Brands', 128, 190);
+            break;
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const screen = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.8, 0.6),
+        new THREE.MeshBasicMaterial({
+            map: texture,
+            side: THREE.DoubleSide
+        })
+    );
+    screen.position.set(0, 2, 0.52);
+    group.add(screen);
+    
+    // Products inside (visible through glass)
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+            const product = new THREE.Mesh(
+                new THREE.BoxGeometry(0.15, 0.25, 0.1),
                 new THREE.MeshStandardMaterial({
-                    color: [0xff6b9d, 0xffa07a, 0xee82ee, 0xdda0dd][Math.floor(Math.random() * 4)],
-                    roughness: 0.85
+                    color: Math.random() * 0xffffff,
+                    roughness: 0.5,
+                    metalness: 0.3
                 })
             );
-            branch.position.set(
-                (Math.random() - 0.5) * 1.5,
-                -2.5 + Math.random() * 0.8,
-                (Math.random() - 0.5) * 1.5
+            product.position.set(
+                -0.4 + col * 0.4,
+                0.5 + row * 0.4,
+                0.4
             );
-            branch.rotation.set(
-                (Math.random() - 0.5) * 0.4,
-                Math.random() * Math.PI * 2,
-                (Math.random() - 0.5) * 0.4
-            );
-            coralGroup.add(branch);
+            group.add(product);
         }
+    }
+    
+    // Coin slot
+    const coinSlot = new THREE.Mesh(
+        new THREE.BoxGeometry(0.2, 0.05, 0.05),
+        new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            metalness: 0.9
+        })
+    );
+    coinSlot.position.set(0.5, 0.8, 0.51);
+    group.add(coinSlot);
+    
+    // Dispenser opening
+    const dispenser = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.3, 0.1),
+        new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a
+        })
+    );
+    dispenser.position.set(0, 0.2, 0.51);
+    group.add(dispenser);
+    
+    // Glow light
+    const glowColor = config.type === 'tech' ? 0xff00ff : 
+                     config.type === 'cigarettes' ? 0xff6600 : 0x00ff00;
+    
+    const light = new THREE.PointLight(glowColor, 1.5, 8);
+    light.position.set(0, 2, 1);
+    group.add(light);
+    
+    // Position and rotate
+    group.position.set(config.x, config.y, config.z);
+    group.rotation.y = config.rotation;
+    
+    // Store for animation
+    group.userData = {
+        screen: screen,
+        light: light,
+        type: config.type
+    };
+    
+    return group;
+}
+
+// ========================================
+// CYBERPUNK LIGHTING (neon atmosphere)
+// ========================================
+
+createCyberpunkLighting() {
+    // Main ambient (very dim)
+    const ambient = new THREE.AmbientLight(0x220044, 0.2);
+    this.rooms[0].add(ambient);
+    
+    // Key neon lights along alley
+    const lightConfigs = [
+        { x: -4, y: 3, z: -30, color: 0xff0066, intensity: 2 },
+        { x: 4, y: 4, z: -22, color: 0x00ffff, intensity: 2 },
+        { x: -3, y: 3.5, z: -15, color: 0xff00ff, intensity: 2 },
+        { x: 3, y: 4, z: -8, color: 0x00ff00, intensity: 2 },
+        { x: -4, y: 3, z: 0, color: 0xffff00, intensity: 2 },
+        { x: 4, y: 4.5, z: 8, color: 0xff6600, intensity: 2 },
+        { x: -3, y: 3, z: 15, color: 0x00ffff, intensity: 2 },
+        { x: 3, y: 4, z: 22, color: 0xff00ff, intensity: 2 }
+    ];
+    
+    lightConfigs.forEach(config => {
+        const light = new THREE.PointLight(config.color, config.intensity, 15);
+        light.position.set(config.x, config.y, config.z);
+        this.rooms[0].add(light);
         
-        // Sea anemone (swaying)
-        const anemone = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.2, 0.6, 12),
-            new THREE.MeshStandardMaterial({
-                color: 0xee82ee,
-                roughness: 0.7
-            })
-        );
-        anemone.position.set(
-            (Math.random() - 0.5) * 2,
-            -2.2,
-            (Math.random() - 0.5) * 2
-        );
-        coralGroup.add(anemone);
-        
-        coralGroup.position.set(pos.x, 0, pos.z);
-        room1.add(coralGroup);
+        this.cyberpunkLights.push({
+            light: light,
+            baseIntensity: config.intensity,
+            flickerSpeed: 0.5 + Math.random() * 1.5,
+            color: config.color
+        });
     });
     
-    // ========================================
-    // KELP FOREST (Swaying Seaweed)
-    // ========================================
+    // Spotlight from above (simulating distant city lights)
+    const topLight = new THREE.DirectionalLight(0x4a2a6a, 0.5);
+    topLight.position.set(0, 30, 0);
+    topLight.target.position.set(0, 0, 0);
+    this.rooms[0].add(topLight);
+    this.rooms[0].add(topLight.target);
+}
+
+// ========================================
+// VOLUMETRIC FOG (atmospheric depth)
+// ========================================
+
+createCyberpunkFog() {
+    // Fog for depth
+    this.scene.fog = new THREE.FogExp2(0x0a0a1a, 0.015);
     
-    this.kelpStrands = [];
+    // Volumetric fog effect using planes
+    const fogLayers = [];
     
-    for (let i = 0; i < 20; i++) {
-        const kelpGroup = new THREE.Group();
+    for (let i = 0; i < 5; i++) {
+        const fogPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(12, 80),
+            new THREE.MeshBasicMaterial({
+                color: 0x2a1a3a,
+                transparent: true,
+                opacity: 0.05,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            })
+        );
         
-        const segments = 8;
-        for (let j = 0; j < segments; j++) {
-            const segment = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.08, 0.1, 0.8, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x2d5016,
-                    roughness: 0.8
-                })
-            );
-            segment.position.y = j * 0.75;
-            kelpGroup.add(segment);
+        fogPlane.rotation.x = -Math.PI / 2;
+        fogPlane.position.y = 2 + i * 1.5;
+        this.rooms[0].add(fogPlane);
+        
+        fogLayers.push({
+            mesh: fogPlane,
+            baseY: 2 + i * 1.5,
+            floatPhase: Math.random() * Math.PI * 2
+        });
+    }
+    
+    this.fogLayers = fogLayers;
+    
+    console.log("🌫️ Volumetric fog created");
+}
+
+// ========================================
+// FLICKERING SCREENS (building detail)
+// ========================================
+
+createFlickeringScreens() {
+    // Already created in createBuildingWall()
+    // This method can add additional standalone screens
+    
+    const extraScreens = [
+        { x: -5.8, y: 6, z: -18, rotation: Math.PI / 2 },
+        { x: 5.8, y: 7, z: -5, rotation: -Math.PI / 2 },
+        { x: -5.8, y: 5, z: 12, rotation: Math.PI / 2 }
+    ];
+    
+    extraScreens.forEach(config => {
+        const screen = new THREE.Mesh(
+            new THREE.PlaneGeometry(1, 1),
+            new THREE.MeshBasicMaterial({
+                color: 0x0066ff,
+                emissive: 0x0066ff,
+                emissiveIntensity: 0.8
+            })
+        );
+        
+        screen.position.set(config.x, config.y, config.z);
+        screen.rotation.y = config.rotation;
+        this.rooms[0].add(screen);
+        
+        this.flickeringScreens.push({
+            mesh: screen,
+            baseIntensity: 0.8,
+            flickerSpeed: 1 + Math.random() * 2
+        });
+    });
+}
+
+// Continue to Part 4 for animations...
+
+// ========================================
+// ANIMATION SYSTEM (all cyberpunk effects)
+// ========================================
+
+updateCyberpunkAnimations() {
+    if (!this.rooms || !this.rooms[0]) return;
+    
+    const time = Date.now() * 0.001;
+    
+    // Update rain
+    this.updateRain();
+    
+    // Update puddle ripples
+    this.updatePuddles(time);
+    
+    // Update steam vents
+    this.updateSteamVents();
+    
+    // Update neon sign flickering
+    this.updateNeonSigns(time);
+    
+    // Update holograms
+    this.updateHolograms(time);
+    
+    // Update drones (following player)
+    this.updateDrones();
+    
+    // Update flickering screens
+    this.updateFlickeringScreens(time);
+    
+    // Update LED billboard effects
+    this.updateLEDBillboards(time);
+    
+    // Update fog layers
+    this.updateFogLayers(time);
+    
+    // Update cyberpunk lights
+    this.updateCyberpunkLights(time);
+}
+
+// Rain animation
+updateRain() {
+    this.rainDroplets.forEach(rain => {
+        const positions = rain.mesh.geometry.attributes.position.array;
+        
+        for (let i = 0; i < rain.count; i++) {
+            // Update position
+            positions[i * 3] += rain.velocities[i].x;
+            positions[i * 3 + 1] += rain.velocities[i].y;
+            positions[i * 3 + 2] += rain.velocities[i].z;
             
-            // Leaves
-            if (j % 2 === 0) {
-                const leaf = new THREE.Mesh(
-                    new THREE.PlaneGeometry(0.3, 0.6),
-                    new THREE.MeshStandardMaterial({
-                        color: 0x3d7c2f,
-                        side: THREE.DoubleSide,
-                        roughness: 0.7
-                    })
-                );
-                leaf.position.set(0.15, j * 0.75, 0);
-                kelpGroup.add(leaf);
+            // Reset when hits ground
+            if (positions[i * 3 + 1] < 0) {
+                positions[i * 3] = (Math.random() - 0.5) * 20;
+                positions[i * 3 + 1] = 40;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+                
+                // Create splash/ripple effect in puddles
+                this.createRainSplash(positions[i * 3], positions[i * 3 + 2]);
             }
         }
         
-        kelpGroup.position.set(
-            (Math.random() - 0.5) * 40,
-            -2.5,
-            (Math.random() - 0.5) * 25
-        );
-        
-        kelpGroup.userData = {
-            swaySpeed: 0.5 + Math.random() * 1.0,
-            swayAmount: 0.1 + Math.random() * 0.15,
-            phaseOffset: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(kelpGroup);
-        this.kelpStrands.push(kelpGroup);
-    }
-    
-    // ========================================
-    // WATER CAUSTICS LIGHTING
-    // ========================================
-    
-    // Main overhead "sunlight" with caustic effect
-    const causticsLight = new THREE.DirectionalLight(0x4da6ff, 1.5);
-    causticsLight.position.set(0, 15, -5);
-    causticsLight.castShadow = true;
-    causticsLight.shadow.mapSize.width = 2048;
-    causticsLight.shadow.mapSize.height = 2048;
-    causticsLight.shadow.camera.left = -30;
-    causticsLight.shadow.camera.right = 30;
-    causticsLight.shadow.camera.top = 30;
-    causticsLight.shadow.camera.bottom = -30;
-    room1.add(causticsLight);
-    
-    this.causticsLight = causticsLight; // Store for animation
-    
-    // Ambient underwater glow
-    const ambientOcean = new THREE.AmbientLight(0x1a4d7a, 0.4);
-    room1.add(ambientOcean);
-    
-    // Interior pod lights (warm research station feel)
-    const podLightPositions = [
-        { x: 0, y: 3, z: -10 },
-        { x: -15, y: 3, z: -8 },
-        { x: 15, y: 3, z: -8 }
-    ];
-    
-    podLightPositions.forEach(pos => {
-        const light = new THREE.SpotLight(0xffffcc, 2.0, 15, Math.PI / 6, 0.5);
-        light.position.set(pos.x, pos.y, pos.z);
-        light.target.position.set(pos.x, pos.y - 5, pos.z);
-        light.castShadow = true;
-        room1.add(light);
-        room1.add(light.target);
+        rain.mesh.geometry.attributes.position.needsUpdate = true;
     });
-    
-    // Emergency red lights (on ceiling)
-    for (let i = 0; i < 6; i++) {
-        const t = i / 6;
-        const pos = tunnelCurve.getPoint(t);
-        
-        const emergencyLight = new THREE.PointLight(0xff0000, 0.5, 8);
-        emergencyLight.position.set(pos.x, pos.y + 3, pos.z);
-        room1.add(emergencyLight);
-        
-        const bulb = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 8, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0xff0000,
-                emissive: 0xff0000,
-                emissiveIntensity: 1.0
-            })
-        );
-        bulb.position.copy(emergencyLight.position);
-        room1.add(bulb);
-    }
-    
-    // ========================================
-    // BUBBLE PARTICLE SYSTEM
-    // ========================================
-    
-    this.bubbles = [];
-    
-    for (let i = 0; i < 50; i++) {
-        const bubble = new THREE.Mesh(
-            new THREE.SphereGeometry(0.05 + Math.random() * 0.1, 8, 8),
-            new THREE.MeshPhysicalMaterial({
-                color: 0xffffff,
-                transmission: 0.95,
-                thickness: 0.5,
-                roughness: 0.0,
-                transparent: true,
-                opacity: 0.3
-            })
-        );
-        
-        bubble.position.set(
-            (Math.random() - 0.5) * 50,
-            Math.random() * 10 - 3,
-            (Math.random() - 0.5) * 30
-        );
-        
-        bubble.userData = {
-            riseSpeed: 0.01 + Math.random() * 0.02,
-            wobbleSpeed: 1.0 + Math.random() * 2.0,
-            wobbleAmount: 0.2 + Math.random() * 0.3,
-            phaseOffset: Math.random() * Math.PI * 2
-        };
-        
-        room1.add(bubble);
-        this.bubbles.push(bubble);
-    }
-    
-    // ========================================
-    // DEEP SEA FEATURES
-    // ========================================
-    
-    // Sunken treasure chest (easter egg)
-    const chest = new THREE.Mesh(
-        new THREE.BoxGeometry(1.5, 1.0, 1.0),
-        new THREE.MeshStandardMaterial({
-            color: 0x8b4513,
-            roughness: 0.9,
-            metalness: 0.1
-        })
-    );
-    chest.position.set(12, -2.3, -15);
-    chest.rotation.y = 0.3;
-    chest.castShadow = true;
-    room1.add(chest);
-    
-    // Gold glow from chest
-    const chestGlow = new THREE.PointLight(0xffd700, 1.5, 5);
-    chestGlow.position.set(12, -2.0, -15);
-    room1.add(chestGlow);
-    
-    // Ancient ruins (stone pillars)
-    for (let i = 0; i < 4; i++) {
-        const pillar = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.5, 0.6, 3 + Math.random() * 2, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x5a5a5a,
-                roughness: 0.95
-            })
-        );
-        pillar.position.set(
-            (Math.random() - 0.5) * 35,
-            -2.5 + pillar.geometry.parameters.height / 2,
-            (Math.random() - 0.5) * 22
-        );
-        pillar.rotation.set(
-            (Math.random() - 0.5) * 0.3,
-            Math.random() * Math.PI,
-            (Math.random() - 0.5) * 0.3
-        );
-        pillar.castShadow = true;
-        room1.add(pillar);
-    }
-    
-    // Bioluminescent floor plants
-    for (let i = 0; i < 30; i++) {
-        const plant = new THREE.Mesh(
-            new THREE.ConeGeometry(0.15, 0.5, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0x00ff88,
-                emissive: 0x00ff88,
-                emissiveIntensity: 1.0
-            })
-        );
-        plant.position.set(
-            (Math.random() - 0.5) * 45,
-            -2.5,
-            (Math.random() - 0.5) * 28
-        );
-        room1.add(plant);
-        
-        const plantLight = new THREE.PointLight(0x00ff88, 0.8, 3);
-        plantLight.position.copy(plant.position);
-        plantLight.position.y += 0.25;
-        room1.add(plantLight);
-    }
-    
-    // ========================================
-    // SUBMARINE WINDOW VIEWS
-    // ========================================
-    
-    // Research equipment inside pods
-    podPositions.slice(0, 3).forEach(pos => {
-        // Computer terminal
-        const terminal = new THREE.Mesh(
-            new THREE.BoxGeometry(0.8, 0.6, 0.1),
-            new THREE.MeshStandardMaterial({
-                color: 0x1a1a1a,
-                emissive: 0x00ff00,
-                emissiveIntensity: 0.3
-            })
-        );
-        terminal.position.set(pos.x + 1.5, pos.y - 0.5, pos.z);
-        room1.add(terminal);
-        
-        // Control panel buttons
-        for (let i = 0; i < 6; i++) {
-            const button = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.05, 0.05, 0.05, 16),
-                new THREE.MeshStandardMaterial({
-                    color: [0xff0000, 0x00ff00, 0xffff00][i % 3],
-                    emissive: [0xff0000, 0x00ff00, 0xffff00][i % 3],
-                    emissiveIntensity: 0.5
-                })
-            );
-            button.position.set(
-                pos.x + 1.5 + (i % 3 - 1) * 0.2,
-                pos.y - 0.8,
-                pos.z + Math.floor(i / 3) * 0.2
-            );
-            button.rotation.x = Math.PI / 2;
-            room1.add(button);
-        }
-    });
-    
-    // ========================================
-    // FINAL SETUP
-    // ========================================
-    
-    room1.position.set(0, 0, 0);
-    this.rooms.push(room1);
-    this.scene.add(room1);
-    
-    console.log("🌊 Underwater aquarium gallery created with marine life!");
 }
 
+createRainSplash(x, z) {
+    // Find nearest puddle and trigger ripple
+    this.puddles.forEach(puddle => {
+        const dx = puddle.position.x - x;
+        const dz = puddle.position.z - z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        
+        if (distance < puddle.userData.radius && Math.random() < 0.05) {
+            puddle.userData.rippleTimer = 0;
+        }
+    });
+}
 
+// Puddle ripple animation
+updatePuddles(time) {
+    this.puddles.forEach(puddle => {
+        puddle.userData.rippleTimer += 0.05;
+        
+        const ripples = puddle.userData.ripples;
+        const currentRipple = Math.floor(puddle.userData.rippleTimer / 30) % 3;
+        
+        ripples.forEach((ripple, index) => {
+            const phase = (puddle.userData.rippleTimer - index * 30) / 30;
+            
+            if (phase > 0 && phase < 1) {
+                const scale = 0.1 + phase * puddle.userData.radius;
+                ripple.scale.set(scale, scale, 1);
+                ripple.material.opacity = (1 - phase) * 0.5;
+            } else {
+                ripple.material.opacity = 0;
+            }
+        });
+    });
+}
 
+// Steam vent particle animation
+updateSteamVents() {
+    this.steamVents.forEach(vent => {
+        const positions = vent.userData.particles.geometry.attributes.position.array;
+        
+        for (let i = 0; i < vent.userData.particleCount; i++) {
+            // Update position
+            positions[i * 3] += vent.userData.velocities[i].x;
+            positions[i * 3 + 1] += vent.userData.velocities[i].y;
+            positions[i * 3 + 2] += vent.userData.velocities[i].z;
+            
+            // Update lifetime
+            vent.userData.lifetimes[i]++;
+            
+            // Reset particle when it rises too high or lives too long
+            if (positions[i * 3 + 1] > 8 || vent.userData.lifetimes[i] > 100) {
+                positions[i * 3] = (Math.random() - 0.5) * 0.5;
+                positions[i * 3 + 1] = 0;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+                
+                vent.userData.velocities[i] = {
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: 0.05 + Math.random() * 0.05,
+                    z: (Math.random() - 0.5) * 0.02
+                };
+                
+                vent.userData.lifetimes[i] = 0;
+            }
+        }
+        
+        vent.userData.particles.geometry.attributes.position.needsUpdate = true;
+    });
+}
 
+// Neon sign flickering
+updateNeonSigns(time) {
+    this.neonSigns.forEach(sign => {
+        const data = sign.userData;
+        
+        // Realistic neon flicker (mostly stable, occasional flicker)
+        let intensity = data.baseIntensity;
+        
+        if (Math.random() < 0.02) {
+            // Sudden flicker
+            intensity *= 0.3 + Math.random() * 0.4;
+        } else {
+            // Gentle variation
+            intensity += Math.sin(time * data.flickerSpeed) * 0.2;
+        }
+        
+        data.light.intensity = Math.max(0, intensity);
+    });
+}
 
+// Holographic display animation
+updateHolograms(time) {
+    this.holographicAds.forEach(hologram => {
+        const data = hologram.userData;
+        
+        // Floating motion
+        data.floatPhase += 0.02;
+        hologram.position.y += Math.sin(data.floatPhase) * 0.002;
+        
+        // Rotation
+        data.content.rotation.y += data.rotationSpeed;
+        
+        // Scanline effect
+        const scanlinePos = (time * 2) % 2 - 1;
+        data.scanLines.position.y = scanlinePos;
+        
+        // Glitch effect (occasional)
+        if (Math.random() < 0.005) {
+            data.content.position.x = (Math.random() - 0.5) * 0.1;
+            setTimeout(() => {
+                data.content.position.x = 0;
+            }, 50);
+        }
+        
+        // Light pulsing
+        data.light.intensity = 1.5 + Math.sin(time * 2 + data.floatPhase) * 0.5;
+        
+        // Beam opacity variation
+        data.beam.material.opacity = 0.15 + Math.sin(time * 3) * 0.05;
+    });
+}
 
+// Drone camera following
+updateDrones() {
+    if (!this.camera) return;
+    
+    this.droneCameras.forEach(drone => {
+        const data = drone.userData;
+        
+        // Target position (player position + offset)
+        data.targetPosition.copy(this.camera.position);
+        data.targetPosition.add(data.offset);
+        
+        // Smooth follow
+        drone.position.lerp(data.targetPosition, 0.02);
+        
+        // Bobbing motion
+        data.bobPhase += 0.03;
+        drone.position.y += Math.sin(data.bobPhase) * 0.01;
+        
+        // Rotate propellers
+        data.propellers.forEach((propeller, index) => {
+            propeller.rotation.y += 0.5;
+        });
+        
+        // Look at player
+        drone.lookAt(this.camera.position);
+        
+        // LED blinking
+        const blinkSpeed = 2;
+        const blinkPhase = (Date.now() * 0.001 * blinkSpeed) % 1;
+        data.led.material.emissiveIntensity = blinkPhase < 0.5 ? 2 : 0.5;
+    });
+}
 
+// Flickering screen effects
+updateFlickeringScreens(time) {
+    this.flickeringScreens.forEach(screen => {
+        let intensity = screen.baseIntensity;
+        
+        // Random flicker
+        if (Math.random() < 0.1) {
+            intensity *= 0.2 + Math.random() * 0.6;
+        } else {
+            intensity += Math.sin(time * screen.flickerSpeed) * 0.2;
+        }
+        
+        screen.mesh.material.emissiveIntensity = Math.max(0, intensity);
+    });
+}
 
+// LED billboard border animation
+updateLEDBillboards(time) {
+    this.ledBillboards.forEach(billboard => {
+        const data = billboard.userData;
+        
+        if (data.borderLights) {
+            data.borderLights.forEach((led, index) => {
+                // Chasing light effect
+                const phase = (time * 2 + index * 0.1) % 1;
+                led.material.emissiveIntensity = 1 + Math.sin(phase * Math.PI * 2) * 1;
+            });
+        }
+    });
+}
 
-//   createAvatar() {
-//     this.avatarGroup = new THREE.Group();
-//     const avatarMaterial = new THREE.MeshBasicMaterial({
-//         color: 0xffffff,
-//         transparent: true,
-//         opacity: 0.1 // ✓ FIXED: Much less visible (was 0.3)
-//     });
+// Fog layer movement
+updateFogLayers(time) {
+    if (!this.fogLayers) return;
+    
+    this.fogLayers.forEach(fog => {
+        fog.floatPhase += 0.01;
+        fog.mesh.position.y = fog.baseY + Math.sin(fog.floatPhase) * 0.5;
+        fog.mesh.material.opacity = 0.05 + Math.sin(time * 0.5 + fog.floatPhase) * 0.02;
+    });
+}
 
-//     const clickablePlane = new THREE.Mesh(
-//         new THREE.PlaneGeometry(0.5, 0.5),
-//         new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.0 })
-//     );
-//     clickablePlane.position.set(2, 1.7, 2);
-//     this.avatarGroup.add(clickablePlane);
+// Cyberpunk light variation
+updateCyberpunkLights(time) {
+    this.cyberpunkLights.forEach(lightData => {
+        // Subtle intensity variation
+        const variation = Math.sin(time * lightData.flickerSpeed) * 0.3;
+        lightData.light.intensity = lightData.baseIntensity + variation;
+        
+        // Occasional surge
+        if (Math.random() < 0.01) {
+            lightData.light.intensity = lightData.baseIntensity * 1.5;
+            setTimeout(() => {
+                lightData.light.intensity = lightData.baseIntensity;
+            }, 100);
+        }
+    });
+}
 
-//     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 32), avatarMaterial);
-//     body.position.set(2, 0.5, 2);
-//     this.avatarGroup.add(body);
+// ========================================
+// COLLISION DETECTION (narrow alley)
+// ========================================
 
-//     const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), avatarMaterial);
-//     head.position.set(2, 1.2, 2);
-//     this.avatarGroup.add(head);
+checkCollisions() {
+    if (!this.camera) return;
+    
+    const pos = this.camera.position;
+    const alleyWidth = 5.5; // Narrower collision bounds
+    
+    // Side walls
+    if (pos.x < -alleyWidth) pos.x = -alleyWidth;
+    if (pos.x > alleyWidth) pos.x = alleyWidth;
+    
+    // Length bounds
+    if (pos.z < -38) pos.z = -38;
+    if (pos.z > 35) pos.z = 35;
+    
+    // Floor (wet ground)
+    if (pos.y < 1.6) pos.y = 1.6;
+    if (pos.y > 8) pos.y = 8; // Ceiling limit
+}
 
-//     const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-//     const leftArm = new THREE.Mesh(armGeometry, avatarMaterial);
-//     leftArm.position.set(1.7, 0.7, 2);
-//     leftArm.rotation.z = Math.PI / 4;
-//     this.avatarGroup.add(leftArm);
+// ========================================
+// SPAWN POSITION
+// ========================================
 
-//     const rightArm = new THREE.Mesh(armGeometry, avatarMaterial);
-//     rightArm.position.set(2.3, 0.7, 2);
-//     rightArm.rotation.z = -Math.PI / 4;
-//     this.avatarGroup.add(rightArm);
+getSpawnPosition() {
+    return {
+        position: new THREE.Vector3(0, 1.6, 30), // Start at alley entrance
+        rotation: Math.PI // Looking into the alley
+    };
+}
 
-//     const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 32);
-//     const leftLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-//     leftLeg.position.set(1.8, 0.25, 2);
-//     this.avatarGroup.add(leftLeg);
+// ========================================
+// UPDATE IN MAIN ANIMATE LOOP
+// ========================================
 
-//     const rightLeg = new THREE.Mesh(legGeometry, avatarMaterial);
-//     rightLeg.position.set(2.2, 0.25, 2);
-//     this.avatarGroup.add(rightLeg);
+// Add this to your existing animate() method:
 
-//     this.avatarGroup.userData = { isAvatar: true };
-//     this.scene.add(this.avatarGroup);
-
-//     this.setupAvatarAnimation();
-//     this.updateAvatarPosition();
-// }
-
-//     setupAvatarAnimation() {
-//         const times = [0, 1, 2];
-//         const armValues = [
-//             [Math.PI / 4, -Math.PI / 4],
-//             [-Math.PI / 4, Math.PI / 4],
-//             [Math.PI / 4, -Math.PI / 4]
-//         ];
-
-//         const leftArmTrack = new THREE.NumberKeyframeTrack(
-//             '.children[3].rotation[z]',
-//             times,
-//             armValues.map(v => v[0])
-//         );
-//         const rightArmTrack = new THREE.NumberKeyframeTrack(
-//             '.children[4].rotation[z]',
-//             times,
-//             armValues.map(v => v[1])
-//         );
-
-//         const clip = new THREE.AnimationClip('avatarWave', 2, [leftArmTrack, rightArmTrack]);
-//         const action = this.animationMixer.clipAction(clip, this.avatarGroup);
-//         action.setLoop(THREE.LoopRepeat);
-//         action.play();
-//     }
-
-//     updateAvatarPosition() {
-//         if (this.isMobile) {
-//             const roomCenter = this.rooms[this.currentRoom].position.clone();
-//             this.avatarGroup.position.copy(roomCenter);
-//             this.avatarGroup.position.y = 0.5;
-//         } else {
-//             const direction = new THREE.Vector3();
-//             this.camera.getWorldDirection(direction);
-//             direction.y = 0;
-//             direction.normalize().multiplyScalar(3);
-//             this.avatarGroup.position.copy(this.camera.position).add(direction);
-//             this.avatarGroup.position.y = 0.5;
-//         }
-//     }
 
     async setupAudio() {
             try {
@@ -1257,38 +2039,30 @@ createGallery() {
            console.log("🚀 Virtual Gallery loaded");
        }
 
-
-
-   animate() {
+animate() {
     requestAnimationFrame(() => this.animate());
-    const delta = 0.016;
-    this.time += delta;
+  
     
+    const delta = 0.016;
+    
+    this.time += delta;
     this.update();
     this.updateImageEffects();
     this.updateLighting();
-    this.updateFoodParticles();
-    this.updateAttractedFish();
-    
-    // ✨ NEW: Update fish follow camera
-    if (this.followingFish) {
-        this.updateFishFollowCamera();
+   
+    if (this.currentGalleryIndex === 34) { // Adjust index as needed
+        this.updateCyberpunkAnimations();
     }
-    
+   
     this.renderer.render(this.scene, this.camera);
     this.updateArtworkProgress();
     if (this.isMobile) this.controls.update();
-    // this.updateAvatarPosition();
     
-    if (this.isRecording) {
-        // Frame capture handled by MediaRecorder
-    }
-      if (this.isDiving) {
-        this.updateSubmarineDive();
-    }
     this.animationMixer.update(delta * this.animationSpeed);
     this.updateObjectAnimations();
 }
+
+
 showArtworkInfo(index) {
     const metadata = this.metadata[index];
     if (!metadata) return;
@@ -1382,28 +2156,30 @@ toggleHelpOverlay() {
         animation: scaleIn 0.3s ease;
     `;
     
-    const shortcuts = this.isMobile ? `
-        <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">📱 Mobile Controls</h2>
-        <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
-            <strong>👆 Swipe</strong><span>Look around</span>
-            <strong>🤏 Pinch</strong><span>Zoom in/out</span>
-            <strong>👆 Tap</strong><span>Focus artwork</span>
-            <strong>👆👆 Double-tap</strong><span>Open slider</span>
-            <strong>🕹️ Joystick</strong><span>Move (bottom-left)</span>
-        </div>
-    ` : `
-        <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">⌨️ Keyboard Shortcuts</h2>
-        <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
-            <strong>W A S D</strong><span>Move around</span>
-            <strong>Q / E</strong><span>Rotate left/right</span>
-            <strong>1-9</strong><span>Jump to artwork</span>
-            <strong>← →</strong><span>Prev/Next artwork</span>
-            <strong>Mouse</strong><span>Look around</span>
-            <strong>ESC</strong><span>Unlock/Exit</span>
-            <strong>?</strong><span>Toggle help</span>
-            <strong>Double-click</strong><span>Focus artwork</span>
-        </div>
-    `;
+const shortcuts = this.isMobile ? `
+    <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">📱 Mobile Controls</h2>
+    <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
+        <strong>👆 Swipe</strong><span>Look around</span>
+        <strong>🤏 Pinch</strong><span>Zoom in/out</span>
+        <strong>👆 Tap</strong><span>Focus artwork</span>
+        <strong>👆👆 Double-tap</strong><span>Open slider</span>
+        <strong>🕹️ Joystick</strong><span>Move (bottom-left)</span>
+    </div>
+` : `
+    <h2 style="margin: 0 0 25px 0; text-align: center; font-size: 28px; color: #4CAF50;">⌨️ Keyboard Shortcuts</h2>
+    <div style="display: grid; grid-template-columns: auto 1fr; gap: 15px 25px; font-size: 15px;">
+        <strong>W A S D</strong><span>Move around</span>
+        <strong>Q / E</strong><span>Rotate left/right</span>
+        <strong>[ / ]</strong><span>Lower/Raise camera</span>
+        <strong>PgUp / PgDn</strong><span>Adjust height</span>
+        <strong>1-9</strong><span>Jump to artwork</span>
+        <strong>← →</strong><span>Prev/Next artwork</span>
+        <strong>Mouse</strong><span>Look around</span>
+        <strong>ESC</strong><span>Unlock/Exit</span>
+        <strong>?</strong><span>Toggle help</span>
+        <strong>Double-click</strong><span>Focus artwork</span>
+    </div>
+`;
     
     help.innerHTML = `
         ${shortcuts}
@@ -1540,261 +2316,7 @@ toggleHelpOverlay() {
         this.showMessage('recordStatus', 'Recording stopped', 'success');
         console.log("🎥 Recording stopped");
     }
-feedFish() {
-    console.log("🍽️ Releasing food particles...");
-    
-    // Get click position or use camera forward
-    const foodPosition = this.camera.position.clone();
-    const direction = new THREE.Vector3();
-    this.camera.getWorldDirection(direction);
-    foodPosition.add(direction.multiplyScalar(5));
-    
-    // Create food particle system
-    const foodGroup = new THREE.Group();
-    
-    // Create 20 food particles
-    for (let i = 0; i < 20; i++) {
-        const particle = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 8, 8),
-            new THREE.MeshStandardMaterial({
-                color: 0xffa500, // Orange food pellets
-                emissive: 0xff8800,
-                emissiveIntensity: 0.5
-            })
-        );
-        
-        // Random spread
-        particle.position.set(
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2
-        );
-        
-        particle.userData = {
-            velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.02,
-                -0.02 - Math.random() * 0.03, // Sink downward
-                (Math.random() - 0.5) * 0.02
-            ),
-            lifespan: 5000 + Math.random() * 3000, // 5-8 seconds
-            createdTime: Date.now()
-        };
-        
-        foodGroup.add(particle);
-    }
-    
-    foodGroup.position.copy(foodPosition);
-    this.scene.add(foodGroup);
-    
-    // Store for animation
-    if (!this.foodParticles) this.foodParticles = [];
-    this.foodParticles.push(foodGroup);
-    
-    // Attract nearby fish
-    this.attractFishToFood(foodPosition);
-    
-    // Show feeding notification
-    this.showFeedingNotification();
-}
 
-attractFishToFood(foodPosition) {
-    if (!this.fishSchools) return;
-    
-    const attractionRadius = 8;
-    
-    this.fishSchools.forEach(fish => {
-        const distance = fish.position.distanceTo(foodPosition);
-        
-        if (distance < attractionRadius) {
-            // Store original data
-            if (!fish.userData.originalOrbitRadius) {
-                fish.userData.originalOrbitRadius = fish.userData.orbitRadius;
-                fish.userData.originalSpeed = fish.userData.speed;
-            }
-            
-            // Make fish swim toward food
-            fish.userData.attractedToFood = true;
-            fish.userData.foodTarget = foodPosition.clone();
-            fish.userData.attractionStartTime = Date.now();
-            
-            console.log("Fish attracted to food!");
-        }
-    });
-}
-
-updateFoodParticles() {
-    if (!this.foodParticles || this.foodParticles.length === 0) return;
-    
-    const currentTime = Date.now();
-    
-    this.foodParticles.forEach((foodGroup, groupIndex) => {
-        const particlesToRemove = [];
-        
-        foodGroup.children.forEach((particle, index) => {
-            const data = particle.userData;
-            const age = currentTime - data.createdTime;
-            
-            // Remove if lifespan exceeded
-            if (age > data.lifespan) {
-                particlesToRemove.push(index);
-                return;
-            }
-            
-            // Apply velocity (sinking motion)
-            particle.position.add(data.velocity);
-            
-            // Check if fish ate it
-            let wasEaten = false;
-            if (this.fishSchools) {
-                this.fishSchools.forEach(fish => {
-                    const worldPos = new THREE.Vector3();
-                    particle.getWorldPosition(worldPos);
-                    
-                    if (fish.position.distanceTo(worldPos) < 0.5) {
-                        wasEaten = true;
-                        
-                        // Create eating effect
-                        this.createEatingEffect(worldPos);
-                    }
-                });
-            }
-            
-            if (wasEaten) {
-                particlesToRemove.push(index);
-            }
-            
-            // Fade out near end of lifespan
-            const fadeProgress = age / data.lifespan;
-            if (fadeProgress > 0.7) {
-                particle.material.opacity = 1 - ((fadeProgress - 0.7) / 0.3);
-                particle.material.transparent = true;
-            }
-        });
-        
-        // Remove eaten/expired particles
-        particlesToRemove.reverse().forEach(index => {
-            const particle = foodGroup.children[index];
-            particle.geometry.dispose();
-            particle.material.dispose();
-            foodGroup.remove(particle);
-        });
-        
-        // Remove empty food groups
-        if (foodGroup.children.length === 0) {
-            this.scene.remove(foodGroup);
-            this.foodParticles.splice(groupIndex, 1);
-        }
-    });
-}
-
-updateAttractedFish() {
-    if (!this.fishSchools) return;
-    
-    const currentTime = Date.now();
-    
-    this.fishSchools.forEach(fish => {
-        if (fish.userData.attractedToFood) {
-            const elapsed = currentTime - fish.userData.attractionStartTime;
-            
-            // Fish stays attracted for 8 seconds
-            if (elapsed > 8000) {
-                // Return to normal behavior
-                fish.userData.attractedToFood = false;
-                fish.userData.orbitRadius = fish.userData.originalOrbitRadius;
-                fish.userData.speed = fish.userData.originalSpeed;
-                return;
-            }
-            
-            // Move toward food
-            const direction = new THREE.Vector3()
-                .subVectors(fish.userData.foodTarget, fish.position)
-                .normalize();
-            
-            fish.position.add(direction.multiplyScalar(0.08));
-            fish.lookAt(fish.userData.foodTarget);
-            
-            // Faster movement when attracted
-            fish.userData.speed = fish.userData.originalSpeed * 2;
-        }
-    });
-}
-
-createEatingEffect(position) {
-    // Create small splash/bubble effect
-    const splash = new THREE.Mesh(
-        new THREE.SphereGeometry(0.2, 8, 8),
-        new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: 0.6
-        })
-    );
-    splash.position.copy(position);
-    this.scene.add(splash);
-    
-    // Animate splash
-    const startTime = Date.now();
-    const duration = 500;
-    
-    const animateSplash = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = elapsed / duration;
-        
-        if (progress >= 1) {
-            this.scene.remove(splash);
-            splash.geometry.dispose();
-            splash.material.dispose();
-            return;
-        }
-        
-        splash.scale.setScalar(1 + progress * 2);
-        splash.material.opacity = 0.6 * (1 - progress);
-        
-        requestAnimationFrame(animateSplash);
-    };
-    
-    animateSplash();
-}
-
-showFeedingNotification() {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(255, 165, 0, 0.95);
-        color: white;
-        padding: 15px 30px;
-        border-radius: 10px;
-        z-index: 10000;
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-        font-weight: bold;
-        animation: slideDown 0.3s ease;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    `;
-    
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 24px;">🍽️</span>
-            <span>Food Released! Fish incoming...</span>
-        </div>
-        <style>
-            @keyframes slideDown {
-                from { transform: translate(-50%, -100%); opacity: 0; }
-                to { transform: translate(-50%, 0); opacity: 1; }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'fadeOut 0.5s ease';
-        setTimeout(() => notification.remove(), 500);
-    }, 3000);
-}
 
     saveRecording() {
         const blob = new Blob(this.recordedFrames, { type: 'video/webm' });
@@ -1836,159 +2358,204 @@ showFeedingNotification() {
     }
 
     updateObjectAnimations() {
-
             const time = this.time || Date.now() * 0.001;
         if (this.isAnimatingObjects) {
             this.images.forEach(img => {
                 img.mesh.rotation.y += 0.02 * this.animationSpeed;
             });
-            this.wallLights.forEach(light => {
-                light.left.rotation.y += 0.03 * this.animationSpeed;
-                light.right.rotation.y += 0.03 * this.animationSpeed;
-            });
-            this.glassSpotlights.forEach(light => {
-                light.mesh.rotation.y += 0.01 * this.animationSpeed;
-            });
+           
         }
-         if (this.fishSchools) {
-        this.fishSchools.forEach((fish, index) => {
-            const data = fish.userData;
+        if (this.turbine) {
+        this.turbine.rotation.z += this.turbine.userData.rotationSpeed;
+    }
+    
+    // 2. CENTER SCULPTURE ROTATION
+    if (this.centerSculpture) {
+        this.centerSculpture.rotation.y += this.centerSculpture.userData.rotationSpeed;
+    }
+    
+    // 3. SUSPENDED ARTWORKS (rotate + sway)
+    if (this.suspendedArtworks) {
+        this.suspendedArtworks.forEach((artwork, index) => {
+            // Slow rotation
+            artwork.rotation.y += artwork.userData.rotationSpeed;
             
-            // Orbital swimming path
-            data.orbitAngle += data.orbitSpeed;
-            const orbitX = Math.cos(data.orbitAngle) * data.orbitRadius;
-            const orbitZ = Math.sin(data.orbitAngle) * data.orbitRadius;
-            
-            // Wave motion (up/down)
-            const wave = Math.sin(time * data.speed + data.phase) * data.amplitude;
-            
-            fish.position.x = orbitX;
-            fish.position.y = wave;
-            fish.position.z = orbitZ;
-            
-            // Face direction of travel
-            const nextAngle = data.orbitAngle + 0.01;
-            const nextX = Math.cos(nextAngle) * data.orbitRadius;
-            const nextZ = Math.sin(nextAngle) * data.orbitRadius;
-            fish.lookAt(new THREE.Vector3(nextX, wave, nextZ));
-            
-            // Tail wiggle
-            if (fish.children[0]) {
-                fish.children[0].rotation.y = Math.sin(time * 5 + index) * 0.3;
-            }
+            // Swaying motion (like hanging on cables)
+            const sway = Math.sin(time * 0.5 + index) * artwork.userData.swayAmount;
+            artwork.rotation.z = sway;
         });
-
-         if (this.fish) {
-        this.fish.forEach((fish, index) => {
-            if (fish.userData.isHungry && fish.userData.targetFood) {
-                // Swim toward food
-                const direction = new THREE.Vector3()
-                    .subVectors(fish.userData.targetFood, fish.position)
-                    .normalize();
-                
-                fish.position.add(direction.multiplyScalar(0.05));
-                fish.lookAt(fish.userData.targetFood);
-                
-                // Stop when close
-                if (fish.position.distanceTo(fish.userData.targetFood) < 1) {
-                    fish.userData.isHungry = false;
-                    fish.userData.targetFood = null;
-                }
+    }
+    
+    // 4. EDISON BULBS (subtle swaying + flicker)
+    if (this.edisonBulbs) {
+        this.edisonBulbs.forEach((bulb, index) => {
+            // Gentle sway
+            const baseY = bulb.bulb.position.y;
+            bulb.bulb.position.y = baseY + Math.sin(time * 0.3 + index * 0.5) * 0.02;
+            bulb.light.position.copy(bulb.bulb.position);
+            
+            // Random flicker
+            if (Math.random() < 0.01) {
+                const flicker = 0.8 + Math.random() * 0.4;
+                bulb.light.intensity = 1.5 * flicker;
+                bulb.bulb.material.emissiveIntensity = 1.2 * flicker;
             } else {
-                // Normal swimming pattern
-                fish.position.x += Math.sin(time * 0.5 + index) * 0.02;
-                fish.position.y += Math.cos(time * 0.3 + index) * 0.01;
-                fish.position.z += Math.sin(time * 0.4 + index) * 0.02;
+                bulb.light.intensity += (1.5 - bulb.light.intensity) * 0.1;
+                bulb.bulb.material.emissiveIntensity += (1.2 - bulb.bulb.material.emissiveIntensity) * 0.1;
             }
         });
     }
     
-    // Food particles falling
-    if (this.foodParticles) {
-        this.foodParticles = this.foodParticles.filter(food => {
-            food.position.add(food.userData.velocity);
-            food.userData.lifetime--;
+    // 5. TRACK SPOTLIGHTS (subtle movement + flicker)
+    if (this.trackSpotlights) {
+        this.trackSpotlights.forEach((light, index) => {
+            // Subtle rotation (like wind or vibration)
+            light.group.rotation.x += Math.sin(time * 0.2 + index) * 0.0001;
+            light.group.rotation.z += Math.cos(time * 0.3 + index) * 0.0001;
             
-            if (food.userData.lifetime <= 0 || food.position.y < -2) {
-                this.scene.remove(food);
-                return false;
-            }
-            return true;
-        });
-    }
-    }
-    
-    // 2. JELLYFISH FLOATING (vertical bobbing + pulsing)
-    if (this.jellyfish) {
-        this.jellyfish.forEach((jelly, index) => {
-            const data = jelly.userData;
-            
-            // Slow vertical float
-            const baseY = jelly.position.y;
-            jelly.position.y = baseY + Math.sin(time * data.floatSpeed + data.floatPhase) * data.floatAmplitude * 0.01;
-            
-            // Bell pulsing (scale animation)
-            const pulse = 1.0 + Math.sin(time * data.pulseSpeed) * 0.1;
-            jelly.children[0].scale.set(1, pulse, 1);
-            
-            // Tentacles wave
-            for (let i = 1; i < jelly.children.length - 1; i++) {
-                const tentacle = jelly.children[i];
-                tentacle.rotation.x = Math.sin(time * 2 + i) * 0.3;
-                tentacle.rotation.z = Math.cos(time * 2 + i) * 0.2;
-            }
-            
-            // Glow pulse
-            const light = jelly.children[jelly.children.length - 1];
-            if (light.isPointLight) {
-                light.intensity = 2.0 + Math.sin(time * data.pulseSpeed) * 1.0;
+            // Occasional flicker/spark
+            if (Math.random() < 0.005) {
+                light.spotlight.intensity = 5.0 + Math.random() * 2.0;
+                light.lens.material.emissiveIntensity = 1.5;
+            } else {
+                light.spotlight.intensity += (3.5 - light.spotlight.intensity) * 0.05;
+                light.lens.material.emissiveIntensity += (0.8 - light.lens.material.emissiveIntensity) * 0.05;
             }
         });
     }
     
-    // 3. KELP SWAYING
-    if (this.kelpStrands) {
-        this.kelpStrands.forEach(kelp => {
-            const data = kelp.userData;
-            const sway = Math.sin(time * data.swaySpeed + data.phaseOffset) * data.swayAmount;
-            kelp.rotation.z = sway;
-        });
+    // 6. OFFICE FLUORESCENT FLICKER
+    if (this.officeFlicker && Math.random() < 0.02) {
+        this.officeFlicker.intensity = Math.random() < 0.5 ? 0.5 : 2.0;
+        setTimeout(() => {
+            if (this.officeFlicker) this.officeFlicker.intensity = 2.0;
+        }, 50 + Math.random() * 100);
     }
     
-    // 4. BUBBLES RISING
-    if (this.bubbles) {
-        this.bubbles.forEach(bubble => {
-            const data = bubble.userData;
-            
-            // Rise upward
-            bubble.position.y += data.riseSpeed;
-            
-            // Wobble sideways
-            bubble.position.x += Math.sin(time * data.wobbleSpeed + data.phaseOffset) * data.wobbleAmount * 0.01;
-            
-            // Reset when reaching top
-            if (bubble.position.y > 8) {
-                bubble.position.y = -3;
-                bubble.position.x = (Math.random() - 0.5) * 50;
-                bubble.position.z = (Math.random() - 0.5) * 30;
+    // 7. STEAM VENTS (periodic puffs)
+    if (this.steamVents) {
+        this.steamVents.forEach(vent => {
+            const currentTime = Date.now();
+            if (currentTime - vent.lastPuff > vent.interval) {
+                this.createSteamPuff(vent.position);
+                vent.lastPuff = currentTime;
+                vent.interval = 3000 + Math.random() * 5000;
             }
         });
     }
     
-    // 5. WATER CAUSTICS LIGHT ANIMATION
-    if (this.causticsLight) {
-        // Simulate moving water surface refracting light
-        this.causticsLight.position.x = Math.sin(time * 0.3) * 5;
-        this.causticsLight.position.z = Math.cos(time * 0.5) * 5;
-        this.causticsLight.intensity = 1.5 + Math.sin(time * 0.8) * 0.3;
+  
+    
+    // 9. CATWALK RATTLING (if player nearby)
+    if (this.catwalks && this.camera) {
+        this.catwalks.forEach(catwalk => {
+            const distance = this.camera.position.distanceTo(catwalk.position);
+            if (distance < 5) {
+                // Shake when player is nearby
+                catwalk.position.y += Math.sin(time * 10) * 0.002;
+            }
+        });
     }
     
-    // 6. AIRLOCK WHEEL SPINNING (optional decoration)
-    if (this.airlockWheel && Math.random() < 0.01) {
-        // Occasionally spin
-        this.airlockWheel.rotation.z += 0.05;
+    // 10. FREIGHT ELEVATOR ANIMATION (if moving)
+    if (this.freightElevator && this.freightElevator.userData.isMoving) {
+        const elevator = this.freightElevator;
+        const targetY = elevator.userData.targetY || 0;
+        const currentY = elevator.position.y;
+        const speed = 0.05;
+        
+        if (Math.abs(targetY - currentY) > 0.1) {
+            // Move elevator
+            elevator.position.y += (targetY - currentY) * speed;
+            
+            // Warning lights flash
+            elevator.traverse(child => {
+                if (child.material && child.material.emissive && child.material.emissive.getHex() === 0xff0000) {
+                    child.material.emissiveIntensity = 1.5 + Math.sin(time * 10) * 0.5;
+                }
+            });
+            
+            // Mechanical sound effect (visual cue)
+            if (Math.floor(time * 10) % 2 === 0) {
+                elevator.rotation.z = 0.002;
+            } else {
+                elevator.rotation.z = -0.002;
+            }
+        } else {
+            // Arrived at destination
+            elevator.position.y = targetY;
+            elevator.userData.isMoving = false;
+            elevator.rotation.z = 0;
+            
+            // Turn off warning lights
+            elevator.traverse(child => {
+                if (child.material && child.material.emissive && child.material.emissive.getHex() === 0xff0000) {
+                    child.material.emissiveIntensity = 1.5;
+                }
+            });
+            
+            console.log("🛗 Elevator arrived at level", elevator.userData.currentLevel);
+        }
     }
     }
+
+    createSteamPuff(position) {
+    const steamGroup = new THREE.Group();
+    
+    // Create multiple steam particles
+    for (let i = 0; i < 10; i++) {
+        const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 8, 8),
+            new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.6
+            })
+        );
+        
+        particle.position.set(
+            (Math.random() - 0.5) * 0.5,
+            (Math.random() - 0.5) * 0.5,
+            (Math.random() - 0.5) * 0.5
+        );
+        
+        steamGroup.add(particle);
+    }
+    
+    steamGroup.position.copy(position);
+    this.scene.add(steamGroup);
+    
+    // Animate steam rising and dissipating
+    const startTime = Date.now();
+    const duration = 2000;
+    
+    const animateSteam = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / duration;
+        
+        if (progress >= 1) {
+            this.scene.remove(steamGroup);
+            steamGroup.children.forEach(child => {
+                child.geometry.dispose();
+                child.material.dispose();
+            });
+            return;
+        }
+        
+        // Rise and expand
+        steamGroup.position.y += 0.03;
+        steamGroup.scale.setScalar(1 + progress * 2);
+        
+        // Fade out
+        steamGroup.children.forEach(child => {
+            child.material.opacity = 0.6 * (1 - progress);
+        });
+        
+        requestAnimationFrame(animateSteam);
+    };
+    
+    animateSteam();
+}
 
 updateLighting() {
     const time = this.time || 0;
@@ -2185,20 +2752,25 @@ updateLighting() {
             this.animationSpeed = parseFloat(slider.value);
             value.textContent = this.animationSpeed.toFixed(1);
         });
+    
+     // Camera Height Slider - FIXED VERSION
+const cameraHeightSlider = document.getElementById("cameraHeightSlider");
+const cameraHeightValue = document.getElementById("cameraHeightValue");
 
-          // Camera Height Slider - FIXED VERSION
-        const cameraHeightSlider = document.getElementById("cameraHeightSlider");
-        const cameraHeightValue = document.getElementById("cameraHeightValue");
-
-       if (cameraHeightSlider && cameraHeightValue) {
+if (cameraHeightSlider && cameraHeightValue) {
     cameraHeightSlider.addEventListener("input", () => {
+        // Get new height value
         this.cameraHeight = parseFloat(cameraHeightSlider.value);
         cameraHeightValue.textContent = this.cameraHeight.toFixed(1);
         
+        // Update the stored initial settings (so it persists on pointer lock)
         this.roomCameraSettings[0].position.y = this.cameraHeight;
         this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
+        
+        // Update camera position
         this.camera.position.y = this.cameraHeight;
         
+        // Update controls position (this is the critical fix!)
         if (!this.isMobile) {
             this.controls.getObject().position.y = this.cameraHeight;
         } else {
@@ -2207,16 +2779,13 @@ updateLighting() {
         }
     });
 }
-    
         document.getElementById("sensitivitySlider")?.addEventListener("input", () => {
             const sensitivitySlider = document.getElementById("sensitivitySlider");
             const sensitivityValue = document.getElementById("sensitivityValue");
             const sensitivity = parseFloat(sensitivitySlider.value);
             sensitivityValue.textContent = sensitivity.toFixed(3);
             this.controls.setSensitivity(sensitivity);
-        }); 
-
-
+        });
     
         const prevBtn = document.getElementById('prevImage');
         const nextBtn = document.getElementById('nextImage');
@@ -2634,112 +3203,64 @@ updateLighting() {
         console.log(this.controlsVisible ? "🖥️ Controls visible" : "🖥️ Controls hidden");
     }
 
- onKeyDown(event) {
-        // Existing movement keys
-        switch (event.key.toLowerCase()) {
-            case "w": this.keys.w = true; break;
-            case "a": this.keys.a = true; break;
-            case "s": this.keys.s = true; break;
-            case "d": this.keys.d = true; break;
-            case "q": this.keys.q = true; break;
-            case "e": this.keys.e = true; break;
-
-            // ✅ NEW: Glider toggle
-            case " ": // Spacebar
-                if (!this.isSliderActive && !this.isFocused && this.glider) {
-                    event.preventDefault();
-                    this.toggleGlider();
-                }
-                break;
-
-            // ✅ NEW: Zipline activation
-            case "z":
-                if (!this.isRidingZipline) {
-                    const nearbyZipline = this.checkNearZipline();
-                    if (nearbyZipline) {
-                        this.startZiplineRide(nearbyZipline);
-                    }
-                }
-                break;
-
-            // ✅ NEW: Manual weather change (for testing)
-            case "t":
-                if (this.weatherSystem) {
-                    this.changeWeather();
-                }
-                break;
-        }
- if (event.key === " " || event.code === "Space") {
-        console.log("🚀 SPACEBAR DETECTED!");
-        console.log("  - isSliderActive:", this.isSliderActive);
-        console.log("  - isFocused:", this.isFocused);
-        console.log("  - glider exists:", !!this.glider);
-        
-        if (!this.isSliderActive && !this.isFocused && this.glider) {
-            console.log("✅ All conditions met, toggling glider...");
-            event.preventDefault();
-            this.toggleGlider();
-        } else {
-            console.log("❌ Conditions NOT met:");
-            if (this.isSliderActive) console.log("  - Slider is active");
-            if (this.isFocused) console.log("  - Camera is focused");
-            if (!this.glider) console.log("  - Glider doesn't exist!");
-        }
+onKeyDown(event) {
+    // Existing movement keys
+  switch(event.key.toLowerCase()) {
+        case "w": this.keys.w = true; break;
+        case "a": this.keys.a = true; break;
+        case "s": this.keys.s = true; break;
+        case "d": this.keys.d = true; break;
+        case "q": this.keys.q = true; break;
+        case "e": 
+            this.keys.e = true;
+            // ✅ IMPROVED: Toggle spacewalk with E
+            if (!this.isSliderActive && !this.isFocused) {
+                this.toggleSpacewalk();
+                this.updateSpacewalkButton();
+            }
+            break;
+        case "c":
+            // ✅ ADD: Cycle spacewalk cameras
+            if (this.isSpacewalkMode) {
+                this.cycleSpacewalkCamera();
+                this.updateSpacewalkHints();
+            }
+            break;
+        case "control": this.isControlPressed = true; break;
+        case " ":  
+            if (this.nearWormhole) {
+                event.preventDefault();
+                this.teleportThroughWormhole();
+            }
+            break;
     }
-     if (event.key === 'PageUp' || event.key === ']') {
-    this.cameraHeight = Math.min(5.0, this.cameraHeight + 0.5);
-
-
-    document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
-    document.getElementById('cameraHeightSlider').value = this.cameraHeight;
     
-    // ✅ ADD: Actually update camera position
-    this.roomCameraSettings[0].position.y = this.cameraHeight;
-    this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
-    this.camera.position.y = this.cameraHeight;
+    // Height adjustment
+    if (event.key === 'PageUp' || event.key === ']') {
+        this.cameraHeight = Math.min(3.0, this.cameraHeight + 0.1);
+        document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
+        document.getElementById('cameraHeightSlider').value = this.cameraHeight;
+    }
+    if (event.key === 'PageDown' || event.key === '[') {
+        this.cameraHeight = Math.max(1.2, this.cameraHeight - 0.1);
+        document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
+        document.getElementById('cameraHeightSlider').value = this.cameraHeight;
+    }
     
-    if (!this.isMobile) {
-        this.controls.getObject().position.y = this.cameraHeight;
-    } else {
-        this.controls.target.y = this.cameraHeight;
-        this.controls.update();
+    // Artwork navigation
+    const num = parseInt(event.key);
+    if (num >= 4 && num <= 9 && num <= this.images.length + 3) {
+        this.focusOnArtwork(num - 4);
+    }
+    
+    // Help toggle
+    if (event.key === '?' || event.key === '/') {
+        this.toggleHelpOverlay();
+    }
+    if (event.key.toLowerCase() === 'r') {
+        this.resetCameraPosition();
     }
 }
-if (event.key === 'PageDown' || event.key === '[') {
-    this.cameraHeight = Math.max(-2.0, this.cameraHeight - 0.5); // ✅ CHANGED from 0.3 to -2.0
-
-
-    
-    document.getElementById('cameraHeightValue').textContent = this.cameraHeight.toFixed(1);
-    document.getElementById('cameraHeightSlider').value = this.cameraHeight;
-    
-    // ✅ ADD: Actually update camera position
-    this.roomCameraSettings[0].position.y = this.cameraHeight;
-    this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
-    this.camera.position.y = this.cameraHeight;
-    
-    if (!this.isMobile) {
-        this.controls.getObject().position.y = this.cameraHeight;
-    } else {
-        this.controls.target.y = this.cameraHeight;
-        this.controls.update();
-    }
-}
-
-        // Existing artwork navigation
-        const num = parseInt(event.key);
-        if (num >= 4 && num <= 9 && num <= this.images.length + 3) {
-            this.focusOnArtwork(num - 4);
-        }
-
-        // Help toggle
-        if (event.key === '?' || event.key === '/') {
-            this.toggleHelpOverlay();
-        }
-        if (event.key.toLowerCase() === 'r') {
-            this.resetCameraPosition();
-        }
-    }
 
     onKeyUp(event) {
         switch (event.key.toLowerCase()) {
@@ -2787,32 +3308,6 @@ if (event.key === 'PageDown' || event.key === '[') {
     this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
     this.isFocused = false;
 }
- checkCollisions() {
-        if (!this.isMobile) {
-            this.camera.position.y = this.cameraHeight || 1.6;
-
-            // ✓ FIXED: Sky Islands bounds (much larger to reach all islands)
-            const minX = -50; // ✓ CHANGE: was -13, now -50
-            const maxX = 50;  // ✓ CHANGE: was 13, now 50
-            const minZ = -50; // ✓ CHANGE: was -13, now -50
-            const maxZ = 50;  // ✓ CHANGE: was 13, now 50
-            const minY = -10; // Safety net (respawn if falling too far)
-
-            // Respawn if falling into the void
-            if (this.camera.position.y < minY) {
-                console.log("⚠️ Fell into void! Respawning at main island...");
-                this.camera.position.set(0, 2, 10);
-                this.controls.getObject().position.copy(this.camera.position);
-
-                // Show respawn message
-                this.showRespawnMessage();
-            }
-
-            this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
-            this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
-            this.controls.getObject().position.copy(this.camera.position);
-        }
-    }
 
     async computeImageHash(texture) {
         return new Promise((resolve) => {
@@ -3084,6 +3579,14 @@ if (event.key === 'PageDown' || event.key === '[') {
                 }
             }
         }
+        // Apply quantum superposition effect to artworks in quantum lab
+if (this.labArtworkSpots) {
+    this.images.forEach((img, index) => {
+        if (img.mesh.userData.quantum) {
+            this.makeArtworkQuantum(img.mesh, index);
+        }
+    });
+}
         console.log(`🎨 Images rendered in room ${this.currentRoom}:`, this.images.length, "Unique hashes:", seenHashes.size);
     }
 
@@ -3128,80 +3631,126 @@ if (event.key === 'PageDown' || event.key === '[') {
             );
         });
     }
+onCanvasClick(event) {
+    const currentTime = new Date().getTime();
+    const timeSinceLastClick = currentTime - this.lastClickTime;
 
-    onCanvasClick(event) {
-        const currentTime = new Date().getTime();
-        const timeSinceLastClick = currentTime - this.lastClickTime;
+    if (timeSinceLastClick < this.clickDelay) {
+        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-        if (timeSinceLastClick < this.clickDelay) {
-            this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            this.raycaster.setFromCamera(this.mouse, this.camera);
-            const intersects = this.raycaster.intersectObjects([...this.images.map(img => img.mesh), ...this.scene.children.filter(obj => (obj.parent && obj.parent.userData.isAvatar))]);
-
-            if (intersects.length > 0) {
-                const obj = intersects[0].object;
-                if (this.isFocused) {
-                    this.resetCamera();
-                    this.closeSlider();
-                } else if (obj.parent && obj.parent.userData.isAvatar) {
-                    this.showAvatarInstructions();
-                } else if (obj.userData.filename) {
-                    console.log(`Clicked image: ${obj.userData.filename}`);
-                    if (!this.clickSound.isPlaying) this.clickSound.play();
-                    this.focusImage(obj);
-                    this.scaleImage(obj);
-                    this.openSlider(obj);
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        
+        // Get all interactive objects including portal meshes
+        const interactiveObjects = [
+            ...this.images.map(img => img.mesh),
+            ...this.scene.children.filter(obj => (obj.parent && obj.parent.userData.isAvatar))
+        ];
+        
+        // ✓ ADD: Get all portal meshes from current room
+        const currentRoom = this.rooms[this.currentEra];
+        if (currentRoom) {
+            currentRoom.traverse(child => {
+                if (child.isMesh && child.parent?.userData?.isPortal) {
+                    interactiveObjects.push(child);
                 }
-            }
-            else{
-            if (this.fishSchools && this.fishSchools.length > 0) {
-                // Raycast against all fish
-                const fishIntersects = this.raycaster.intersectObjects(this.fishSchools, true);
-                
-                if (fishIntersects.length > 0) {
-                    const clickedFish = fishIntersects[0].object.parent || fishIntersects[0].object;
-                    
-                    // Check if it's actually a fish
-                    if (this.fishSchools.includes(clickedFish)) {
-                        this.followFish(clickedFish);
-                        
-                        // Play sound
-                        if (!this.clickSound.isPlaying) this.clickSound.play();
-                        
-                        // Show fish info
-                        this.showFishInfo(clickedFish);
-                    }
-                }
-            }
+            });
+        }
+        
+        const intersects = this.raycaster.intersectObjects(interactiveObjects, true);
+
+        if (intersects.length > 0) {
+            const obj = intersects[0].object;
             
-            // ========================================
-            // NEW: JELLYFISH FOLLOWING SYSTEM
-            // ========================================
-            if (this.jellyfish && this.jellyfish.length > 0) {
-                const jellyIntersects = this.raycaster.intersectObjects(
-                    this.jellyfish.map(j => j.children).flat(),
-                    true
-                );
-                
-                if (jellyIntersects.length > 0) {
-                    const clickedJelly = jellyIntersects[0].object.parent;
-                    
-                    if (this.jellyfish.includes(clickedJelly)) {
-                        this.followFish(clickedJelly); // Reuse follow system
-                        if (!this.clickSound.isPlaying) this.clickSound.play();
-                        this.showFishInfo(clickedJelly, true); // Pass true for jellyfish
-                    }
-                }
+            // ✓ CHECK: Portal click detection
+          // Add after existing click handling
+if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    
+    // Check if clicked on jukebox
+    if (obj.parent && obj.parent.userData.isJukebox) {
+        this.playJukeboxSong();
+        return;
+    }
+}
+            
+            // Rest of your existing click handling
+            if (this.isFocused) {
+                this.resetCamera();
+                this.closeSlider();
+            } else if (obj.parent && obj.parent.userData.isAvatar) {
+                this.showAvatarInstructions();
+            } else if (obj.userData.filename) {
+                console.log(`Clicked image: ${obj.userData.filename}`);
+                if (!this.clickSound.isPlaying) this.clickSound.play();
+                this.focusImage(obj);
+                this.scaleImage(obj);
+                this.openSlider(obj);
             }
         }
     }
     this.lastClickTime = currentTime;
-            
-      
-    }
+}
 
+playJukeboxSong() {
+    const songs = [
+        'Rock Around the Clock',
+        'Johnny B. Goode', 
+        'Great Balls of Fire',
+        'Blue Suede Shoes',
+        'Peggy Sue'
+    ];
+    
+    const randomSong = songs[Math.floor(Math.random() * songs.length)];
+    
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 0, 255, 0.95);
+        color: white;
+        padding: 20px 30px;
+        border-radius: 15px;
+        z-index: 10000;
+        font-family: 'Courier New', monospace;
+        font-size: 18px;
+        font-weight: bold;
+        border: 3px solid #ffd700;
+        box-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+        animation: jukeboxPop 0.5s ease;
+    `;
+    
+    notification.innerHTML = `
+        <div style="text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 10px;">🎵 NOW PLAYING 🎵</div>
+            <div style="font-size: 20px;">"${randomSong}"</div>
+        </div>
+        <style>
+            @keyframes jukeboxPop {
+                0% { transform: translateX(-50%) scale(0); opacity: 0; }
+                50% { transform: translateX(-50%) scale(1.1); }
+                100% { transform: translateX(-50%) scale(1); opacity: 1; }
+            }
+        </style>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Speed up record spinning
+    if (this.jukebox && this.jukebox.userData.record) {
+        this.jukebox.userData.rotationSpeed = 0.1;
+        setTimeout(() => {
+            this.jukebox.userData.rotationSpeed = 0.02;
+        }, 3000);
+    }
+    
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.5s ease';
+        setTimeout(() => notification.remove(), 500);
+    }, 3000);
+}
     openSlider(selectedMesh) {
        if (!this.isFocused) {
     this.updateCameraState(); // Only save if not already focused
@@ -3237,384 +3786,6 @@ if (event.key === 'PageDown' || event.key === '[') {
         }
     }
     
-    followFish(fish) {
-    console.log("Following marine creature:", fish);
-    
-    // Cancel any existing follow
-    if (this.followingFish) {
-        this.stopFollowingFish();
-    }
-    
-    this.followingFish = fish;
-    this.isFocused = true;
-    this.followStartTime = Date.now();
-    
-    // Store original camera state
-    this.updateCameraState();
-    
-    // Create follow indicator (green ring around fish)
-    const indicator = new THREE.Mesh(
-        new THREE.TorusGeometry(0.4, 0.05, 16, 32),
-        new THREE.MeshBasicMaterial({
-            color: 0x00ff00,
-            transparent: true,
-            opacity: 0.8
-        })
-    );
-    indicator.rotation.x = Math.PI / 2;
-    fish.add(indicator);
-    this.fishFollowIndicator = indicator;
-    
-    // Animate indicator pulsing
-    this.fishIndicatorPulse = 1.0;
-}
-
-stopFollowingFish() {
-    if (!this.followingFish) return;
-    
-    console.log("Stopped following fish");
-    
-    // Remove indicator
-    if (this.fishFollowIndicator) {
-        this.followingFish.remove(this.fishFollowIndicator);
-        this.fishFollowIndicator = null;
-    }
-    
-    this.followingFish = null;
-    this.isFocused = false;
-    
-    // Don't reset camera - let user keep exploring from current position
-}
-
-updateFishFollowCamera() {
-    if (!this.followingFish || !this.followingFish.position) {
-        return;
-    }
-    
-    const time = Date.now() * 0.001;
-    const fish = this.followingFish;
-    
-    // Calculate camera position (behind and slightly above fish)
-    const fishDirection = new THREE.Vector3();
-    fish.getWorldDirection(fishDirection);
-    
-    const offset = new THREE.Vector3()
-        .copy(fishDirection)
-        .multiplyScalar(-3) // 3 units behind
-        .add(new THREE.Vector3(0, 1, 0)); // 1 unit above
-    
-    const targetPos = fish.position.clone().add(offset);
-    
-    // Smooth camera movement
-    this.camera.position.lerp(targetPos, 0.05);
-    
-    // Look at fish
-    const lookAtPos = fish.position.clone();
-    lookAtPos.y += 0.2; // Look slightly above center
-    this.camera.lookAt(lookAtPos);
-    
-    // Update OrbitControls target for mobile
-    if (this.isMobile) {
-        this.controls.target.copy(lookAtPos);
-        this.controls.update();
-    }
-    
-    // Update indicator pulse
-    if (this.fishFollowIndicator) {
-        this.fishIndicatorPulse = 1.0 + Math.sin(time * 3) * 0.2;
-        this.fishFollowIndicator.scale.set(
-            this.fishIndicatorPulse,
-            this.fishIndicatorPulse,
-            this.fishIndicatorPulse
-        );
-    }
-    
-    // Auto-stop after 20 seconds
-    if (Date.now() - this.followStartTime > 20000) {
-        this.stopFollowingFish();
-    }
-}
-
-showFishInfo(fish, isJellyfish = false) {
-    const existing = document.getElementById('fishInfo');
-    if (existing) existing.remove();
-    
-    // Determine species
-    let species, description, color;
-    
-    if (isJellyfish) {
-        species = "Bioluminescent Jellyfish";
-        description = "These ethereal creatures pulse with cyan light, drifting through the depths.";
-        color = "#00ffff";
-    } else {
-        // Detect fish type by geometry
-        const isBigFish = fish.scale.x > 1.5;
-        
-        if (isBigFish) {
-            species = "Manta Ray";
-            description = "Graceful giant gliding through the water with powerful wing-like fins.";
-            color = "#5a7d9a";
-        } else {
-            const fishColor = fish.material.color.getHex();
-            const colorNames = {
-                0xff6b35: { name: "Coral Tang", desc: "Vibrant orange reef dweller, feeds on algae." },
-                0xf7931e: { name: "Clownfish", desc: "Orange and white striped, lives in anemones." },
-                0xfdc82f: { name: "Yellow Tang", desc: "Bright yellow surgeon fish from coral reefs." },
-                0x00a8e8: { name: "Blue Damselfish", desc: "Electric blue, territorial but beautiful." }
-            };
-            
-            const match = colorNames[fishColor] || { name: "Tropical Fish", desc: "Colorful reef inhabitant." };
-            species = match.name;
-            description = match.desc;
-            color = `#${fishColor.toString(16).padStart(6, '0')}`;
-        }
-    }
-    
-    const info = document.createElement('div');
-    info.id = 'fishInfo';
-    info.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: rgba(0,0,0,0.9);
-        color: white;
-        padding: 20px;
-        border-radius: 10px;
-        max-width: 320px;
-        z-index: 1000;
-        font-family: Arial, sans-serif;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        animation: slideInRight 0.3s ease;
-        border-left: 4px solid ${color};
-    `;
-    
-    info.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-            <div style="font-size: 32px;">${isJellyfish ? '🪼' : '🐠'}</div>
-            <h3 style="margin: 0; font-size: 18px; color: ${color};">${species}</h3>
-        </div>
-        <p style="margin: 8px 0; font-size: 13px; line-height: 1.5; opacity: 0.9;">
-            ${description}
-        </p>
-        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; font-size: 12px;">
-            <strong>📹 Following Mode Active</strong><br>
-            <span style="opacity: 0.8;">Press ESC or right-click to stop</span>
-        </div>
-        <button id="stopFollowing" style="
-            margin-top: 12px;
-            width: 100%;
-            padding: 10px;
-            background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
-            border: none;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-        ">Stop Following</button>
-        <style>
-            @keyframes slideInRight {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        </style>
-    `;
-    
-    document.body.appendChild(info);
-    
-    document.getElementById('stopFollowing').addEventListener('click', () => {
-        this.stopFollowingFish();
-        info.remove();
-    });
-}
-
-
-startSubmarineDive() {
-    if (this.isDiving) return;
-    
-    console.log("🚢 Starting submarine dive sequence...");
-    this.isDiving = true;
-    this.isFocused = true;
-    
-    // Save current position
-    this.updateCameraState();
-    
-    // Show dive UI
-    this.showDiveUI();
-    
-    // Animate descent through depth zones
-    this.diveSequence = [
-        { depth: 0, duration: 2000, zone: "Surface Level", color: 0x4da6ff },
-        { depth: -5, duration: 3000, zone: "Shallow Reef", color: 0x3d8fb8 },
-        { depth: -10, duration: 3000, zone: "Twilight Zone", color: 0x2d5f7a },
-        { depth: -15, duration: 3000, zone: "Deep Abyss", color: 0x1a3a4d },
-        { depth: -20, duration: 3000, zone: "Hadal Zone", color: 0x0d1f2d }
-    ];
-    
-    this.currentDiveStep = 0;
-    this.diveStartTime = Date.now();
-    this.diveStartY = this.camera.position.y;
-    
-    // Play dive sound (optional)
-    if (!this.clickSound.isPlaying) this.clickSound.play();
-}
-
-updateSubmarineDive() {
-    if (!this.isDiving || this.currentDiveStep >= this.diveSequence.length) {
-        if (this.isDiving && this.currentDiveStep >= this.diveSequence.length) {
-            this.completeDive();
-        }
-        return;
-    }
-    
-    const currentStep = this.diveSequence[this.currentDiveStep];
-    const elapsed = Date.now() - this.diveStartTime;
-    const progress = Math.min(elapsed / currentStep.duration, 1);
-    const eased = this.easeInOutCubic(progress);
-    
-    // Calculate target depth
-    const startDepth = this.currentDiveStep === 0 ? this.diveStartY : this.diveSequence[this.currentDiveStep - 1].depth;
-    const targetDepth = currentStep.depth;
-    
-    // Smoothly move camera down
-    this.camera.position.y = startDepth + (targetDepth - startDepth) * eased;
-    
-    // Update fog color and density based on depth
-    if (this.scene.fog) {
-        const fogColor = new THREE.Color(currentStep.color);
-        this.scene.fog.color.lerp(fogColor, 0.05);
-        this.scene.fog.density = 0.015 + (Math.abs(targetDepth) / 100);
-    }
-    
-    // Update ambient light intensity (darker as we go deeper)
-    const ambientLight = this.scene.children.find(child => child instanceof THREE.AmbientLight);
-    if (ambientLight) {
-        const targetIntensity = 0.4 - (Math.abs(targetDepth) / 50);
-        ambientLight.intensity += (targetIntensity - ambientLight.intensity) * 0.05;
-    }
-    
-    // Update dive UI
-    this.updateDiveUI(currentStep.zone, targetDepth, progress);
-    
-    // Move to next step when complete
-    if (progress >= 1) {
-        this.currentDiveStep++;
-        this.diveStartTime = Date.now();
-        
-        if (this.currentDiveStep < this.diveSequence.length) {
-            console.log(`Entering ${this.diveSequence[this.currentDiveStep].zone}`);
-        }
-    }
-}
-
-completeDive() {
-    console.log("🌊 Dive complete! Returning to surface...");
-    
-    // Animate return to original position
-    const returnDuration = 5000;
-    const startY = this.camera.position.y;
-    const targetY = this.previousCameraState.position.y;
-    const startTime = Date.now();
-    
-    const ascend = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / returnDuration, 1);
-        const eased = this.easeInOutCubic(progress);
-        
-        this.camera.position.y = startY + (targetY - startY) * eased;
-        
-        // Restore fog
-        if (this.scene.fog) {
-            this.scene.fog.color.lerp(new THREE.Color(0x1a4d7a), 0.05);
-            this.scene.fog.density += (0.015 - this.scene.fog.density) * 0.05;
-        }
-        
-        // Restore ambient light
-        const ambientLight = this.scene.children.find(child => child instanceof THREE.AmbientLight);
-        if (ambientLight) {
-            ambientLight.intensity += (0.4 - ambientLight.intensity) * 0.05;
-        }
-        
-        this.updateDiveUI("Ascending...", this.camera.position.y, progress);
-        
-        if (progress < 1) {
-            requestAnimationFrame(ascend);
-        } else {
-            this.isDiving = false;
-            this.isFocused = false;
-            this.hideDiveUI();
-        }
-    };
-    
-    requestAnimationFrame(ascend);
-}
-
-showDiveUI() {
-    const diveUI = document.createElement('div');
-    diveUI.id = 'diveUI';
-    diveUI.style.cssText = `
-        position: fixed;
-        bottom: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,0.85);
-        color: white;
-        padding: 20px 30px;
-        border-radius: 15px;
-        z-index: 1000;
-        font-family: 'Courier New', monospace;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        border: 2px solid #00ffff;
-        min-width: 350px;
-    `;
-    
-    diveUI.innerHTML = `
-        <div style="text-align: center;">
-            <div style="font-size: 24px; margin-bottom: 10px;">🚢 SUBMARINE DIVE</div>
-            <div id="diveZone" style="font-size: 16px; color: #00ffff; margin-bottom: 10px;">Preparing...</div>
-            <div id="diveDepth" style="font-size: 20px; font-weight: bold; color: #ffffff; margin-bottom: 10px;">0m</div>
-            <div style="background: rgba(255,255,255,0.2); height: 8px; border-radius: 4px; overflow: hidden;">
-                <div id="diveProgress" style="background: linear-gradient(90deg, #00ffff, #00ff88); height: 100%; width: 0%; transition: width 0.3s;"></div>
-            </div>
-            <button id="cancelDive" style="
-                margin-top: 15px;
-                padding: 8px 20px;
-                background: #ff4444;
-                border: none;
-                color: white;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 12px;
-            ">Cancel Dive</button>
-        </div>
-    `;
-    
-    document.body.appendChild(diveUI);
-    
-    document.getElementById('cancelDive').addEventListener('click', () => {
-        this.isDiving = false;
-        this.isFocused = false;
-        this.camera.position.copy(this.previousCameraState.position);
-        this.hideDiveUI();
-    });
-}
-
-updateDiveUI(zone, depth, progress) {
-    const zoneEl = document.getElementById('diveZone');
-    const depthEl = document.getElementById('diveDepth');
-    const progressEl = document.getElementById('diveProgress');
-    
-    if (zoneEl) zoneEl.textContent = zone;
-    if (depthEl) depthEl.textContent = `${Math.abs(depth).toFixed(1)}m`;
-    if (progressEl) progressEl.style.width = `${progress * 100}%`;
-}
-
-hideDiveUI() {
-    const diveUI = document.getElementById('diveUI');
-    if (diveUI) diveUI.remove();
-}
     closeSlider() {
         this.isSliderActive = false;
         const sliderContainer = document.getElementById('imageSliderContainer');
@@ -4393,5 +4564,5 @@ setupMobileControls() {
     }
 }
 
-const app = new ThreeJSApp();
+window.app = new ThreeJSApp(); // ✓ Make globally accessible
 app.init();
