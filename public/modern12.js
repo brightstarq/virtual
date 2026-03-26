@@ -1589,6 +1589,28 @@ toggleHelpOverlay() {
             this.animationSpeed = parseFloat(slider.value);
             value.textContent = this.animationSpeed.toFixed(1);
         });
+
+          // Camera Height Slider - FIXED VERSION
+        const cameraHeightSlider = document.getElementById("cameraHeightSlider");
+        const cameraHeightValue = document.getElementById("cameraHeightValue");
+
+       if (cameraHeightSlider && cameraHeightValue) {
+    cameraHeightSlider.addEventListener("input", () => {
+        this.cameraHeight = parseFloat(cameraHeightSlider.value);
+        cameraHeightValue.textContent = this.cameraHeight.toFixed(1);
+        
+        this.roomCameraSettings[0].position.y = this.cameraHeight;
+        this.roomCameraSettings[0].lookAt.y = this.cameraHeight;
+        this.camera.position.y = this.cameraHeight;
+        
+        if (!this.isMobile) {
+            this.controls.getObject().position.y = this.cameraHeight;
+        } else {
+            this.controls.target.y = this.cameraHeight;
+            this.controls.update();
+        }
+    });
+}
     
         document.getElementById("sensitivitySlider")?.addEventListener("input", () => {
             const sensitivitySlider = document.getElementById("sensitivitySlider");
@@ -1596,7 +1618,9 @@ toggleHelpOverlay() {
             const sensitivity = parseFloat(sensitivitySlider.value);
             sensitivityValue.textContent = sensitivity.toFixed(3);
             this.controls.setSensitivity(sensitivity);
-        });
+        }); 
+
+
     
         const prevBtn = document.getElementById('prevImage');
         const nextBtn = document.getElementById('nextImage');
@@ -2097,14 +2121,26 @@ toggleHelpOverlay() {
     this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
     this.isFocused = false;
 }
-    checkCollisions() {
+  checkCollisions() {
         if (!this.isMobile) {
-            this.camera.position.y = 1.6;
-            const roomBounds = this.rooms[this.currentRoom].position;
-            const minX = roomBounds.x - 15;
-            const maxX = roomBounds.x + 15;
-            const minZ = roomBounds.z - 15;
-            const maxZ = roomBounds.z + 15;
+            this.camera.position.y = this.cameraHeight || 1.6;
+
+            // ✓ FIXED: Sky Islands bounds (much larger to reach all islands)
+            const minX = -50; // ✓ CHANGE: was -13, now -50
+            const maxX = 50;  // ✓ CHANGE: was 13, now 50
+            const minZ = -50; // ✓ CHANGE: was -13, now -50
+            const maxZ = 50;  // ✓ CHANGE: was 13, now 50
+            const minY = -10; // Safety net (respawn if falling too far)
+
+            // Respawn if falling into the void
+            if (this.camera.position.y < minY) {
+                console.log("⚠️ Fell into void! Respawning at main island...");
+                this.camera.position.set(0, 2, 10);
+                this.controls.getObject().position.copy(this.camera.position);
+
+                // Show respawn message
+                this.showRespawnMessage();
+            }
 
             this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
             this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));

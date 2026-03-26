@@ -2125,21 +2125,21 @@ toggleHelpOverlay() {
     this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
     this.isFocused = false;
 }
-    checkCollisions() {
-        if (!this.isMobile) {
-            this.camera.position.y = this.config.cameraHeight;
-            const roomBounds = this.rooms[0].position;
-            const edge = this.config.roomSize / 2 - 1;
-            const minX = roomBounds.x - edge;
-            const maxX = roomBounds.x + edge;
-            const minZ = roomBounds.z - edge;
-            const maxZ = roomBounds.z + edge;
+  checkCollisions() {
+    if (!this.isMobile) {
+        this.camera.position.y = this.cameraHeight || 1.6;
+        
+        // Bazaar bounds
+        const minX = -27;
+        const maxX = 27;
+        const minZ = -37;
+        const maxZ = 37;
 
-            this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
-            this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
-            this.controls.getObject().position.copy(this.camera.position);
-        }
+        this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
+        this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
+        this.controls.getObject().position.copy(this.camera.position);
     }
+}
 
     async computeImageHash(texture) {
         return new Promise((resolve) => {

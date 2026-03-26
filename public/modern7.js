@@ -2137,21 +2137,21 @@ if (this.chandelier) {
     this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
     this.isFocused = false;
 }
-    checkCollisions() {
-        if (!this.isMobile) {
-            this.camera.position.y = 1.6;
-            const roomBounds = this.rooms[this.currentRoom].position;
-            const minX = roomBounds.x - 15;
-            const maxX = roomBounds.x + 15;
-            const minZ = roomBounds.z - 15;
-            const maxZ = roomBounds.z + 15;
+   checkCollisions() {
+    if (!this.isMobile) {
+        this.camera.position.y = this.cameraHeight || 1.6;
+        
+        // Bazaar bounds
+        const minX = -27;
+        const maxX = 27;
+        const minZ = -37;
+        const maxZ = 37;
 
-            this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
-            this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
-            this.controls.getObject().position.copy(this.camera.position);
-        }
+        this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
+        this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
+        this.controls.getObject().position.copy(this.camera.position);
     }
-
+}
     async computeImageHash(texture) {
         return new Promise((resolve) => {
             const img = texture.image;

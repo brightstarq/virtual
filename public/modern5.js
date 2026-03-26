@@ -1205,7 +1205,7 @@ generateMetalGridPattern(width, height) {
     }
     
     // Tech details (random panels)
-    ctx.fillStyle = '#00d4ff';
+    ctx.fillStyle = '#060606';
     ctx.globalAlpha = 0.3;
     for (let i = 0; i < 20; i++) {
         const x = Math.floor(Math.random() * (width / gridSize)) * gridSize;
@@ -1281,134 +1281,6 @@ generateEarthTexture(width, height) {
     return canvas;
 }
 
-generateBlackMarquina(width, height) {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    
-    // Deep black base
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(0, 0, width, height);
-    
-    // Gold and white veining
-    const numVeins = 30;
-    for (let i = 0; i < numVeins; i++) {
-        const startX = Math.random() * width;
-        const startY = Math.random() * height;
-        
-        // Mix of gold and white veins
-        const isGold = Math.random() > 0.6;
-        const color = isGold 
-            ? `rgba(218, 165, 32, ${0.4 + Math.random() * 0.3})`  // Gold
-            : `rgba(255, 255, 255, ${0.2 + Math.random() * 0.2})`; // White
-        
-        ctx.strokeStyle = color;
-        ctx.lineWidth = Math.random() * 3 + 1;
-        ctx.lineCap = 'round';
-        
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        
-        let x = startX;
-        let y = startY;
-        let angle = Math.random() * Math.PI * 2;
-        
-        for (let j = 0; j < 120; j++) {
-            angle += (Math.random() - 0.5) * 0.4;
-            x += Math.cos(angle) * 10;
-            y += Math.sin(angle) * 10;
-            ctx.lineTo(x, y);
-        }
-        
-        ctx.stroke();
-    }
-    
-    // Polished finish
-    const gradient = ctx.createRadialGradient(
-        width / 2, height / 2, 0,
-        width / 2, height / 2, width / 2
-    );
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-    
-    return canvas;
-}
-
-generateMarbleNormalMap(width, height) {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    
-    // Base normal map color (neutral normal)
-    ctx.fillStyle = '#8080ff';
-    ctx.fillRect(0, 0, width, height);
-    
-    const imageData = ctx.getImageData(0, 0, width, height);
-    
-    // Generate subtle height variation for normal map
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const i = (y * width + x) * 4;
-            
-            // Perlin-like noise for realistic surface
-            const noise = (Math.sin(x * 0.02) * Math.cos(y * 0.02)) * 0.5 + 0.5;
-            const variation = (Math.random() - 0.5) * 30;
-            
-            // Normal map RGB channels (X, Y, Z surface normals)
-            imageData.data[i] = 128 + noise * 25 + variation;     // R (X normal)
-            imageData.data[i + 1] = 128 + noise * 25 + variation; // G (Y normal)
-            imageData.data[i + 2] = 200 + noise * 45;             // B (Z normal - pointing up)
-            imageData.data[i + 3] = 255;                           // Alpha
-        }
-    }
-    
-    ctx.putImageData(imageData, 0, 0);
-    return canvas;
-}
-    generateModernWallTexture(width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d');
-        const imageData = context.createImageData(width, height);
-
-        for (let x = 0; x < width; x++) {
-            for (let y = 0; y < height; y++) {
-                const i = (y * width + x) * 4;
-                const noise = Math.sin(x * 0.05 + y * 0.05) * 0.5 + 0.5;
-                imageData.data[i] = noise * 255;
-                imageData.data[i + 1] = noise * 255;
-                imageData.data[i + 2] = 255;
-                imageData.data[i + 3] = 255;
-            }
-        }
-
-        context.putImageData(imageData, 0, 0);
-        return canvas;
-    }
-
-    generateNoiseCanvas(width, height) {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d');
-        const imageData = context.createImageData(width, height);
-
-        for (let i = 0; i < imageData.data.length; i += 4) {
-            const noise = Math.random() * 0.1 + 0.9;
-            imageData.data[i] = 136 * noise;
-            imageData.data[i + 1] = 136 * noise;
-            imageData.data[i + 2] = 136 * noise;
-            imageData.data[i + 3] = 255;
-        }
-
-        context.putImageData(imageData, 0, 0);
-        return canvas;
-    }
 
     // createAvatar() {
     //     this.avatarGroup = new THREE.Group();
@@ -2713,20 +2585,21 @@ toggleHelpOverlay() {
     this.smoothCameraTransition(initialSettings.position, initialSettings.lookAt);
     this.isFocused = false;
 }
-    checkCollisions() {
-        if (!this.isMobile) {
-            this.camera.position.y = 1.6;
-            const roomBounds = this.rooms[this.currentRoom].position;
-            const minX = roomBounds.x - 15;
-            const maxX = roomBounds.x + 15;
-            const minZ = roomBounds.z - 15;
-            const maxZ = roomBounds.z + 15;
+checkCollisions() {
+    if (!this.isMobile) {
+        this.camera.position.y = this.cameraHeight || 1.6;
+        
+        // Bazaar bounds
+        const minX = -27;
+        const maxX = 27;
+        const minZ = -37;
+        const maxZ = 37;
 
-            this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
-            this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
-            this.controls.getObject().position.copy(this.camera.position);
-        }
+        this.camera.position.x = Math.max(minX, Math.min(maxX, this.camera.position.x));
+        this.camera.position.z = Math.max(minZ, Math.min(maxZ, this.camera.position.z));
+        this.controls.getObject().position.copy(this.camera.position);
     }
+}
 
     async computeImageHash(texture) {
         return new Promise((resolve) => {
